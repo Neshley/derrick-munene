@@ -9,9 +9,12 @@ import { FACTORY_STYLES } from './audio/builtInStyles';
 import { stylePlayer } from './audio/stylePlayer';
 import { audioEngine } from './audio/audioEngine';
 import { ChordEngine } from './audio/chordEngine';
+import { midiManager } from './midi/midiManager';
+import { MidiNoteOnEvent, MidiNoteOffEvent } from './midi/midiTypes';
 import { WorkstationHeader } from './components/WorkstationHeader';
 import { MainLcdDisplay } from './components/MainLcdDisplay';
 import { ArrangerControls } from './components/ArrangerControls';
+import { MidiPanel } from './components/MidiPanel';
 import { InteractiveKeyboard } from './components/InteractiveKeyboard';
 import { MixerSection } from './components/MixerSection';
 import { MultiPadsSection } from './components/MultiPadsSection';
@@ -140,56 +143,75 @@ export default function App() {
   const [isCreatorModalOpen, setIsCreatorModalOpen] = useState(false);
   const [styleNotification, setStyleNotification] = useState<{ name: string; fills: string[]; mains: string[] } | null>(null);
 
-  // Active playing note handles for live voices
-  const activeVoiceNotesRef = useRef<Map<number, { stop: () => void }[]>>(new Map());
+  // Keep MidiManager live performance configuration synchronized
+  useEffect(() => {
+    midiManager.updateLiveConfig({
+      r1Voice,
+      r2Voice,
+      lVoice,
+      r2Enabled,
+      lEnabled,
+      acmpEnabled,
+      chordMode,
+      splitPoint,
+    });
+  }, [r1Voice, r2Voice, lVoice, r2Enabled, lEnabled, acmpEnabled, chordMode, splitPoint]);
 
-  // Live Note Playing Handlers
-  const handleLiveNoteOn = useCallback((note: number, velocity: number = 100) => {
-    audioEngine.init();
-
-    setActiveMidiNotes(prev => {
-      const next = new Set(prev);
-      next.add(note);
-      return next;
+  // Subscribe to MidiManager state and event stream
+  useEffect(() => {
+    const unsubscribe = midiManager.subscribeState((state) => {
+      setMidiConnected(state.isConnected);
+      setMidiDeviceName(state.selectedDeviceName);
     });
 
-    const handles: { stop: () => void }[] = [];
+    const listener = {
+      onNoteOn: (event: MidiNoteOnEvent) => {
+        setActiveMidiNotes((prev) => {
+          const next = new Set(prev);
+          next.add(event.note);
+          return next;
+        });
 
-    // Lower split area (Chord recognition + Optional Left Voice)
-    if (note < splitPoint) {
-      if (lEnabled) {
-        const h = audioEngine.playNote(note, velocity, lVoice, 'left');
-        handles.push(h);
-      }
-    } else {
-      // Upper solo area: Right 1 (Lead)
-      const h1 = audioEngine.playNote(note, velocity, r1Voice, 'r1');
-      handles.push(h1);
+        // Trigger Sync Start on lower zone chord press
+        if (syncStart && !isPlaying) {
+          if (!acmpEnabled || event.note < splitPoint) {
+            stylePlayer.start();
+          }
+        }
+      },
+      onNoteOff: (event: MidiNoteOffEvent) => {
+        setActiveMidiNotes((prev) => {
+          const next = new Set(prev);
+          next.delete(event.note);
+          return next;
+        });
+      },
+      onPanic: () => {
+        setActiveMidiNotes(new Set());
+      },
+    };
 
-      // Right 2 (Layer)
-      if (r2Enabled) {
-        const h2 = audioEngine.playNote(note, Math.round(velocity * 0.85), r2Voice, 'r2');
-        handles.push(h2);
+    midiManager.addListener(listener);
+    midiManager.init();
+
+    return () => {
+      unsubscribe();
+      midiManager.removeListener(listener);
+    };
+  }, [syncStart, isPlaying, acmpEnabled, splitPoint]);
+
+  // Live Note Playing Handlers (Unified delegation to MidiManager)
+  const handleLiveNoteOn = useCallback((note: number, velocity: number = 100) => {
+    midiManager.handleNoteOn(note, velocity);
+    if (syncStart && !isPlaying) {
+      if (!acmpEnabled || note < splitPoint) {
+        stylePlayer.start();
       }
     }
-
-    // Store handles
-    const existing = activeVoiceNotesRef.current.get(note) || [];
-    activeVoiceNotesRef.current.set(note, [...existing, ...handles]);
-  }, [splitPoint, lEnabled, lVoice, r1Voice, r2Enabled, r2Voice]);
+  }, [syncStart, isPlaying, acmpEnabled, splitPoint]);
 
   const handleLiveNoteOff = useCallback((note: number) => {
-    setActiveMidiNotes(prev => {
-      const next = new Set(prev);
-      next.delete(note);
-      return next;
-    });
-
-    const handles = activeVoiceNotesRef.current.get(note);
-    if (handles) {
-      handles.forEach(h => h.stop());
-      activeVoiceNotesRef.current.delete(note);
-    }
+    midiManager.handleNoteOff(note);
   }, []);
 
   // Subscribe to StylePlayer events
@@ -216,50 +238,6 @@ export default function App() {
     stylePlayer.addListener(listener);
     return () => stylePlayer.removeListener(listener);
   }, []);
-
-  // Web MIDI API Hardware Autodetection
-  useEffect(() => {
-    if (typeof navigator !== 'undefined' && 'requestMIDIAccess' in navigator) {
-      navigator.requestMIDIAccess({ sysex: false })
-        .then((midiAccess) => {
-          const updateMidiStatus = () => {
-            const inputs = Array.from(midiAccess.inputs.values());
-            if (inputs.length > 0) {
-              setMidiConnected(true);
-              setMidiDeviceName(inputs[0].name || 'USB MIDI Device');
-            } else {
-              setMidiConnected(false);
-              setMidiDeviceName('');
-            }
-          };
-
-          updateMidiStatus();
-          midiAccess.onstatechange = updateMidiStatus;
-
-          // Wire MIDI message listener on all inputs
-          midiAccess.inputs.forEach((input: any) => {
-            input.onmidimessage = (event: any) => {
-              const data = event.data;
-              if (!data || data.length < 2) return;
-              const status = data[0] & 0xf0;
-              const note = data[1];
-              const velocity = data[2] || 0;
-
-              if (status === 0x90 && velocity > 0) {
-                // Note On
-                handleLiveNoteOn(note, velocity);
-              } else if (status === 0x80 || (status === 0x90 && velocity === 0)) {
-                // Note Off
-                handleLiveNoteOff(note);
-              }
-            };
-          });
-        })
-        .catch(() => {
-          // Web MIDI not supported or denied
-        });
-    }
-  }, [handleLiveNoteOn, handleLiveNoteOff]);
 
   // Master Volume handler
   const handleMasterVolumeChange = (vol: number) => {
@@ -574,6 +552,18 @@ export default function App() {
                 <MultiPadsSection />
               </div>
             </div>
+
+            {/* Professional Hardware MIDI Interface & Telemetry Panel */}
+            <MidiPanel
+              splitPoint={splitPoint}
+              onSplitPointChange={(newSplit) => setSplitPoint(newSplit)}
+              r1Voice={r1Voice}
+              r2Voice={r2Voice}
+              lVoice={lVoice}
+              r2Enabled={r2Enabled}
+              lEnabled={lEnabled}
+              acmpEnabled={acmpEnabled}
+            />
 
             {/* Interactive Piano Keyboard with Split Zones */}
             <InteractiveKeyboard

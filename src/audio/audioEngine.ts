@@ -1,5 +1,11 @@
 // Web Audio API Polyphonic Synthesizer and Arranger Drum Engine
 
+export interface AudioEngineActiveNote {
+  stop: (releaseTime?: number) => void;
+  setPitchBend: (semitones: number) => void;
+  setModulation: (mod01: number) => void;
+}
+
 export class AudioEngine {
   private ctx: AudioContext | null = null;
   private masterGain: GainNode | null = null;
@@ -18,7 +24,9 @@ export class AudioEngine {
   private eqHigh: BiquadFilterNode | null = null;
   private eqSettings: { low: number; mid: number; high: number } = { low: 0, mid: 0, high: 0 };
 
-  private activeNotes: Map<string, { stop: (time?: number) => void }> = new Map();
+  private activeNotes: Map<string, AudioEngineActiveNote> = new Map();
+  private currentPitchBend: Map<string, number> = new Map();
+  private currentModulation: Map<string, number> = new Map();
 
   // Volume channels for 8 style accompaniment tracks + voices
   private trackGains: Map<string, GainNode> = new Map();
@@ -866,6 +874,35 @@ export class AudioEngine {
     return 440 * Math.pow(2, (midi - 69) / 12);
   }
 
+  public setPitchBend(semitones: number, track?: string) {
+    if (track) {
+      this.currentPitchBend.set(track, semitones);
+    } else {
+      this.currentPitchBend.set('global', semitones);
+    }
+
+    this.activeNotes.forEach((handle, key) => {
+      if (!track || key.startsWith(`${track}_`)) {
+        handle.setPitchBend(semitones);
+      }
+    });
+  }
+
+  public setModulation(mod01: number, track?: string) {
+    const clamped = Math.max(0, Math.min(1, mod01));
+    if (track) {
+      this.currentModulation.set(track, clamped);
+    } else {
+      this.currentModulation.set('global', clamped);
+    }
+
+    this.activeNotes.forEach((handle, key) => {
+      if (!track || key.startsWith(`${track}_`)) {
+        handle.setModulation(clamped);
+      }
+    });
+  }
+
   public playNote(
     midiNote: number,
     velocity: number = 90,
@@ -873,23 +910,47 @@ export class AudioEngine {
     track: string = 'chord1',
     durationSec?: number,
     timeOffset: number = 0
-  ): { stop: () => void } {
+  ): AudioEngineActiveNote {
     this.init();
-    if (!this.ctx) return { stop: () => {} };
+    if (!this.ctx) {
+      return {
+        stop: () => {},
+        setPitchBend: () => {},
+        setModulation: () => {},
+      };
+    }
 
     const t = this.ctx.currentTime + timeOffset;
     const freq = this.midiToFreq(midiNote);
     const vel = Math.max(0.05, Math.min(1.0, velocity / 127));
     const dest = this.trackGains.get(track) || this.dryGain!;
 
-    const noteKey = `${track}_${midiNote}_${Date.now()}`;
-    const stopFn = this.synthesizeMelodicVoice(freq, vel, voiceType, dest, t, durationSec);
+    const initialPitchBend = this.currentPitchBend.get(track) ?? this.currentPitchBend.get('global') ?? 0;
+    const initialModulation = this.currentModulation.get(track) ?? this.currentModulation.get('global') ?? 0;
 
-    const handle = {
+    const noteKey = `${track}_${midiNote}_${Date.now()}_${Math.random()}`;
+    const voiceCtrl = this.synthesizeMelodicVoice(
+      freq,
+      vel,
+      voiceType,
+      dest,
+      t,
+      durationSec,
+      initialPitchBend,
+      initialModulation
+    );
+
+    const handle: AudioEngineActiveNote = {
       stop: (releaseTime?: number) => {
-        stopFn(releaseTime);
+        voiceCtrl.stop(releaseTime);
         this.activeNotes.delete(noteKey);
-      }
+      },
+      setPitchBend: (semitones: number) => {
+        voiceCtrl.setPitchBend(semitones);
+      },
+      setModulation: (mod01: number) => {
+        voiceCtrl.setModulation(mod01);
+      },
     };
 
     this.activeNotes.set(noteKey, handle);
@@ -909,9 +970,37 @@ export class AudioEngine {
     voiceType: string,
     dest: GainNode,
     t: number,
-    durationSec?: number
-  ): (releaseTime?: number) => void {
-    if (!this.ctx) return () => {};
+    durationSec?: number,
+    initialPitchBend: number = 0,
+    initialModulation: number = 0
+  ): {
+    stop: (releaseTime?: number) => void;
+    setPitchBend: (semitones: number) => void;
+    setModulation: (mod01: number) => void;
+  } {
+    if (!this.ctx) {
+      return { stop: () => {}, setPitchBend: () => {}, setModulation: () => {} };
+    }
+
+    // Common vibrato LFO node for modulation wheel (5.5 Hz musical vibrato)
+    const lfo = this.ctx.createOscillator();
+    const lfoGain = this.ctx.createGain();
+    lfo.type = 'sine';
+    lfo.frequency.setValueAtTime(5.5, t);
+    // Subtle vibrato depth up to 35 cents
+    lfoGain.gain.setValueAtTime(initialModulation * 35, t);
+    lfo.connect(lfoGain);
+    lfo.start(t);
+
+    const oscs: OscillatorNode[] = [];
+
+    const applyPitchAndMod = (osc: OscillatorNode, baseDetuneCents: number = 0) => {
+      osc.detune.setValueAtTime(baseDetuneCents + initialPitchBend * 100, t);
+      lfoGain.connect(osc.detune);
+      oscs.push(osc);
+    };
+
+    let stopVoiceFn: (releaseTime?: number) => void = () => {};
 
     // 1. GRAND PIANO (Dynamic Multi-Harmonic FM with hammer knock)
     if (voiceType === 'piano') {
@@ -924,6 +1013,9 @@ export class AudioEngine {
       osc2.type = 'sine';
       osc1.frequency.setValueAtTime(freq, t);
       osc2.frequency.setValueAtTime(freq * 2, t);
+
+      applyPitchAndMod(osc1, 0);
+      applyPitchAndMod(osc2, 0);
 
       filter.type = 'lowpass';
       filter.frequency.setValueAtTime(Math.min(12000, freq * 5 + vel * 2500), t);
@@ -942,7 +1034,7 @@ export class AudioEngine {
       osc1.start(t);
       osc2.start(t);
 
-      return (relTime) => {
+      stopVoiceFn = (relTime) => {
         const stopTime = relTime || this.ctx!.currentTime;
         gain.gain.cancelScheduledValues(stopTime);
         gain.gain.setValueAtTime(gain.gain.value, stopTime);
@@ -953,7 +1045,7 @@ export class AudioEngine {
     }
 
     // 2. RHODES ELECTRIC PIANO (FM bell tone + warm body)
-    if (voiceType === 'epiano') {
+    else if (voiceType === 'epiano') {
       const carrier = this.ctx.createOscillator();
       const modulator = this.ctx.createOscillator();
       const modGain = this.ctx.createGain();
@@ -964,6 +1056,9 @@ export class AudioEngine {
 
       modulator.type = 'sine';
       modulator.frequency.setValueAtTime(freq * 3, t); // Bell harmonic ratio
+
+      applyPitchAndMod(carrier, 0);
+      applyPitchAndMod(modulator, 0);
 
       modGain.gain.setValueAtTime(freq * 1.5 * vel, t);
       modGain.gain.exponentialRampToValueAtTime(0.01, t + 0.6);
@@ -981,7 +1076,7 @@ export class AudioEngine {
       carrier.start(t);
       modulator.start(t);
 
-      return (relTime) => {
+      stopVoiceFn = (relTime) => {
         const stopTime = relTime || this.ctx!.currentTime;
         gain.gain.cancelScheduledValues(stopTime);
         gain.gain.setValueAtTime(gain.gain.value, stopTime);
@@ -992,10 +1087,10 @@ export class AudioEngine {
     }
 
     // 3. HAMMOND B3 ORGAN (Drawbars + Rotary modulation)
-    if (voiceType === 'organ') {
+    else if (voiceType === 'organ') {
       const harmonics = [1, 2, 3, 4, 6];
       const gains = [0.4, 0.3, 0.25, 0.15, 0.1];
-      const oscs: OscillatorNode[] = [];
+      const organOscs: OscillatorNode[] = [];
       const mainGain = this.ctx.createGain();
 
       harmonics.forEach((h, idx) => {
@@ -1004,27 +1099,28 @@ export class AudioEngine {
         osc.type = 'sine';
         osc.frequency.setValueAtTime(freq * h, t);
         g.gain.setValueAtTime(gains[idx], t);
+        applyPitchAndMod(osc, 0);
         osc.connect(g);
         g.connect(mainGain);
         osc.start(t);
-        oscs.push(osc);
+        organOscs.push(osc);
       });
 
       mainGain.gain.setValueAtTime(0.001, t);
       mainGain.gain.linearRampToValueAtTime(0.6 * vel, t + 0.01);
       mainGain.connect(dest);
 
-      return (relTime) => {
+      stopVoiceFn = (relTime) => {
         const stopTime = relTime || this.ctx!.currentTime;
         mainGain.gain.cancelScheduledValues(stopTime);
         mainGain.gain.setValueAtTime(mainGain.gain.value, stopTime);
         mainGain.gain.exponentialRampToValueAtTime(0.001, stopTime + 0.06);
-        oscs.forEach(o => o.stop(stopTime + 0.08));
+        organOscs.forEach(o => o.stop(stopTime + 0.08));
       };
     }
 
     // 4. ACCORDION (Detuned dual reeds + tremolo)
-    if (voiceType === 'accordion') {
+    else if (voiceType === 'accordion') {
       const osc1 = this.ctx.createOscillator();
       const osc2 = this.ctx.createOscillator();
       const gain = this.ctx.createGain();
@@ -1034,6 +1130,9 @@ export class AudioEngine {
       osc2.type = 'sawtooth';
       osc1.frequency.setValueAtTime(freq, t);
       osc2.frequency.setValueAtTime(freq * 1.004, t); // 4 cents musette detune
+
+      applyPitchAndMod(osc1, 0);
+      applyPitchAndMod(osc2, 7);
 
       filter.type = 'lowpass';
       filter.frequency.setValueAtTime(2800, t);
@@ -1049,7 +1148,7 @@ export class AudioEngine {
       osc1.start(t);
       osc2.start(t);
 
-      return (relTime) => {
+      stopVoiceFn = (relTime) => {
         const stopTime = relTime || this.ctx!.currentTime;
         gain.gain.cancelScheduledValues(stopTime);
         gain.gain.setValueAtTime(gain.gain.value, stopTime);
@@ -1060,7 +1159,7 @@ export class AudioEngine {
     }
 
     // 5. STRINGS ENSEMBLE (Lush multi-oscillator detune with swell)
-    if (voiceType === 'strings' || voiceType === 'synth_pad') {
+    else if (voiceType === 'strings' || voiceType === 'synth_pad') {
       const osc1 = this.ctx.createOscillator();
       const osc2 = this.ctx.createOscillator();
       const osc3 = this.ctx.createOscillator();
@@ -1073,6 +1172,10 @@ export class AudioEngine {
       osc1.frequency.setValueAtTime(freq, t);
       osc2.frequency.setValueAtTime(freq * 1.006, t);
       osc3.frequency.setValueAtTime(freq * 0.994, t);
+
+      applyPitchAndMod(osc1, 0);
+      applyPitchAndMod(osc2, 10);
+      applyPitchAndMod(osc3, -10);
 
       filter.type = 'lowpass';
       filter.frequency.setValueAtTime(1800, t);
@@ -1091,7 +1194,7 @@ export class AudioEngine {
       osc2.start(t);
       osc3.start(t);
 
-      return (relTime) => {
+      stopVoiceFn = (relTime) => {
         const stopTime = relTime || this.ctx!.currentTime;
         gain.gain.cancelScheduledValues(stopTime);
         gain.gain.setValueAtTime(gain.gain.value, stopTime);
@@ -1103,7 +1206,7 @@ export class AudioEngine {
     }
 
     // 6. BRASS SECTION (Punchy saw with filter envelope)
-    if (voiceType === 'brass') {
+    else if (voiceType === 'brass') {
       const osc1 = this.ctx.createOscillator();
       const osc2 = this.ctx.createOscillator();
       const gain = this.ctx.createGain();
@@ -1113,6 +1216,9 @@ export class AudioEngine {
       osc2.type = 'sawtooth';
       osc1.frequency.setValueAtTime(freq, t);
       osc2.frequency.setValueAtTime(freq * 1.003, t);
+
+      applyPitchAndMod(osc1, 0);
+      applyPitchAndMod(osc2, 5);
 
       filter.type = 'lowpass';
       filter.frequency.setValueAtTime(400, t);
@@ -1130,7 +1236,7 @@ export class AudioEngine {
       osc1.start(t);
       osc2.start(t);
 
-      return (relTime) => {
+      stopVoiceFn = (relTime) => {
         const stopTime = relTime || this.ctx!.currentTime;
         gain.gain.cancelScheduledValues(stopTime);
         gain.gain.setValueAtTime(gain.gain.value, stopTime);
@@ -1141,13 +1247,15 @@ export class AudioEngine {
     }
 
     // 7. GUITAR ACOUSTIC / ELECTRIC (Plucked string transient)
-    if (voiceType === 'guitar_acoustic' || voiceType === 'guitar_electric') {
+    else if (voiceType === 'guitar_acoustic' || voiceType === 'guitar_electric') {
       const osc = this.ctx.createOscillator();
       const gain = this.ctx.createGain();
       const filter = this.ctx.createBiquadFilter();
 
       osc.type = voiceType === 'guitar_electric' ? 'sawtooth' : 'triangle';
       osc.frequency.setValueAtTime(freq, t);
+
+      applyPitchAndMod(osc, 0);
 
       filter.type = 'lowpass';
       filter.frequency.setValueAtTime(Math.min(9000, freq * 6), t);
@@ -1164,7 +1272,7 @@ export class AudioEngine {
 
       osc.start(t);
 
-      return (relTime) => {
+      stopVoiceFn = (relTime) => {
         const stopTime = relTime || this.ctx!.currentTime;
         gain.gain.cancelScheduledValues(stopTime);
         gain.gain.setValueAtTime(gain.gain.value, stopTime);
@@ -1174,7 +1282,7 @@ export class AudioEngine {
     }
 
     // 8. BASS (Acoustic / Electric / Synth Bass)
-    if (voiceType.includes('bass')) {
+    else if (voiceType.includes('bass')) {
       const osc1 = this.ctx.createOscillator();
       const osc2 = this.ctx.createOscillator();
       const gain = this.ctx.createGain();
@@ -1184,6 +1292,9 @@ export class AudioEngine {
       osc2.type = 'sine'; // Sub octave
       osc1.frequency.setValueAtTime(freq, t);
       osc2.frequency.setValueAtTime(freq * 0.5, t);
+
+      applyPitchAndMod(osc1, 0);
+      applyPitchAndMod(osc2, 0);
 
       filter.type = 'lowpass';
       filter.frequency.setValueAtTime(1400, t);
@@ -1202,7 +1313,7 @@ export class AudioEngine {
       osc1.start(t);
       osc2.start(t);
 
-      return (relTime) => {
+      stopVoiceFn = (relTime) => {
         const stopTime = relTime || this.ctx!.currentTime;
         gain.gain.cancelScheduledValues(stopTime);
         gain.gain.setValueAtTime(gain.gain.value, stopTime);
@@ -1213,37 +1324,71 @@ export class AudioEngine {
     }
 
     // 9. SYNTH LEAD / PLUCK
-    const osc = this.ctx.createOscillator();
-    const gain = this.ctx.createGain();
-    const filter = this.ctx.createBiquadFilter();
+    else {
+      const osc = this.ctx.createOscillator();
+      const gain = this.ctx.createGain();
+      const filter = this.ctx.createBiquadFilter();
 
-    osc.type = 'sawtooth';
-    osc.frequency.setValueAtTime(freq, t);
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(freq, t);
 
-    filter.type = 'lowpass';
-    filter.frequency.setValueAtTime(3500, t);
-    filter.Q.setValueAtTime(4, t);
+      applyPitchAndMod(osc, 0);
 
-    gain.gain.setValueAtTime(0.001, t);
-    gain.gain.linearRampToValueAtTime(0.6 * vel, t + 0.01);
+      filter.type = 'lowpass';
+      filter.frequency.setValueAtTime(3500, t);
+      filter.Q.setValueAtTime(4, t);
 
-    osc.connect(filter);
-    filter.connect(gain);
-    gain.connect(dest);
+      gain.gain.setValueAtTime(0.001, t);
+      gain.gain.linearRampToValueAtTime(0.6 * vel, t + 0.01);
 
-    osc.start(t);
+      osc.connect(filter);
+      filter.connect(gain);
+      gain.connect(dest);
 
-    return (relTime) => {
-      const stopTime = relTime || this.ctx!.currentTime;
-      gain.gain.cancelScheduledValues(stopTime);
-      gain.gain.setValueAtTime(gain.gain.value, stopTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, stopTime + 0.1);
-      osc.stop(stopTime + 0.12);
+      osc.start(t);
+
+      stopVoiceFn = (relTime) => {
+        const stopTime = relTime || this.ctx!.currentTime;
+        gain.gain.cancelScheduledValues(stopTime);
+        gain.gain.setValueAtTime(gain.gain.value, stopTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, stopTime + 0.1);
+        osc.stop(stopTime + 0.12);
+      };
+    }
+
+    return {
+      stop: (releaseTime?: number) => {
+        stopVoiceFn(releaseTime);
+        const stopTime = releaseTime || this.ctx!.currentTime;
+        try {
+          lfo.stop(stopTime + 0.2);
+        } catch {
+          // Ignored if already stopped
+        }
+      },
+      setPitchBend: (semitones: number) => {
+        if (!this.ctx) return;
+        oscs.forEach((o) => {
+          try {
+            o.detune.setTargetAtTime(semitones * 100, this.ctx!.currentTime, 0.015);
+          } catch {
+            // Ignored
+          }
+        });
+      },
+      setModulation: (mod01: number) => {
+        if (!this.ctx) return;
+        try {
+          lfoGain.gain.setTargetAtTime(mod01 * 35, this.ctx!.currentTime, 0.02);
+        } catch {
+          // Ignored
+        }
+      },
     };
   }
 
   public stopAllNotes() {
-    this.activeNotes.forEach(handle => handle.stop());
+    this.activeNotes.forEach((handle) => handle.stop());
     this.activeNotes.clear();
   }
 }
