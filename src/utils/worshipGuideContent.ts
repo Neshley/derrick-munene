@@ -306,6 +306,45 @@ export const WORSHIP_GUIDE_SECTIONS: GuideSection[] = [
       "The most powerful arrangement is not necessarily the busiest one.",
       "Sometimes the best accompaniment is simply a warm piano, a sustained organ, a gentle bass line, and enough space to pray."
     ]
+  },
+  {
+    id: "creator-message",
+    title: "23. A Message from the Creator",
+    level: 3,
+    content: [
+      "Technology should serve music, not get in the way of it.",
+      "As a musician and engineer, I have always been interested in the relationship between creativity, technology, sound, and automation. I wanted to build something that could bring those worlds together in a practical way.",
+      "The idea behind this arranger started with a desire to create a digital environment where a musician could sit down, play a chord, and immediately have a musical world respond to it.",
+      "But I didn't want to build just another music player. I wanted to build an interactive arranger — something that could understand chords, respond to the musician, change accompaniment, control different instruments, work with MIDI keyboards, and provide a dynamic musical experience.",
+      "One of the most important directions of this project is worship and prayer. During prayer, music can create space for reflection, singing, meditation, and worship. That is why the arranger is designed around musical dynamics: No Drums → Shaker → Light Groove → Full Worship.",
+      "Behind the interface is a combination of software engineering, digital audio, MIDI technology, music theory, and arranger-system concepts:\n• Web Audio API & polyphonic multi-sample synthesis\n• Real-time event processing & MIDI keyboard controllers\n• Real-time chord recognition (fingered & single finger)\n• Automatic accompaniment engine\n• Yamaha-style STY parsing (CASM, NTR, NTT, retrigger rules)\n• Progressive worship arrangement dynamics\n• Progressive Web App (PWA) offline technology",
+      "My vision is to create an arranger that feels less like a machine and more like a musical partner. A musician should be able to sit down, choose a style, play a chord, and immediately begin creating — whether in prayer, worship, practice, composition, performance, or simply playing for the joy of music."
+    ],
+    subsections: [
+      {
+        title: "Key Technological Pillars",
+        items: [
+          "Web Audio & low-latency sound synthesis",
+          "MIDI keyboard input & real-time message handling",
+          "Harmonic recognition engine & dynamic accompaniment",
+          "Yamaha .STY file format decoding & CASM voice routing",
+          "Progressive 4-stage worship dynamics & transitions"
+        ]
+      }
+    ]
+  },
+  {
+    id: "support-project",
+    title: "24. Support the Project & Buy a Coffee",
+    level: 3,
+    content: [
+      "If you enjoy using this application and feel that it has been useful to you, you are welcome to buy the creator a coffee.",
+      "There is absolutely no obligation to contribute. Your support is simply a way of saying: “I appreciate the work.”",
+      "Every contribution, regardless of its size, helps support continued development, testing, improvements, new worship styles, better sounds, and new features.",
+      "Support channels:\n• PayPal: derrickmunene2025@gmail.com\n• M-Pesa: +254 704 034 278",
+      "Thank you for supporting independent development. Whether you contribute or simply use the application, your interest in this project means a lot.",
+      "Keep playing. Keep creating. Keep building. — The Creator"
+    ]
   }
 ];
 
@@ -972,4 +1011,135 @@ Remove them when silence and space are more appropriate.
 The most powerful arrangement is not necessarily the busiest one.
 
 **Sometimes the best accompaniment is simply a warm piano, a sustained organ, a gentle bass line, and enough space to pray.**
+
+---
+
+# A MESSAGE FROM THE CREATOR
+
+## Why I Created This Application
+
+I created this application from a simple idea:
+
+**Technology should serve music, not get in the way of it.**
+
+As a musician and engineer, I have always been interested in the relationship between creativity, technology, sound, and automation. I wanted to build something that could bring those worlds together in a practical way.
+
+The idea behind this arranger started with a desire to create a digital environment where a musician could sit down, play a chord, and immediately have a musical world respond to it.
+
+But I didn't want to build just another music player.
+
+I wanted to build an **interactive arranger**.
+
+Something that could understand chords, respond to the musician, change accompaniment, control different instruments, work with MIDI keyboards, and provide a dynamic musical experience.
+
+## Built for Worship
+
+One of the most important directions of this project is **worship and prayer**.
+
+During prayer, music can create space for reflection, singing, meditation, and worship. Sometimes a full drum pattern is appropriate. Other times, the best accompaniment is simply a warm piano, a soft organ, a gentle bass line, and enough space to breathe.
+
+That is why the arranger is designed around **musical dynamics**.
+
+You can gradually move from:
+
+**No Drums → Shaker → Light Groove → Full Worship**
+
+The music can grow with the moment, and it can become quiet again when the moment calls for it.
+
+## Built With Technology
+
+Behind the interface is a combination of software engineering, digital audio, MIDI technology, music theory, and arranger-system concepts.
+
+The project explores technologies such as:
+
+* Web Audio
+* MIDI
+* Real-time event processing
+* Chord recognition
+* Automatic accompaniment
+* MIDI style parsing
+* Yamaha-style STY structures
+* CASM
+* NTR
+* NTT
+* Retrigger rules
+* Progressive arrangement
+* PWA/offline technology
+
+The goal is not simply to reproduce the appearance of a keyboard.
+
+The goal is to understand the **musical intelligence behind an arranger** and bring that experience into software.
+
+## Still Growing
+
+This application is a work in progress.
+
+There are many things I want to improve, including more realistic accompaniment, better Yamaha-style compatibility, more expressive instruments, improved chord recognition, better MIDI control, richer worship styles, and more intelligent accompaniment behavior.
+
+Every improvement is part of the journey toward creating a more capable digital arranger.
+
+## My Vision
+
+My vision is to create an arranger that feels less like a machine and more like a **musical partner**.
+
+A musician should be able to sit down, choose a style, play a chord, and immediately begin creating.
+
+Whether the moment is:
+
+**Prayer.
+Worship.
+Practice.
+Composition.
+Performance.
+Or simply playing for the joy of music.**
+
+The technology should disappear into the experience.
+
+The musician should remain at the center.
+
+---
+
+# ☕ SUPPORT THE PROJECT
+
+If you enjoy using this application and feel that it has been useful to you, you are welcome to **buy the creator a coffee**.
+
+There is absolutely **no obligation** to contribute. Your support is simply a way of saying:
+
+**“I appreciate the work.”**
+
+Every contribution, regardless of its size, helps support continued development, testing, improvements, new worship styles, better sounds, and new features.
+
+### PayPal
+
+**derrickmunene2025@gmail.com**
+
+### M-Pesa
+
+**+254 704 034 278**
+
+Thank you for supporting independent development.
+
+Whether you contribute or simply use the application, your interest in this project means a lot.
+
+---
+
+## A Final Word
+
+Thank you for giving this project a place in your music.
+
+I hope it helps you create something beautiful.
+
+I hope it gives you a peaceful atmosphere when you need one.
+
+I hope it inspires you to experiment.
+
+And most importantly, I hope it reminds you that music does not always have to be complicated to be meaningful.
+
+Sometimes one chord, one melody, and one quiet moment are enough.
+
+**Keep playing.
+Keep creating.
+Keep building.**
+
+— **The Creator**
 `;

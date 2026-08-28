@@ -39,7 +39,9 @@ import {
   WifiOff,
   BookOpen,
   FileText,
-  FileDown
+  FileDown,
+  Coffee,
+  Heart
 } from 'lucide-react';
 
 interface WorkstationSidebarProps {
@@ -53,6 +55,7 @@ interface WorkstationSidebarProps {
   onOpenChordSequencer: () => void;
   onOpenMidiHelp: () => void;
   onOpenUserGuide?: () => void;
+  onOpenCreatorMessage?: () => void;
   r1Voice: string;
   r2Voice: string;
   lVoice: string;
@@ -87,6 +90,7 @@ export const WorkstationSidebar: React.FC<WorkstationSidebarProps> = ({
   onOpenChordSequencer,
   onOpenMidiHelp,
   onOpenUserGuide,
+  onOpenCreatorMessage,
   r1Voice,
   r2Voice,
   lVoice,
@@ -299,6 +303,18 @@ export const WorkstationSidebar: React.FC<WorkstationSidebarProps> = ({
                 >
                   <BookOpen className="w-4 h-4 text-amber-400" />
                   <span className="text-[8px] font-mono font-bold leading-none">GUIDE</span>
+                </button>
+              )}
+
+              {/* Creator Message & Support Button in Rail */}
+              {onOpenCreatorMessage && (
+                <button
+                  onClick={onOpenCreatorMessage}
+                  className="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-600/30 to-amber-500/20 hover:from-amber-600/40 hover:to-amber-500/30 text-amber-300 border border-amber-500/50 flex flex-col items-center justify-center gap-0.5 transition-all shadow-xs cursor-pointer"
+                  title="A Message from the Creator & Support the Project"
+                >
+                  <Coffee className="w-4 h-4 text-amber-400 animate-pulse" />
+                  <span className="text-[8px] font-mono font-bold leading-none">CREATOR</span>
                 </button>
               )}
 
@@ -765,7 +781,7 @@ export const WorkstationSidebar: React.FC<WorkstationSidebarProps> = ({
                           <BookOpen className="w-4 h-4 text-amber-400" />
                           <span className="font-bold text-xs text-amber-300">Worship Companion Guide</span>
                         </div>
-                        <span className="text-[9px] font-mono uppercase px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-bold">22 SEC</span>
+                        <span className="text-[9px] font-mono uppercase px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-bold">24 SEC</span>
                       </div>
                       <p className="text-[11px] text-zinc-400 leading-tight">
                         Complete manual with prayer stages, arrangement levels (Main A–D), BPM, chords, &amp; quick reference.
@@ -777,6 +793,30 @@ export const WorkstationSidebar: React.FC<WorkstationSidebarProps> = ({
                       >
                         <BookOpen className="w-3.5 h-3.5" />
                         <span>Open &amp; Download (PDF / Word)</span>
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Creator Message & Support Project Quick Launcher */}
+                  {onOpenCreatorMessage && (
+                    <div className="p-3 rounded-xl bg-gradient-to-r from-zinc-900 via-amber-950/20 to-zinc-900 border border-amber-500/30 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Coffee className="w-4 h-4 text-amber-400" />
+                          <span className="font-bold text-xs text-zinc-200">Message from the Creator</span>
+                        </div>
+                        <span className="text-[9px] font-mono uppercase px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-bold">☕ SUPPORT</span>
+                      </div>
+                      <p className="text-[11px] text-zinc-400 leading-tight">
+                        Read the creator's vision for worship technology, sound design, and how to buy a coffee.
+                      </p>
+                      <button
+                        id="btn-sidebar-open-creator-message"
+                        onClick={onOpenCreatorMessage}
+                        className="w-full py-1.5 px-2.5 rounded-lg bg-zinc-800 hover:bg-amber-500/20 hover:border-amber-500/50 border border-zinc-700 text-amber-300 font-semibold text-xs flex items-center justify-center gap-1.5 transition-all shadow-sm active:scale-95 cursor-pointer"
+                      >
+                        <Coffee className="w-3.5 h-3.5 text-amber-400" />
+                        <span>Read Vision &amp; Support Channels</span>
                       </button>
                     </div>
                   )}

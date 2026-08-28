@@ -13,7 +13,11 @@ import {
   Volume2, 
   Heart,
   ChevronRight,
-  ExternalLink
+  ExternalLink,
+  Coffee,
+  Copy,
+  Mail,
+  PhoneCall
 } from 'lucide-react';
 import { 
   WORSHIP_GUIDE_SECTIONS, 
@@ -30,15 +34,24 @@ import {
 interface UserGuideModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onOpenCreatorMessage?: () => void;
 }
 
-export const UserGuideModal: React.FC<UserGuideModalProps> = ({ isOpen, onClose }) => {
+export const UserGuideModal: React.FC<UserGuideModalProps> = ({ isOpen, onClose, onOpenCreatorMessage }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [downloadingDocx, setDownloadingDocx] = useState(false);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
-  const [activeSectionId, setActiveSectionId] = useState<string>('welcome');
+  const [copiedType, setCopiedType] = useState<string | null>(null);
 
   if (!isOpen) return null;
+
+  const handleCopy = (text: string, label: string) => {
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(text);
+      setCopiedType(label);
+      setTimeout(() => setCopiedType(null), 2500);
+    }
+  };
 
   const handleDownloadDocx = async () => {
     try {
@@ -161,23 +174,32 @@ export const UserGuideModal: React.FC<UserGuideModalProps> = ({ isOpen, onClose 
         </div>
 
         {/* Search & Navigation Bar */}
-        <div className="px-4 py-2 bg-zinc-900/60 border-b border-zinc-800/80 flex items-center justify-between gap-3 text-xs">
-          <div className="relative flex-1 max-w-sm">
+        <div className="px-4 py-2 bg-zinc-900/60 border-b border-zinc-800/80 flex items-center justify-between gap-3 text-xs flex-wrap">
+          <div className="relative flex-1 min-w-[200px] max-w-sm">
             <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-500" />
             <input
               type="text"
-              placeholder="Search chapters, prayer levels, chords..."
+              placeholder="Search chapters, creator message, support, chords..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full bg-zinc-950 border border-zinc-800 rounded-lg pl-8 pr-3 py-1 text-xs text-zinc-200 placeholder-zinc-500 focus:outline-hidden focus:border-amber-500/60"
             />
           </div>
-          <div className="flex items-center gap-2 text-zinc-400 text-[11px] hidden sm:flex">
-            <span>22 Complete Sections</span>
+          <div className="flex items-center gap-2 text-zinc-400 text-[11px] flex-wrap">
+            <span>24 Complete Sections</span>
+            <span>•</span>
+            {onOpenCreatorMessage && (
+              <button
+                onClick={onOpenCreatorMessage}
+                className="text-amber-400 hover:text-amber-300 hover:underline flex items-center gap-1 font-semibold cursor-pointer"
+              >
+                <Coffee className="w-3.5 h-3.5 text-amber-400" /> Creator Note &amp; Support
+              </button>
+            )}
             <span>•</span>
             <button 
               onClick={downloadMarkdown} 
-              className="text-amber-400 hover:underline flex items-center gap-1 cursor-pointer"
+              className="text-zinc-400 hover:text-amber-400 hover:underline flex items-center gap-1 cursor-pointer"
             >
               <Download className="w-3 h-3" /> Raw Markdown (.md)
             </button>
@@ -191,10 +213,20 @@ export const UserGuideModal: React.FC<UserGuideModalProps> = ({ isOpen, onClose 
             <div className="p-2 rounded-lg bg-amber-500/20 text-amber-400 mt-0.5 shrink-0">
               <Heart className="w-5 h-5" />
             </div>
-            <div>
-              <h3 className="text-sm font-bold text-amber-300">
-                Worship &amp; Prayer Companion
-              </h3>
+            <div className="flex-1">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <h3 className="text-sm font-bold text-amber-300">
+                  Worship &amp; Prayer Companion
+                </h3>
+                {onOpenCreatorMessage && (
+                  <button
+                    onClick={onOpenCreatorMessage}
+                    className="text-[11px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 hover:bg-amber-500/30 flex items-center gap-1 font-semibold cursor-pointer"
+                  >
+                    <Coffee className="w-3 h-3 text-amber-400" /> Support the Creator
+                  </button>
+                )}
+              </div>
               <p className="text-xs text-zinc-300 mt-1">
                 This companion provides practical guidance for spontaneous worship flow, gradual dynamics (Main A through D), tempo selection (62–72 BPM), voice balance, and real-time arranger accompaniment.
               </p>
@@ -205,12 +237,19 @@ export const UserGuideModal: React.FC<UserGuideModalProps> = ({ isOpen, onClose 
             <section 
               key={sec.id} 
               id={sec.id}
-              className="space-y-3 pb-4 border-b border-zinc-900 last:border-0"
+              className={`space-y-3 pb-4 border-b border-zinc-900 last:border-0 ${
+                sec.id === 'creator-message' || sec.id === 'support-project'
+                  ? 'p-4 rounded-2xl bg-zinc-900/40 border border-amber-500/20 mt-4'
+                  : ''
+              }`}
             >
               {/* Section Header */}
               <h3 className="text-base sm:text-lg font-bold text-zinc-100 flex items-center gap-2">
                 <span className="w-1.5 h-4 bg-amber-500 rounded-full inline-block"></span>
                 {sec.title}
+                {sec.id === 'support-project' && (
+                  <Coffee className="w-4 h-4 text-amber-400 ml-1 inline" />
+                )}
               </h3>
 
               {/* Paragraphs */}
@@ -221,10 +260,34 @@ export const UserGuideModal: React.FC<UserGuideModalProps> = ({ isOpen, onClose 
                     <div key={idx} className="space-y-1">
                       {lines.map((l, lIdx) => {
                         if (l.startsWith('•')) {
+                          const isSupportPayPal = l.includes('PayPal:');
+                          const isSupportMpesa = l.includes('M-Pesa:');
                           return (
-                            <div key={lIdx} className="flex items-start gap-2 pl-3 text-zinc-300">
-                              <span className="text-amber-400 mt-0.5">•</span>
-                              <span>{l.replace(/^•\s*/, '')}</span>
+                            <div key={lIdx} className="flex items-center justify-between gap-2 p-2 rounded-lg bg-zinc-900/80 border border-zinc-800 text-zinc-300">
+                              <div className="flex items-center gap-2">
+                                <span className="text-amber-400 mt-0.5 font-bold">•</span>
+                                <span className="font-medium text-xs sm:text-sm">{l.replace(/^•\s*/, '')}</span>
+                              </div>
+                              {isSupportPayPal && (
+                                <button
+                                  onClick={() => handleCopy('derrickmunene2025@gmail.com', 'paypal')}
+                                  className="px-2 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-[11px] text-amber-300 font-mono flex items-center gap-1 cursor-pointer transition-colors"
+                                  title="Copy PayPal address"
+                                >
+                                  {copiedType === 'paypal' ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                                  <span>{copiedType === 'paypal' ? 'Copied' : 'Copy'}</span>
+                                </button>
+                              )}
+                              {isSupportMpesa && (
+                                <button
+                                  onClick={() => handleCopy('+254 704 034 278', 'mpesa')}
+                                  className="px-2 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-[11px] text-emerald-300 font-mono flex items-center gap-1 cursor-pointer transition-colors"
+                                  title="Copy M-Pesa number"
+                                >
+                                  {copiedType === 'mpesa' ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                                  <span>{copiedType === 'mpesa' ? 'Copied' : 'Copy'}</span>
+                                </button>
+                              )}
                             </div>
                           );
                         }
@@ -233,6 +296,13 @@ export const UserGuideModal: React.FC<UserGuideModalProps> = ({ isOpen, onClose 
                             <div key={lIdx} className="py-1 px-3 bg-zinc-900/90 rounded-lg font-mono text-amber-300 border border-zinc-800 text-xs sm:text-sm inline-block">
                               {l}
                             </div>
+                          );
+                        }
+                        if (l.includes('Technology should serve music') || l.includes('Keep playing')) {
+                          return (
+                            <p key={lIdx} className="font-bold text-amber-300 italic">
+                              {l}
+                            </p>
                           );
                         }
                         return <p key={lIdx}>{l}</p>;

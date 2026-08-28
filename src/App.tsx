@@ -21,6 +21,7 @@ import { VoiceSelectModal } from './components/VoiceSelectModal';
 import { ChordSequencerModal } from './components/ChordSequencerModal';
 import { MidiHelpModal } from './components/MidiHelpModal';
 import { UserGuideModal } from './components/UserGuideModal';
+import { CreatorMessageModal } from './components/CreatorMessageModal';
 import { WorkstationSidebar } from './components/WorkstationSidebar';
 
 export default function App() {
@@ -136,6 +137,7 @@ export default function App() {
   const [isChordSeqModalOpen, setIsChordSeqModalOpen] = useState(false);
   const [isMidiHelpModalOpen, setIsMidiHelpModalOpen] = useState(false);
   const [isUserGuideModalOpen, setIsUserGuideModalOpen] = useState(false);
+  const [isCreatorModalOpen, setIsCreatorModalOpen] = useState(false);
   const [styleNotification, setStyleNotification] = useState<{ name: string; fills: string[]; mains: string[] } | null>(null);
 
   // Active playing note handles for live voices
@@ -433,6 +435,7 @@ export default function App() {
         onToggleSidebar={() => setIsSidebarCollapsed(prev => !prev)}
         isSidebarCollapsed={isSidebarCollapsed}
         onOpenUserGuide={() => setIsUserGuideModalOpen(true)}
+        onOpenCreatorMessage={() => setIsCreatorModalOpen(true)}
       />
 
       {/* Main Console + Fixed Sidebar Body */}
@@ -449,6 +452,7 @@ export default function App() {
           onOpenChordSequencer={() => setIsChordSeqModalOpen(true)}
           onOpenMidiHelp={() => setIsMidiHelpModalOpen(true)}
           onOpenUserGuide={() => setIsUserGuideModalOpen(true)}
+          onOpenCreatorMessage={() => setIsCreatorModalOpen(true)}
           r1Voice={r1Voice}
           r2Voice={r2Voice}
           lVoice={lVoice}
@@ -672,6 +676,16 @@ export default function App() {
       <UserGuideModal
         isOpen={isUserGuideModalOpen}
         onClose={() => setIsUserGuideModalOpen(false)}
+        onOpenCreatorMessage={() => {
+          setIsUserGuideModalOpen(false);
+          setIsCreatorModalOpen(true);
+        }}
+      />
+
+      {/* A Message from the Creator & Support Project Modal */}
+      <CreatorMessageModal
+        isOpen={isCreatorModalOpen}
+        onClose={() => setIsCreatorModalOpen(false)}
       />
     </div>
   );

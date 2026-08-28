@@ -6,7 +6,9 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   BookOpen,
-  FileDown
+  FileDown,
+  Coffee,
+  Heart
 } from 'lucide-react';
 import { subscribePwaStatus, PwaStatus } from '../pwaRegister';
 
@@ -16,6 +18,7 @@ interface WorkstationHeaderProps {
   onToggleSidebar?: () => void;
   isSidebarCollapsed?: boolean;
   onOpenUserGuide?: () => void;
+  onOpenCreatorMessage?: () => void;
 }
 
 export const WorkstationHeader: React.FC<WorkstationHeaderProps> = ({
@@ -24,6 +27,7 @@ export const WorkstationHeader: React.FC<WorkstationHeaderProps> = ({
   onToggleSidebar,
   isSidebarCollapsed,
   onOpenUserGuide,
+  onOpenCreatorMessage,
 }) => {
   const [pwaStatus, setPwaStatus] = useState<PwaStatus>({
     isInstalled: false,
@@ -81,6 +85,20 @@ export const WorkstationHeader: React.FC<WorkstationHeaderProps> = ({
 
       {/* Right Action & Status Indicators */}
       <div className="flex items-center gap-2">
+        {/* Creator Message & Support Coffee Button */}
+        {onOpenCreatorMessage && (
+          <button
+            id="btn-header-creator-message"
+            onClick={onOpenCreatorMessage}
+            className="px-2.5 py-1 rounded-lg bg-gradient-to-r from-amber-600/30 to-amber-500/20 hover:from-amber-600/40 hover:to-amber-500/30 border border-amber-500/40 text-amber-300 hover:text-amber-200 text-xs font-semibold flex items-center gap-1.5 transition-all shadow-xs active:scale-95 cursor-pointer"
+            title="Read Message from the Creator & Support the Project"
+          >
+            <Coffee className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
+            <span className="hidden md:inline">Support</span>
+            <span className="text-[9px] px-1 py-0.2 rounded bg-amber-500/30 text-amber-200 font-mono">☕</span>
+          </button>
+        )}
+
         {/* Worship Guide & Companion Download Trigger */}
         {onOpenUserGuide && (
           <button
