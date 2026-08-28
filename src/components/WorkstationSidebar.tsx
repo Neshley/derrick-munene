@@ -704,15 +704,6 @@ export const WorkstationSidebar: React.FC<WorkstationSidebarProps> = ({
                       Worship &amp; Studio Suite
                     </div>
                     <div className="grid grid-cols-2 gap-1.5">
-                      {onOpenAiStudio && (
-                        <button
-                          onClick={onOpenAiStudio}
-                          className="p-2 rounded-lg bg-gradient-to-r from-amber-950/60 via-zinc-900 to-cyan-950/60 hover:from-amber-900/80 hover:to-cyan-900/80 border border-amber-500/50 text-amber-300 text-xs font-bold font-mono text-left flex items-center gap-1.5 transition-all cursor-pointer col-span-2 shadow-xs"
-                        >
-                          <Sparkles className="w-3.5 h-3.5 text-amber-400 shrink-0 animate-pulse" />
-                          <span className="truncate">Genos AI Co-Producer Studio</span>
-                        </button>
-                      )}
                       {onOpenPrayerAtmosphere && (
                         <button
                           onClick={onOpenPrayerAtmosphere}
