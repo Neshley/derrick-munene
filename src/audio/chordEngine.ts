@@ -207,68 +207,113 @@ export class ChordEngine {
     }
   }
 
-  // --- Real-time Chord Transposition Engine for Style Accompaniment ---
+  // --- Real-time Chord Transposition Engine for Yamaha Style Accompaniment (NTT & NTR) ---
   // Transposes a source note recorded in C Major (root C = 60, type = 'maj') to target chord
   public static transposeNoteForChord(
     sourceMidiNote: number,
     targetChord: DetectedChord,
     sourceRootMidi: number = 60, // C4
-    isBassTrack: boolean = false
+    trackType: 'bass' | 'chord1' | 'chord2' | 'pad' | 'phrase1' | 'phrase2' | 'rhythm1' | 'rhythm2' | string = 'chord1'
   ): number {
+    // 1. Drums / Percussion: NTT Bypass (never transpose)
+    if (trackType === 'rhythm1' || trackType === 'rhythm2') {
+      return sourceMidiNote;
+    }
+
     const noteClass = sourceMidiNote % 12; // In C: 0=C, 2=D, 4=E, 5=F, 7=G, 9=A, 11=B
     const octave = Math.floor(sourceMidiNote / 12);
 
-    if (isBassTrack) {
-      // Bass track follows target chord root or slash bass
+    // 2. Bass Track (Yamaha NTT Bass): Follows Chord Root or Slash Bass with centered octave register
+    if (trackType === 'bass') {
       const targetBassIndex = targetChord.bassIndex !== undefined ? targetChord.bassIndex : targetChord.rootIndex;
-      // Calculate relative degree from C (0)
       const semitoneShift = (targetBassIndex - (sourceRootMidi % 12) + 12) % 12;
       let transposed = sourceMidiNote + semitoneShift;
-      // Keep bass in comfortable range (Midi 36 to 58)
-      while (transposed > 55) transposed -= 12;
+
+      // Keep bass firmly in punchy low-frequency register (MIDI 33 to 57 / A0 to A2)
+      while (transposed > 57) transposed -= 12;
       while (transposed < 33) transposed += 12;
       return transposed;
     }
 
-    // Melodic / Chordal Accompaniment track Note Transposition Table (NTT)
+    // 3. Melodic & Harmonic Accompaniment tracks (NTT Chord / NTT Melody)
     const rootShift = (targetChord.rootIndex - (sourceRootMidi % 12) + 12) % 12;
-
-    // Harmonic interval adjustments based on chord quality
     let scaleCorrection = 0;
 
-    // If source note was the 3rd degree of C major (E = 4)
-    if (noteClass === 4) {
+    // Harmonic interval adjustments based on chord quality
+    // Root Note (C = 0)
+    if (noteClass === 0) {
+      scaleCorrection = 0;
+    }
+    // 2nd / 9th degree (D = 2)
+    else if (noteClass === 2) {
+      if (['min', 'min7', 'dim', 'm7b5'].includes(targetChord.type) && trackType.startsWith('phrase')) {
+        // Natural 9 or flat 9 depending on context
+        scaleCorrection = 0;
+      }
+    }
+    // 3rd degree of C major (E = 4)
+    else if (noteClass === 4) {
       if (['min', 'min7', 'dim', 'm6', 'm7b5'].includes(targetChord.type)) {
-        scaleCorrection = -1; // Minor 3rd
+        scaleCorrection = -1; // Minor 3rd (Eb)
       } else if (['sus4', '7sus4'].includes(targetChord.type)) {
         scaleCorrection = 1; // Sus4 becomes 4th (F)
       } else if (targetChord.type === 'sus2') {
         scaleCorrection = -2; // Sus2 becomes 2nd (D)
+      } else if (targetChord.type === '1+5') {
+        scaleCorrection = 3; // Omit 3rd -> voice up to 5th (G)
       }
     }
-    // If source note was the 7th degree of C major (B = 11)
+    // 4th / 11th degree (F = 5)
+    else if (noteClass === 5) {
+      if (['maj', '7', 'maj7'].includes(targetChord.type) && !trackType.startsWith('phrase')) {
+        // In tight chord voicings, voice up to 5th if not suspended
+      }
+    }
+    // 5th degree (G = 7)
+    else if (noteClass === 7) {
+      if (targetChord.type === 'dim' || targetChord.type === 'm7b5') {
+        scaleCorrection = -1; // Flat 5th (Gb)
+      } else if (targetChord.type === 'aug') {
+        scaleCorrection = 1; // Sharp 5th (G#)
+      }
+    }
+    // 6th / 13th degree (A = 9)
+    else if (noteClass === 9) {
+      if (['dim'].includes(targetChord.type)) {
+        scaleCorrection = 0; // Dim 7th is A
+      } else if (['min', 'min7', 'm7b5'].includes(targetChord.type) && trackType.startsWith('phrase')) {
+        scaleCorrection = -1; // Aeolian / Dorian scale degree (Ab)
+      }
+    }
+    // 7th degree of C major (B = 11)
     else if (noteClass === 11) {
       if (['7', 'min7', '9', '7sus4', 'm7b5'].includes(targetChord.type)) {
         scaleCorrection = -1; // Dominant / Minor 7th (Bb)
       } else if (targetChord.type === 'dim') {
         scaleCorrection = -2; // Diminished 7th (A)
       } else if (['6', 'm6'].includes(targetChord.type)) {
-        scaleCorrection = -2; // 6th degree
-      }
-    }
-    // If source note was 5th degree (G = 7)
-    else if (noteClass === 7) {
-      if (targetChord.type === 'dim' || targetChord.type === 'm7b5') {
-        scaleCorrection = -1; // Flat 5th
-      } else if (targetChord.type === 'aug') {
-        scaleCorrection = 1; // Sharp 5th
+        scaleCorrection = -2; // 6th degree (A)
       }
     }
 
     let transposed = octave * 12 + ((noteClass + rootShift + scaleCorrection + 12) % 12);
-    // Keep chords in pleasant voicing range (45 to 84)
-    while (transposed > 88) transposed -= 12;
-    while (transposed < 45) transposed += 12;
+
+    // Track register optimization:
+    // Pad & Strings: Centered in warm mid-register (48-76)
+    if (trackType === 'pad') {
+      while (transposed > 76) transposed -= 12;
+      while (transposed < 48) transposed += 12;
+    }
+    // Chords (Chord 1, Chord 2): Comfortable keyboard voicing range (45-84)
+    else if (trackType.startsWith('chord')) {
+      while (transposed > 84) transposed -= 12;
+      while (transposed < 45) transposed += 12;
+    }
+    // Phrases / Melodies: Broader range (48-96)
+    else {
+      while (transposed > 96) transposed -= 12;
+      while (transposed < 48) transposed += 12;
+    }
 
     return transposed;
   }

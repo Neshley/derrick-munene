@@ -224,6 +224,20 @@ export class AudioEngine {
     const vel = Math.max(0.1, Math.min(1.0, velocity / 127));
 
     switch (note) {
+      // Laser / DJ Scratches / Metronome (27-34)
+      case 27:
+      case 28:
+      case 29:
+      case 30:
+        this.synthScratch(t, vel, gainNode);
+        break;
+      case 31:
+      case 32:
+      case 33:
+      case 34:
+        this.synthSideStick(t, vel, gainNode);
+        break;
+
       // Bass Drum / Kick (35, 36)
       case 35:
       case 36:
@@ -275,6 +289,12 @@ export class AudioEngine {
         this.synthCrash(t, vel, gainNode);
         break;
 
+      // China / Splash Cymbal (52, 55)
+      case 52:
+      case 55:
+        this.synthChinaSplash(t, vel, gainNode);
+        break;
+
       // Ride Cymbal / Bell (51, 53, 59)
       case 51:
       case 53:
@@ -292,6 +312,11 @@ export class AudioEngine {
         this.synthCowbell(t, vel, gainNode);
         break;
 
+      // Vibraslap (58)
+      case 58:
+        this.synthVibraslap(t, vel, gainNode);
+        break;
+
       // Congas / Bongos (60, 61, 62, 63, 64)
       case 60:
       case 61:
@@ -303,10 +328,57 @@ export class AudioEngine {
         this.synthBongo(t, vel, 190, gainNode);
         break;
 
-      // Shaker / Cabasa (69, 70)
+      // Timbales (65, 66)
+      case 65:
+      case 66:
+        this.synthTimbale(t, vel, note === 65 ? 240 : 180, gainNode);
+        break;
+
+      // Agogo Bells (67, 68)
+      case 67:
+      case 68:
+        this.synthAgogo(t, vel, note === 67 ? 920 : 640, gainNode);
+        break;
+
+      // Shaker / Cabasa / Maracas (69, 70, 82)
       case 69:
       case 70:
+      case 82:
         this.synthShaker(t, vel, gainNode);
+        break;
+
+      // Guiro (73, 74)
+      case 73:
+      case 74:
+        this.synthGuiro(t, vel, gainNode);
+        break;
+
+      // Claves & Wood Blocks (75, 76, 77, 85)
+      case 75:
+      case 76:
+      case 77:
+      case 85:
+        this.synthWoodBlock(t, vel, note === 76 ? 1200 : 800, gainNode);
+        break;
+
+      // Cuica (78, 79)
+      case 78:
+      case 79:
+        this.synthCuica(t, vel, gainNode);
+        break;
+
+      // Triangles & Bell Tree (80, 81, 83, 84)
+      case 80:
+      case 81:
+      case 83:
+      case 84:
+        this.synthTriangle(t, vel, gainNode);
+        break;
+
+      // Surdo (86, 87)
+      case 86:
+      case 87:
+        this.synthSurdo(t, vel, gainNode);
         break;
 
       default:
@@ -604,6 +676,189 @@ export class AudioEngine {
     gain.connect(dest);
     osc.start(t);
     osc.stop(t + 0.05);
+  }
+
+  private synthTimbale(t: number, vel: number, freq: number, dest: GainNode) {
+    if (!this.ctx) return;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(freq * 1.5, t);
+    osc.frequency.exponentialRampToValueAtTime(freq, t + 0.05);
+
+    gain.gain.setValueAtTime(0.75 * vel, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.22);
+
+    osc.connect(gain);
+    gain.connect(dest);
+    osc.start(t);
+    osc.stop(t + 0.25);
+  }
+
+  private synthAgogo(t: number, vel: number, freq: number, dest: GainNode) {
+    if (!this.ctx) return;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(freq, t);
+
+    gain.gain.setValueAtTime(0.6 * vel, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+
+    osc.connect(gain);
+    gain.connect(dest);
+    osc.start(t);
+    osc.stop(t + 0.32);
+  }
+
+  private synthWoodBlock(t: number, vel: number, freq: number, dest: GainNode) {
+    if (!this.ctx) return;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(freq, t);
+
+    gain.gain.setValueAtTime(0.8 * vel, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.035);
+
+    osc.connect(gain);
+    gain.connect(dest);
+    osc.start(t);
+    osc.stop(t + 0.04);
+  }
+
+  private synthGuiro(t: number, vel: number, dest: GainNode) {
+    if (!this.ctx) return;
+    const dur = 0.12;
+    const buffer = this.ctx.createBuffer(1, Math.floor(this.ctx.sampleRate * dur), this.ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < buffer.length; i++) {
+      data[i] = (Math.random() * 2 - 1) * Math.sin(i / 15);
+    }
+    const noise = this.ctx.createBufferSource();
+    noise.buffer = buffer;
+
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.frequency.setValueAtTime(2800, t);
+
+    const gain = this.ctx.createGain();
+    gain.gain.setValueAtTime(0.5 * vel, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + dur);
+
+    noise.connect(filter);
+    filter.connect(gain);
+    gain.connect(dest);
+    noise.start(t);
+    noise.stop(t + dur + 0.01);
+  }
+
+  private synthTriangle(t: number, vel: number, dest: GainNode) {
+    if (!this.ctx) return;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(4500, t);
+
+    gain.gain.setValueAtTime(0.35 * vel, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.45);
+
+    osc.connect(gain);
+    gain.connect(dest);
+    osc.start(t);
+    osc.stop(t + 0.5);
+  }
+
+  private synthCuica(t: number, vel: number, dest: GainNode) {
+    if (!this.ctx) return;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(320, t);
+    osc.frequency.exponentialRampToValueAtTime(750, t + 0.1);
+
+    gain.gain.setValueAtTime(0.5 * vel, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
+
+    osc.connect(gain);
+    gain.connect(dest);
+    osc.start(t);
+    osc.stop(t + 0.2);
+  }
+
+  private synthChinaSplash(t: number, vel: number, dest: GainNode) {
+    if (!this.ctx) return;
+    const dur = 0.6;
+    const buffer = this.ctx.createBuffer(1, Math.floor(this.ctx.sampleRate * dur), this.ctx.sampleRate);
+    const data = buffer.getChannelData(0);
+    for (let i = 0; i < buffer.length; i++) data[i] = Math.random() * 2 - 1;
+    const noise = this.ctx.createBufferSource();
+    noise.buffer = buffer;
+
+    const filter = this.ctx.createBiquadFilter();
+    filter.type = 'highpass';
+    filter.frequency.setValueAtTime(4000, t);
+
+    const gain = this.ctx.createGain();
+    gain.gain.setValueAtTime(0.7 * vel, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + dur);
+
+    noise.connect(filter);
+    filter.connect(gain);
+    gain.connect(dest);
+    noise.start(t);
+    noise.stop(t + dur + 0.01);
+  }
+
+  private synthVibraslap(t: number, vel: number, dest: GainNode) {
+    if (!this.ctx) return;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(1100, t);
+
+    gain.gain.setValueAtTime(0.6 * vel, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
+
+    osc.connect(gain);
+    gain.connect(dest);
+    osc.start(t);
+    osc.stop(t + 0.38);
+  }
+
+  private synthScratch(t: number, vel: number, dest: GainNode) {
+    if (!this.ctx) return;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(150, t);
+    osc.frequency.linearRampToValueAtTime(800, t + 0.05);
+    osc.frequency.linearRampToValueAtTime(200, t + 0.1);
+
+    gain.gain.setValueAtTime(0.55 * vel, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+
+    osc.connect(gain);
+    gain.connect(dest);
+    osc.start(t);
+    osc.stop(t + 0.14);
+  }
+
+  private synthSurdo(t: number, vel: number, dest: GainNode) {
+    if (!this.ctx) return;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(95, t);
+    osc.frequency.exponentialRampToValueAtTime(55, t + 0.15);
+
+    gain.gain.setValueAtTime(0.9 * vel, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.45);
+
+    osc.connect(gain);
+    gain.connect(dest);
+    osc.start(t);
+    osc.stop(t + 0.5);
   }
 
   // --- MELODIC INSTRUMENT SYNTHESIS ---

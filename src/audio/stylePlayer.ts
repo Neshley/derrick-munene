@@ -525,7 +525,7 @@ export class StylePlayer {
       noteEvent.note,
       this.currentChord,
       60, // C4 root reference
-      trackKey === 'bass'
+      trackKey
     );
 
     audioEngine.playNote(
