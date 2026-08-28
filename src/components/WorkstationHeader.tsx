@@ -32,7 +32,6 @@ interface WorkstationHeaderProps {
   onOpenWorshipSongbook?: () => void;
   onOpenAudioRecording?: () => void;
   onOpenMidiAutomation?: () => void;
-  onOpenAiStudio?: () => void;
   splitPoint?: number;
   onSplitPointChange?: (note: number) => void;
 }
@@ -50,7 +49,6 @@ export const WorkstationHeader: React.FC<WorkstationHeaderProps> = ({
   onOpenWorshipSongbook,
   onOpenAudioRecording,
   onOpenMidiAutomation,
-  onOpenAiStudio,
   splitPoint = 54,
   onSplitPointChange,
 }) => {
@@ -110,19 +108,6 @@ export const WorkstationHeader: React.FC<WorkstationHeaderProps> = ({
 
       {/* Middle Studio Quick-Action Toolbar */}
       <div className="hidden lg:flex items-center gap-1.5 bg-zinc-950/80 p-1 rounded-xl border border-zinc-800/80">
-        {onOpenAiStudio && (
-          <button
-            id="btn-header-open-ai-studio"
-            onClick={onOpenAiStudio}
-            className="px-2.5 py-1 rounded-lg text-xs font-mono font-bold text-amber-300 bg-gradient-to-r from-amber-950/70 via-purple-950/50 to-cyan-950/70 hover:from-amber-900/80 hover:to-cyan-900/80 border border-amber-500/50 flex items-center gap-1.5 transition-all shadow-xs cursor-pointer group"
-            title="Open Genos AI Co-Producer (Style Generator, Reharmonizer, Voice Synth & Auto-Mix)"
-          >
-            <Sparkles className="w-3.5 h-3.5 text-amber-400 animate-pulse group-hover:scale-110 transition-transform" />
-            <span>AI Studio</span>
-            <span className="text-[9px] px-1 py-0.2 rounded bg-amber-500/30 text-amber-200 font-mono font-bold">3.7</span>
-          </button>
-        )}
-
         {onOpenPrayerAtmosphere && (
           <button
             onClick={onOpenPrayerAtmosphere}

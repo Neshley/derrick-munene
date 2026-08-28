@@ -434,7 +434,6 @@ export default function App() {
         onOpenWorshipSongbook={() => setIsSongbookModalOpen(true)}
         onOpenAudioRecording={() => setIsAudioRecordModalOpen(true)}
         onOpenMidiAutomation={() => setIsMidiAutomationOpen(true)}
-        onOpenAiStudio={() => setIsAiStudioModalOpen(true)}
         splitPoint={splitPoint}
         onSplitPointChange={(newSplit) => setSplitPoint(newSplit)}
       />
