@@ -31,6 +31,7 @@ import { EffectsRackModal } from './components/EffectsRackModal';
 import { VocalWorkstationModal } from './components/VocalWorkstationModal';
 import { WorshipSongbookModal } from './components/WorshipSongbookModal';
 import { AudioRecordingModal } from './components/AudioRecordingModal';
+import { MidiAutomationModal } from './components/MidiAutomationModal';
 
 export default function App() {
   // --- Workstation Engine States ---
@@ -151,6 +152,7 @@ export default function App() {
   const [isVocalModalOpen, setIsVocalModalOpen] = useState(false);
   const [isSongbookModalOpen, setIsSongbookModalOpen] = useState(false);
   const [isAudioRecordModalOpen, setIsAudioRecordModalOpen] = useState(false);
+  const [isMidiAutomationOpen, setIsMidiAutomationOpen] = useState(false);
   const [styleNotification, setStyleNotification] = useState<{ name: string; fills: string[]; mains: string[] } | null>(null);
 
   // Keep MidiManager live performance configuration synchronized
@@ -429,6 +431,7 @@ export default function App() {
         onOpenVocalWorkstation={() => setIsVocalModalOpen(true)}
         onOpenWorshipSongbook={() => setIsSongbookModalOpen(true)}
         onOpenAudioRecording={() => setIsAudioRecordModalOpen(true)}
+        onOpenMidiAutomation={() => setIsMidiAutomationOpen(true)}
       />
 
       {/* Main Console + Fixed Sidebar Body */}
@@ -451,6 +454,7 @@ export default function App() {
           onOpenVocalWorkstation={() => setIsVocalModalOpen(true)}
           onOpenWorshipSongbook={() => setIsSongbookModalOpen(true)}
           onOpenAudioRecording={() => setIsAudioRecordModalOpen(true)}
+          onOpenMidiAutomation={() => setIsMidiAutomationOpen(true)}
           r1Voice={r1Voice}
           r2Voice={r2Voice}
           lVoice={lVoice}
@@ -583,6 +587,7 @@ export default function App() {
               r2Enabled={r2Enabled}
               lEnabled={lEnabled}
               acmpEnabled={acmpEnabled}
+              onOpenMidiAutomation={() => setIsMidiAutomationOpen(true)}
             />
 
             {/* Interactive Piano Keyboard with Split Zones */}
@@ -728,6 +733,16 @@ export default function App() {
       <AudioRecordingModal
         isOpen={isAudioRecordModalOpen}
         onClose={() => setIsAudioRecordModalOpen(false)}
+        onOpenMidiAutomation={() => {
+          setIsAudioRecordModalOpen(false);
+          setIsMidiAutomationOpen(true);
+        }}
+      />
+
+      {/* Real-time MIDI CC Automation Recorder & Curve Visualizer Modal */}
+      <MidiAutomationModal
+        isOpen={isMidiAutomationOpen}
+        onClose={() => setIsMidiAutomationOpen(false)}
       />
     </div>
   );

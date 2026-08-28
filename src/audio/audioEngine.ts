@@ -331,6 +331,44 @@ export class AudioEngine {
     return { ...this.effectsSettings };
   }
 
+  // --- DIRECT DSP & PARAMETER AUTOMATION SETTERS ---
+  public setReverbMix(mixPercent: number) {
+    this.effectsSettings.reverb.mix = Math.max(0, Math.min(100, mixPercent));
+    if (this.reverbGain && this.ctx) {
+      const mix = this.effectsSettings.reverb.enabled ? (this.effectsSettings.reverb.mix / 100) * 0.7 : 0;
+      this.reverbGain.gain.setTargetAtTime(mix, this.ctx.currentTime, 0.02);
+    }
+  }
+
+  public setDelayMix(mixPercent: number) {
+    this.effectsSettings.delay.mix = Math.max(0, Math.min(100, mixPercent));
+    if (this.delayWetGain && this.ctx) {
+      const wet = this.effectsSettings.delay.enabled ? (this.effectsSettings.delay.mix / 100) * 0.6 : 0;
+      this.delayWetGain.gain.setTargetAtTime(wet, this.ctx.currentTime, 0.02);
+    }
+  }
+
+  public setChorusMix(mixPercent: number) {
+    this.effectsSettings.chorus.mix = Math.max(0, Math.min(100, mixPercent));
+    if (this.chorusWetGain && this.ctx) {
+      const wet = this.effectsSettings.chorus.enabled ? (this.effectsSettings.chorus.mix / 100) * 0.5 : 0;
+      this.chorusWetGain.gain.setTargetAtTime(wet, this.ctx.currentTime, 0.02);
+    }
+  }
+
+  public setFilterCutoff(normalized: number) {
+    // Maps 0.0-1.0 to 200 Hz - 14000 Hz on master high shelf / peaking
+    const clamped = Math.max(0, Math.min(1, normalized));
+    const highFreqGain = (clamped - 0.5) * 20; // -10dB to +10dB brightness
+    this.setMasterEq('high', highFreqGain);
+  }
+
+  public setFilterResonance(normalized: number) {
+    const clamped = Math.max(0, Math.min(1, normalized));
+    const midFreqGain = (clamped - 0.5) * 16;
+    this.setMasterEq('mid', midFreqGain);
+  }
+
   // --- VOCAL MICROPHONE INPUT & EFFECTS STRIP ---
   public async enableMicrophone(): Promise<boolean> {
     this.init();

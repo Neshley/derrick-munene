@@ -82,6 +82,7 @@ interface WorkstationSidebarProps {
   onOpenVocalWorkstation?: () => void;
   onOpenWorshipSongbook?: () => void;
   onOpenAudioRecording?: () => void;
+  onOpenMidiAutomation?: () => void;
 }
 
 export const WorkstationSidebar: React.FC<WorkstationSidebarProps> = ({
@@ -101,6 +102,7 @@ export const WorkstationSidebar: React.FC<WorkstationSidebarProps> = ({
   onOpenVocalWorkstation,
   onOpenWorshipSongbook,
   onOpenAudioRecording,
+  onOpenMidiAutomation,
   r1Voice,
   r2Voice,
   lVoice,
@@ -677,10 +679,19 @@ export const WorkstationSidebar: React.FC<WorkstationSidebarProps> = ({
                       {onOpenVocalWorkstation && (
                         <button
                           onClick={onOpenVocalWorkstation}
-                          className="p-2 rounded-lg bg-rose-950/40 hover:bg-rose-900/60 border border-rose-500/40 text-rose-300 text-xs font-bold font-mono text-left flex items-center gap-1.5 transition-all"
+                          className="p-2 rounded-lg bg-rose-950/40 hover:bg-rose-900/60 border border-rose-500/40 text-rose-300 text-xs font-bold font-mono text-left flex items-center gap-1.5 transition-all cursor-pointer"
                         >
                           <Activity className="w-3.5 h-3.5 text-rose-400 shrink-0" />
                           <span className="truncate">Vocal Mic</span>
+                        </button>
+                      )}
+                      {onOpenMidiAutomation && (
+                        <button
+                          onClick={onOpenMidiAutomation}
+                          className="p-2 rounded-lg bg-indigo-950/40 hover:bg-indigo-900/60 border border-indigo-500/40 text-indigo-300 text-xs font-bold font-mono text-left flex items-center gap-1.5 transition-all cursor-pointer col-span-2"
+                        >
+                          <Sliders className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+                          <span className="truncate">MIDI CC Automation Studio</span>
                         </button>
                       )}
                     </div>

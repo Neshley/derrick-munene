@@ -5,6 +5,7 @@ import { audioEngine, AudioEngineActiveNote } from '../audio/audioEngine';
 import { ChordEngine } from '../audio/chordEngine';
 import { stylePlayer } from '../audio/stylePlayer';
 import { DetectedChord } from '../types/arranger';
+import { midiAutomationRecorder } from './midiAutomationRecorder';
 import { DEFAULT_MIDI_CHANNELS, MIDI_CC, MIDI_PITCH_BEND } from './midiConstants';
 import { parseMidiMessage } from './midiParser';
 import {
@@ -259,21 +260,25 @@ export class MidiManager {
     switch (event.type) {
       case 'noteon':
         this.handleNoteOn(event.note, event.velocity, event.channel);
+        midiAutomationRecorder.recordNoteOn(event.note, event.velocity, event.channel);
         this.listeners.forEach(l => l.onNoteOn?.(event));
         break;
 
       case 'noteoff':
         this.handleNoteOff(event.note, event.channel);
+        midiAutomationRecorder.recordNoteOff(event.note, event.channel);
         this.listeners.forEach(l => l.onNoteOff?.(event));
         break;
 
       case 'cc':
         this.handleControlChange(event.controller, event.value, event.normalized, event.channel);
+        midiAutomationRecorder.recordCC(event.controller, event.value, event.channel);
         this.listeners.forEach(l => l.onCC?.(event));
         break;
 
       case 'pitchbend':
         this.handlePitchBend(event.value, event.normalized, event.semitones, event.channel);
+        midiAutomationRecorder.recordPitchBend(event.value, event.normalized, event.semitones, event.channel);
         this.listeners.forEach(l => l.onPitchBend?.(event));
         break;
 
@@ -315,6 +320,9 @@ export class MidiManager {
 
       case 'resetcontrollers':
         this.resetControllers();
+        break;
+
+      default:
         break;
     }
   }
@@ -452,6 +460,70 @@ export class MidiManager {
         if (channel === this.channelMapping.r1) {
           audioEngine.setTrackVolume('r1', normalized);
         }
+        break;
+      }
+
+      // CC10: Stereo Pan
+      case MIDI_CC.PAN: {
+        const panValue = (normalized - 0.5) * 100; // -50 to +50
+        if (channel === this.channelMapping.r1) {
+          audioEngine.setTrackPan('r1', panValue);
+        } else if (channel === this.channelMapping.r2) {
+          audioEngine.setTrackPan('r2', panValue);
+        } else if (channel === this.channelMapping.left) {
+          audioEngine.setTrackPan('left', panValue);
+        } else {
+          audioEngine.setTrackPan('r1', panValue);
+          audioEngine.setTrackPan('r2', panValue);
+        }
+        this.updateState({
+          lastMessageSummary: `Pan: ${panValue < 0 ? `L${Math.abs(Math.round(panValue))}` : panValue > 0 ? `R${Math.round(panValue)}` : 'Center'} (Ch: ${channel})`,
+        });
+        break;
+      }
+
+      // CC74: Brightness / Filter Cutoff
+      case MIDI_CC.BRIGHTNESS_CUTOFF: {
+        audioEngine.setFilterCutoff(normalized);
+        this.updateState({
+          lastMessageSummary: `Filter Cutoff: ${Math.round(normalized * 100)}% (Ch: ${channel})`,
+        });
+        break;
+      }
+
+      // CC71: Filter Resonance
+      case MIDI_CC.SOUND_RESONANCE: {
+        audioEngine.setFilterResonance(normalized);
+        this.updateState({
+          lastMessageSummary: `Resonance: ${Math.round(normalized * 100)}% (Ch: ${channel})`,
+        });
+        break;
+      }
+
+      // CC91: Reverb Wet Send Level
+      case MIDI_CC.REVERB_SEND_LEVEL: {
+        audioEngine.setReverbMix(normalized * 100);
+        this.updateState({
+          lastMessageSummary: `Reverb Send: ${Math.round(normalized * 100)}% (Ch: ${channel})`,
+        });
+        break;
+      }
+
+      // CC93: Chorus Wet Send Level
+      case MIDI_CC.CHORUS_SEND_LEVEL: {
+        audioEngine.setChorusMix(normalized * 100);
+        this.updateState({
+          lastMessageSummary: `Chorus Send: ${Math.round(normalized * 100)}% (Ch: ${channel})`,
+        });
+        break;
+      }
+
+      // CC12: Effect Control 1 / Delay Send Level
+      case MIDI_CC.EFFECT_CONTROL_1: {
+        audioEngine.setDelayMix(normalized * 100);
+        this.updateState({
+          lastMessageSummary: `Delay Send: ${Math.round(normalized * 100)}% (Ch: ${channel})`,
+        });
         break;
       }
 

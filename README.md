@@ -40,13 +40,24 @@ A feature-packed, professional interactive arranger workstation keyboard built w
 - **Curated Repertoire**: Pre-loaded with contemporary worship and African gospel classics (*Way Maker*, *Excess Love*, *Goodness of God*, *Agidigba*, *Holy Forever*, and more).
 - **1-Click Arranger Setup**: Auto-selects appropriate style, tempo, starting section, and initial harmony.
 
-### 8. 🔴 Master Audio Recording & Chord Sheet Export
-- **Audio Capture**: Record complete workstation sessions directly to high-fidelity `.wav` or `.webm` audio files.
-- **Chord Sheet Generator**: Export formatted, timestamped chord charts.
+### 8. 🔴 Master Audio Recording & MIDI CC Automation Studio
+- **Lossless Audio Capture**: Record complete workstation sessions directly to high-fidelity `.wav` or `.webm` audio files with accompaniment and vocals.
+- **Live MIDI CC Automation**: Record real-time continuous control changes during performances:
+  - **CC 1 (Modulation Wheel)**: Vibrato and modulation depth
+  - **CC 7 (Channel Volume)** & **CC 11 (Expression)**: Smooth volume dynamics and swell sweeps
+  - **CC 10 (Pan)**: Stereo image panning
+  - **CC 12 (Delay Send)**: Real-time echo wet mix
+  - **CC 64 (Sustain Pedal)**: Authentic piano and pad damper hold
+  - **CC 71 (Filter Resonance)** & **CC 74 (Filter Cutoff Frequency)**: Dynamic synth sweeps and brightness
+  - **CC 91 (Reverb Send)**: Master space and ambience depth
+  - **CC 93 (Chorus Send)**: Stereo chorus modulation
+- **Automation Curve Visualizer & Playback Engine**: Real-time oscilloscope curve display with scrubbable playback and overdubbing.
+- **Export Standards**: Export takes as Standard MIDI files (`.mid`) with Type 0/1 CC tracks for importing directly into Logic Pro, Pro Tools, Ableton Live, FL Studio, or Studio One, alongside raw JSON takes and formatted chord sheets.
 
 ### 9. 🔌 Plug-and-Play USB/Bluetooth MIDI Support
 - Connect any class-compliant MIDI keyboard or controller.
-- Auto-detects input devices, sustain pedals, pitch-bend wheels, and modulation controllers.
+- Auto-detects input devices, sustain pedals, pitch-bend wheels, modulation sliders, and knobs.
+- Full MIDI clock synchronization, channel routing, and emergency MIDI Panic feature.
 
 ---
 

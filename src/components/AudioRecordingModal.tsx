@@ -1,19 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { Circle, Square, Download, Mic, Music, Clock, FileDown, X, Play, RefreshCw } from 'lucide-react';
+import { Circle, Square, Download, Mic, Music, Clock, FileDown, X, Play, RefreshCw, Sliders } from 'lucide-react';
 import { audioEngine } from '../audio/audioEngine';
 import { ChordEngine } from '../audio/chordEngine';
+import { midiAutomationRecorder, AutomationTake } from '../midi/midiAutomationRecorder';
 
 interface AudioRecordingModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onOpenMidiAutomation?: () => void;
 }
 
-export const AudioRecordingModal: React.FC<AudioRecordingModalProps> = ({ isOpen, onClose }) => {
+export const AudioRecordingModal: React.FC<AudioRecordingModalProps> = ({ isOpen, onClose, onOpenMidiAutomation }) => {
   const [isRecording, setIsRecording] = useState(false);
   const [recordDuration, setRecordDuration] = useState(0);
   const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [isExportingWav, setIsExportingWav] = useState(false);
+  const [captureMidiCC, setCaptureMidiCC] = useState(true);
+  const [lastMidiTake, setLastMidiTake] = useState<AutomationTake | null>(null);
 
   useEffect(() => {
     let interval: number;
@@ -30,10 +34,15 @@ export const AudioRecordingModal: React.FC<AudioRecordingModalProps> = ({ isOpen
   const handleStartRecording = () => {
     setRecordedBlob(null);
     setAudioUrl(null);
+    setLastMidiTake(null);
     setRecordDuration(0);
+
     const ok = audioEngine.startRecording();
     if (ok) {
       setIsRecording(true);
+      if (captureMidiCC) {
+        midiAutomationRecorder.startRecording(`Take ${new Date().toLocaleTimeString()}`);
+      }
     }
   };
 
@@ -44,6 +53,13 @@ export const AudioRecordingModal: React.FC<AudioRecordingModalProps> = ({ isOpen
       setRecordedBlob(blob);
       const url = URL.createObjectURL(blob);
       setAudioUrl(url);
+    }
+
+    if (captureMidiCC) {
+      const take = midiAutomationRecorder.stopRecording();
+      if (take) {
+        setLastMidiTake(take);
+      }
     }
   };
 
@@ -63,6 +79,19 @@ export const AudioRecordingModal: React.FC<AudioRecordingModalProps> = ({ isOpen
     } finally {
       setIsExportingWav(false);
     }
+  };
+
+  const handleDownloadMidiTake = () => {
+    if (!lastMidiTake) return;
+    const blob = midiAutomationRecorder.exportTakeAsStandardMidi(lastMidiTake.id);
+    if (!blob) return;
+
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `genos-pro-cc-automation-${Date.now()}.mid`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   const handleDownloadMidiChords = () => {
@@ -90,7 +119,7 @@ export const AudioRecordingModal: React.FC<AudioRecordingModalProps> = ({ isOpen
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fadeIn">
-      <div className="bg-zinc-950 border border-zinc-800 rounded-2xl max-w-lg w-full shadow-2xl flex flex-col max-h-[90vh] overflow-hidden text-zinc-100">
+      <div className="bg-zinc-950 border border-zinc-800 rounded-2xl max-w-lg w-full shadow-2xl flex flex-col max-h-[90vh] overflow-hidden text-zinc-100 font-sans">
         {/* Header */}
         <div className="p-4 sm:p-5 border-b border-zinc-800 bg-gradient-to-r from-zinc-900 via-rose-950/20 to-zinc-900 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -101,11 +130,11 @@ export const AudioRecordingModal: React.FC<AudioRecordingModalProps> = ({ isOpen
               <h2 className="text-lg font-bold font-['Chakra_Petch'] flex items-center gap-2">
                 AUDIO &amp; SESSION RECORDER
                 <span className="text-[10px] uppercase font-bold tracking-widest px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/40">
-                  Lossless WAV
+                  Lossless WAV &amp; MIDI
                 </span>
               </h2>
               <p className="text-xs text-zinc-400">
-                Direct master bus recording with real-time accompaniment &amp; vocal capture
+                Direct master bus recording with real-time accompaniment &amp; MIDI CC automation
               </p>
             </div>
           </div>
@@ -151,25 +180,71 @@ export const AudioRecordingModal: React.FC<AudioRecordingModalProps> = ({ isOpen
                 </button>
               )}
             </div>
+
+            {/* MIDI CC Automation Option */}
+            <div className="pt-2 border-t border-zinc-800 w-full flex items-center justify-between text-xs text-zinc-400">
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={captureMidiCC}
+                  onChange={(e) => setCaptureMidiCC(e.target.checked)}
+                  disabled={isRecording}
+                  className="accent-indigo-500 rounded"
+                />
+                <span>Capture live MIDI CC automation (Volume, Pan, FX)</span>
+              </label>
+
+              {onOpenMidiAutomation && (
+                <button
+                  onClick={onOpenMidiAutomation}
+                  className="text-indigo-400 hover:text-indigo-300 font-mono text-[11px] underline flex items-center gap-1 cursor-pointer"
+                >
+                  <Sliders className="w-3 h-3" />
+                  Automation Studio
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Playback & Export Section */}
-          {audioUrl && (
+          {(audioUrl || lastMidiTake) && (
             <div className="bg-zinc-900/60 rounded-xl p-4 border border-zinc-800 space-y-3">
               <span className="text-xs font-mono font-bold text-zinc-300 uppercase block">
-                PLAYBACK RECORDED TAKE
+                RECORDED SESSION EXPORTS
               </span>
-              <audio src={audioUrl} controls className="w-full h-10 rounded-lg accent-rose-500" />
+
+              {audioUrl && (
+                <audio src={audioUrl} controls className="w-full h-10 rounded-lg accent-rose-500" />
+              )}
+
+              {lastMidiTake && (
+                <div className="p-2.5 rounded-lg bg-indigo-950/40 border border-indigo-500/30 text-xs font-mono text-indigo-200 flex items-center justify-between">
+                  <span>MIDI CC Automation Captured:</span>
+                  <span className="font-bold text-indigo-300">{lastMidiTake.ccEvents.length} events ({(lastMidiTake.durationMs / 1000).toFixed(1)}s)</span>
+                </div>
+              )}
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-2">
-                <button
-                  onClick={handleDownloadWav}
-                  disabled={isExportingWav}
-                  className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer"
-                >
-                  <Download className="w-4 h-4" />
-                  {isExportingWav ? 'Encoding WAV...' : 'Export High-Res .WAV'}
-                </button>
+                {audioUrl && (
+                  <button
+                    onClick={handleDownloadWav}
+                    disabled={isExportingWav}
+                    className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer"
+                  >
+                    <Download className="w-4 h-4" />
+                    {isExportingWav ? 'Encoding WAV...' : 'Export High-Res .WAV'}
+                  </button>
+                )}
+
+                {lastMidiTake && lastMidiTake.ccEvents.length > 0 && (
+                  <button
+                    onClick={handleDownloadMidiTake}
+                    className="px-4 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer"
+                  >
+                    <Download className="w-4 h-4" />
+                    Export .MID (With CC Automation)
+                  </button>
+                )}
 
                 <button
                   onClick={handleDownloadMidiChords}
@@ -186,11 +261,11 @@ export const AudioRecordingModal: React.FC<AudioRecordingModalProps> = ({ isOpen
         {/* Footer */}
         <div className="p-4 border-t border-zinc-800 bg-zinc-950 flex items-center justify-between">
           <span className="text-xs text-zinc-500 italic">
-            Captures both keyboard live playing and accompaniment arrangement simultaneously.
+            Captures keyboard live playing, accompaniment arrangement, and MIDI automation.
           </span>
           <button
             onClick={onClose}
-            className="px-4 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-semibold"
+            className="px-4 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-semibold cursor-pointer"
           >
             Close
           </button>
@@ -199,3 +274,4 @@ export const AudioRecordingModal: React.FC<AudioRecordingModalProps> = ({ isOpen
     </div>
   );
 };
+

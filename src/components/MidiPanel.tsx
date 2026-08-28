@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { midiManager } from '../midi/midiManager';
+import { midiAutomationRecorder, AutomationRecorderState } from '../midi/midiAutomationRecorder';
 import { MidiDeviceInfo, MidiState } from '../midi/midiTypes';
 import {
   Activity,
@@ -13,6 +14,7 @@ import {
   Sliders,
   Sparkles,
   Volume2,
+  Waves,
   Zap,
 } from 'lucide-react';
 
@@ -25,6 +27,7 @@ interface MidiPanelProps {
   r2Enabled: boolean;
   lEnabled: boolean;
   acmpEnabled: boolean;
+  onOpenMidiAutomation?: () => void;
 }
 
 export const MidiPanel: React.FC<MidiPanelProps> = ({
@@ -36,22 +39,28 @@ export const MidiPanel: React.FC<MidiPanelProps> = ({
   r2Enabled,
   lEnabled,
   acmpEnabled,
+  onOpenMidiAutomation,
 }) => {
   const [midiState, setMidiState] = useState<MidiState>(midiManager.getState());
+  const [autoState, setAutoState] = useState<AutomationRecorderState>(midiAutomationRecorder.getState());
   const [isChannelMapOpen, setIsChannelMapOpen] = useState(false);
   const [pitchBendRangeInput, setPitchBendRangeInput] = useState<number>(2);
 
   // Sync with midiManager state changes
   useEffect(() => {
-    const unsubscribe = midiManager.subscribeState((newState) => {
+    const unsubscribeMidi = midiManager.subscribeState((newState) => {
       setMidiState(newState);
+    });
+    const unsubscribeAuto = midiAutomationRecorder.subscribe((newState) => {
+      setAutoState(newState);
     });
 
     // Initialize MIDI manager on mount
     midiManager.init();
 
     return () => {
-      unsubscribe();
+      unsubscribeMidi();
+      unsubscribeAuto();
     };
   }, []);
 
@@ -125,8 +134,32 @@ export const MidiPanel: React.FC<MidiPanelProps> = ({
           </div>
         </div>
 
-        {/* Emergency Panic Button */}
+        {/* Action Buttons: Automation Studio & Emergency Panic */}
         <div className="flex items-center gap-2">
+          {onOpenMidiAutomation && (
+            <button
+              id="btn-open-midi-automation"
+              onClick={onOpenMidiAutomation}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-xs font-bold font-mono transition-all shadow-sm cursor-pointer ${
+                autoState.isRecording
+                  ? 'bg-red-950/80 text-red-200 border-red-600 animate-pulse'
+                  : autoState.isPlaying
+                  ? 'bg-emerald-950/80 text-emerald-300 border-emerald-600'
+                  : 'bg-indigo-950/60 hover:bg-indigo-900 text-indigo-300 hover:text-indigo-100 border-indigo-700/60'
+              }`}
+              title="Open MIDI CC Automation Studio to record, edit, and export live volume, pan, and DSP modulation curves"
+            >
+              <Sliders className="w-3.5 h-3.5 text-indigo-400" />
+              <span>CC AUTOMATION</span>
+              {autoState.isRecording && (
+                <span className="w-2 h-2 rounded-full bg-red-500 animate-ping" />
+              )}
+              {autoState.isPlaying && (
+                <span className="w-2 h-2 rounded-full bg-emerald-400" />
+              )}
+            </button>
+          )}
+
           <button
             id="btn-midi-panic"
             onClick={handlePanicClick}

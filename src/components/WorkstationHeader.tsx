@@ -29,6 +29,7 @@ interface WorkstationHeaderProps {
   onOpenVocalWorkstation?: () => void;
   onOpenWorshipSongbook?: () => void;
   onOpenAudioRecording?: () => void;
+  onOpenMidiAutomation?: () => void;
 }
 
 export const WorkstationHeader: React.FC<WorkstationHeaderProps> = ({
@@ -43,6 +44,7 @@ export const WorkstationHeader: React.FC<WorkstationHeaderProps> = ({
   onOpenVocalWorkstation,
   onOpenWorshipSongbook,
   onOpenAudioRecording,
+  onOpenMidiAutomation,
 }) => {
   const [pwaStatus, setPwaStatus] = useState<PwaStatus>({
     isInstalled: false,
@@ -144,10 +146,21 @@ export const WorkstationHeader: React.FC<WorkstationHeaderProps> = ({
           </button>
         )}
 
+        {onOpenMidiAutomation && (
+          <button
+            onClick={onOpenMidiAutomation}
+            className="px-2.5 py-1 rounded-lg text-xs font-mono font-bold text-indigo-300 bg-indigo-950/40 hover:bg-indigo-900/60 border border-indigo-500/40 flex items-center gap-1.5 transition-all cursor-pointer"
+            title="MIDI CC Automation Studio (Volume, Pan &amp; FX parameters)"
+          >
+            <Sliders className="w-3.5 h-3.5 text-indigo-400" />
+            <span>MIDI CC</span>
+          </button>
+        )}
+
         {onOpenAudioRecording && (
           <button
             onClick={onOpenAudioRecording}
-            className="px-2.5 py-1 rounded-lg text-xs font-mono font-bold text-red-300 bg-red-950/40 hover:bg-red-900/60 border border-red-500/40 flex items-center gap-1.5 transition-all"
+            className="px-2.5 py-1 rounded-lg text-xs font-mono font-bold text-red-300 bg-red-950/40 hover:bg-red-900/60 border border-red-500/40 flex items-center gap-1.5 transition-all cursor-pointer"
             title="Record Take &amp; Export Lossless WAV / MIDI Chords"
           >
             <Circle className="w-3 h-3 fill-red-500 text-red-500" />
