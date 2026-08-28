@@ -1,14 +1,21 @@
-import React, { useState } from 'react';
-import { MULTI_PAD_BANKS, triggerMultiPad } from '../audio/multiPads';
+import React, { useState, useEffect } from 'react';
+import { MULTI_PAD_BANKS, triggerMultiPad, subscribeMultiPadBanks } from '../audio/multiPads';
 import { MultiPadData } from '../types/arranger';
 import { Sparkles, Square, Disc, Zap } from 'lucide-react';
 import { audioEngine } from '../audio/audioEngine';
 
 export const MultiPadsSection: React.FC = () => {
+  const [banks, setBanks] = useState(MULTI_PAD_BANKS);
   const [selectedBankIndex, setSelectedBankIndex] = useState(0);
   const [activePadId, setActivePadId] = useState<string | null>(null);
 
-  const currentBank = MULTI_PAD_BANKS[selectedBankIndex] || MULTI_PAD_BANKS[0];
+  useEffect(() => {
+    return subscribeMultiPadBanks((updatedBanks) => {
+      setBanks(updatedBanks);
+    });
+  }, []);
+
+  const currentBank = banks[selectedBankIndex] || banks[0] || MULTI_PAD_BANKS[0];
 
   const handlePadPress = (pad: MultiPadData) => {
     setActivePadId(pad.id);
@@ -39,7 +46,7 @@ export const MultiPadsSection: React.FC = () => {
           onChange={(e) => setSelectedBankIndex(parseInt(e.target.value))}
           className="bg-zinc-950 border border-zinc-800 rounded-lg px-2 py-0.5 text-[11px] font-mono text-amber-300 cursor-pointer focus:outline-none"
         >
-          {MULTI_PAD_BANKS.map((b, idx) => (
+          {banks.map((b, idx) => (
             <option key={b.name} value={idx}>
               {b.name}
             </option>

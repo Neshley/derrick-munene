@@ -321,6 +321,19 @@ export const WorkstationSidebar: React.FC<WorkstationSidebarProps> = ({
                 <span className="text-[8px] font-mono uppercase leading-none">ACMP</span>
               </button>
 
+              {/* AI Co-Producer Studio Quick Launcher */}
+              {onOpenAiStudio && (
+                <button
+                  id="btn-sidebar-rail-ai-studio"
+                  onClick={onOpenAiStudio}
+                  className="w-10 h-10 rounded-xl bg-gradient-to-tr from-purple-950/60 via-amber-950/60 to-cyan-950/60 hover:from-purple-900/80 hover:to-amber-900/80 text-amber-300 border border-amber-500/50 flex flex-col items-center justify-center gap-0.5 transition-all shadow-xs cursor-pointer group"
+                  title="Open Genos AI Co-Producer & Studio"
+                >
+                  <Sparkles className="w-4 h-4 text-amber-400 animate-pulse group-hover:scale-110 transition-transform" />
+                  <span className="text-[8px] font-mono font-bold leading-none text-amber-200">AI</span>
+                </button>
+              )}
+
               {/* Worship Companion & User Guide Button */}
               {onOpenUserGuide && (
                 <button
@@ -426,7 +439,7 @@ export const WorkstationSidebar: React.FC<WorkstationSidebarProps> = ({
                     <div className="text-left overflow-hidden">
                       <div className="text-xs font-bold font-mono text-amber-300 uppercase tracking-wide flex items-center gap-1.5 truncate">
                         <span>AI Co-Producer</span>
-                        <span className="text-[9px] px-1.5 py-0.2 bg-amber-500 text-zinc-950 rounded-full font-bold">2.5 FLASH</span>
+                        <span className="text-[9px] px-1.5 py-0.2 bg-amber-500 text-zinc-950 rounded-full font-bold">3.7 FLASH</span>
                       </div>
                       <div className="text-[10px] text-zinc-400 font-mono truncate">
                         Styles • Chords • Songbook • Synth

@@ -426,7 +426,7 @@ export const AiStudioModal: React.FC<AiStudioModalProps> = ({
                 </h2>
                 <span className="flex items-center gap-1 text-[11px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-950/80 text-emerald-300 border border-emerald-500/40">
                   <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                  GEMINI 2.5 FLASH
+                  GEMINI 3.7 FLASH
                 </span>
               </div>
               <p className="text-xs text-zinc-400 font-sans">

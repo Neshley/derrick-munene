@@ -96,7 +96,7 @@ Return ONLY raw JSON with:
 }`;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3.7-flash',
       contents: systemPrompt,
       config: {
         responseMimeType: 'application/json',
@@ -176,7 +176,7 @@ Return ONLY raw JSON with:
 }`;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3.7-flash',
       contents: prompt,
       config: {
         responseMimeType: 'application/json',
@@ -261,7 +261,7 @@ Return ONLY raw JSON with:
 }`;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3.7-flash',
       contents: prompt,
       config: {
         responseMimeType: 'application/json',
@@ -349,7 +349,7 @@ Return ONLY raw JSON with:
 }`;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3.7-flash',
       contents: systemPrompt,
       config: {
         responseMimeType: 'application/json',
@@ -425,7 +425,7 @@ Return ONLY raw JSON with:
 }`;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3.7-flash',
       contents: prompt,
       config: {
         responseMimeType: 'application/json',
@@ -554,7 +554,7 @@ Return ONLY raw JSON with:
 }`;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3.7-flash',
       contents: prompt,
       config: {
         responseMimeType: 'application/json',

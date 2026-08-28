@@ -125,3 +125,24 @@ export function triggerMultiPad(pad: MultiPadData) {
     audioEngine.playNote(item.note, item.velocity, synth, 'multipad', item.duration, item.delay);
   });
 }
+
+type BankListener = (banks: { name: string; pads: MultiPadData[] }[]) => void;
+const listeners = new Set<BankListener>();
+
+export function subscribeMultiPadBanks(fn: BankListener): () => void {
+  listeners.add(fn);
+  fn(MULTI_PAD_BANKS);
+  return () => listeners.delete(fn);
+}
+
+export function addMultiPadBank(bank: { name: string; pads: MultiPadData[] }) {
+  // Check if bank name exists and replace or insert at top
+  const existingIdx = MULTI_PAD_BANKS.findIndex(b => b.name.toLowerCase() === bank.name.toLowerCase());
+  if (existingIdx >= 0) {
+    MULTI_PAD_BANKS[existingIdx] = bank;
+  } else {
+    MULTI_PAD_BANKS.unshift(bank);
+  }
+  listeners.forEach(fn => fn([...MULTI_PAD_BANKS]));
+}
+

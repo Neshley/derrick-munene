@@ -31,6 +31,8 @@ import { VocalWorkstationModal } from './components/VocalWorkstationModal';
 import { WorshipSongbookModal } from './components/WorshipSongbookModal';
 import { AudioRecordingModal } from './components/AudioRecordingModal';
 import { MidiAutomationModal } from './components/MidiAutomationModal';
+import { AiStudioModal } from './components/AiStudioModal';
+import { addMultiPadBank } from './audio/multiPads';
 
 export default function App() {
   // --- Workstation Engine States ---
@@ -152,6 +154,7 @@ export default function App() {
   const [isSongbookModalOpen, setIsSongbookModalOpen] = useState(false);
   const [isAudioRecordModalOpen, setIsAudioRecordModalOpen] = useState(false);
   const [isMidiAutomationOpen, setIsMidiAutomationOpen] = useState(false);
+  const [isAiStudioModalOpen, setIsAiStudioModalOpen] = useState(false);
   const [styleNotification, setStyleNotification] = useState<{ name: string; fills: string[]; mains: string[] } | null>(null);
 
   // Keep MidiManager live performance configuration synchronized
@@ -431,6 +434,7 @@ export default function App() {
         onOpenWorshipSongbook={() => setIsSongbookModalOpen(true)}
         onOpenAudioRecording={() => setIsAudioRecordModalOpen(true)}
         onOpenMidiAutomation={() => setIsMidiAutomationOpen(true)}
+        onOpenAiStudio={() => setIsAiStudioModalOpen(true)}
         splitPoint={splitPoint}
         onSplitPointChange={(newSplit) => setSplitPoint(newSplit)}
       />
@@ -456,6 +460,7 @@ export default function App() {
           onOpenWorshipSongbook={() => setIsSongbookModalOpen(true)}
           onOpenAudioRecording={() => setIsAudioRecordModalOpen(true)}
           onOpenMidiAutomation={() => setIsMidiAutomationOpen(true)}
+          onOpenAiStudio={() => setIsAiStudioModalOpen(true)}
           r1Voice={r1Voice}
           r2Voice={r2Voice}
           lVoice={lVoice}
@@ -732,6 +737,60 @@ export default function App() {
       <MidiAutomationModal
         isOpen={isMidiAutomationOpen}
         onClose={() => setIsMidiAutomationOpen(false)}
+      />
+
+      {/* Genos AI Co-Producer & Studio Modal */}
+      <AiStudioModal
+        isOpen={isAiStudioModalOpen}
+        onClose={() => setIsAiStudioModalOpen(false)}
+        currentStyle={currentStyle}
+        currentTempo={tempo}
+        r1Voice={r1Voice}
+        r2Voice={r2Voice}
+        lVoice={lVoice}
+        onApplyStyle={(newStyle) => {
+          setCustomStyles(prev => [newStyle, ...prev.filter(s => s.id !== newStyle.id)]);
+          handleSelectStyle(newStyle);
+        }}
+        onApplyChords={(chordProgression) => {
+          if (chordProgression && chordProgression.length > 0) {
+            const parsed = ChordEngine.parseProgressionString(chordProgression[0]);
+            if (parsed.length > 0) {
+              stylePlayer.setChord(parsed[0]);
+            }
+          }
+        }}
+        onApplySong={(song) => {
+          if (song.tempo) {
+            setTempo(song.tempo);
+            stylePlayer.setTempo(song.tempo);
+          }
+          if (song.r1Voice) handleApplyVoice('r1', song.r1Voice);
+          if (song.r2Voice) handleApplyVoice('r2', song.r2Voice);
+          if (song.lVoice) handleApplyVoice('left', song.lVoice);
+          if (song.styleId) {
+            const match = [...FACTORY_STYLES, ...customStyles].find(s => s.id === song.styleId);
+            if (match) handleSelectStyle(match);
+          }
+        }}
+        onApplyVoice={(part, voice) => {
+          handleApplyVoice(part, voice.synthType || voice.id);
+        }}
+        onApplyMix={(mix) => {
+          if (mix.tracks) {
+            Object.entries(mix.tracks).forEach(([track, settings]: [string, any]) => {
+              if (settings && typeof settings.volume === 'number') {
+                handleTrackSettingChange(track as TrackType, 'volume', settings.volume);
+              }
+            });
+          }
+          if (typeof mix.masterVolume === 'number') {
+            handleMasterVolumeChange(mix.masterVolume);
+          }
+        }}
+        onApplyMultiPads={(pads, bankName) => {
+          addMultiPadBank({ name: bankName, pads });
+        }}
       />
     </div>
   );
