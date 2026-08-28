@@ -439,8 +439,8 @@ export const InteractiveKeyboard: React.FC<InteractiveKeyboardProps> = ({
                 className={`flex-1 relative rounded-b-lg border-r border-b border-l border-zinc-400/30 transition-all duration-75 cursor-pointer flex flex-col justify-end items-center pb-2 z-0 select-none ${
                   isActive
                     ? isLowerChordZone
-                      ? 'bg-gradient-to-t from-amber-400 via-amber-300 to-amber-100 text-zinc-950 border-amber-400 ring-2 ring-amber-400/80 shadow-[0_0_22px_rgba(245,158,11,0.9),inset_0_4px_16px_rgba(217,119,6,0.9)] transform translate-y-1.5'
-                      : 'bg-gradient-to-t from-cyan-400 via-sky-300 to-cyan-100 text-zinc-950 border-cyan-400 ring-2 ring-cyan-400/80 shadow-[0_0_22px_rgba(6,182,212,0.9),inset_0_4px_16px_rgba(2,132,199,0.9)] transform translate-y-1.5'
+                      ? 'bg-gradient-to-t from-amber-400 via-amber-300 to-amber-100 text-zinc-950 border-amber-400 ring-2 ring-amber-400/80 shadow-[0_0_22px_rgba(245,158,11,0.9),inset_0_4px_16px_rgba(217,119,6,0.9)]'
+                      : 'bg-gradient-to-t from-cyan-400 via-sky-300 to-cyan-100 text-zinc-950 border-cyan-400 ring-2 ring-cyan-400/80 shadow-[0_0_22px_rgba(6,182,212,0.9),inset_0_4px_16px_rgba(2,132,199,0.9)]'
                     : isLowerChordZone
                       ? 'bg-gradient-to-b from-amber-100/90 via-amber-50 to-zinc-100 hover:from-amber-200 hover:to-amber-50 active:from-amber-300'
                       : 'bg-gradient-to-b from-zinc-200 via-white to-zinc-100 hover:from-sky-100 hover:to-white active:from-sky-300'
@@ -503,8 +503,8 @@ export const InteractiveKeyboard: React.FC<InteractiveKeyboardProps> = ({
                 className={`absolute top-2 h-24 sm:h-28 rounded-b-md transition-all duration-75 cursor-pointer flex flex-col justify-end items-center pb-1.5 z-10 shadow-lg select-none border ${
                   isActive
                     ? isLowerChordZone
-                      ? 'bg-gradient-to-t from-amber-500 via-amber-400 to-amber-300 text-zinc-950 border-amber-300 ring-2 ring-amber-400/90 shadow-[0_0_24px_rgba(245,158,11,1),inset_0_2px_8px_rgba(255,255,255,0.7)] transform translate-y-1'
-                      : 'bg-gradient-to-t from-cyan-400 via-sky-300 to-cyan-200 text-zinc-950 border-cyan-300 ring-2 ring-cyan-400/90 shadow-[0_0_24px_rgba(6,182,212,1),inset_0_2px_8px_rgba(255,255,255,0.7)] transform translate-y-1'
+                      ? 'bg-gradient-to-t from-amber-500 via-amber-400 to-amber-300 text-zinc-950 border-amber-300 ring-2 ring-amber-400/90 shadow-[0_0_24px_rgba(245,158,11,1),inset_0_2px_8px_rgba(255,255,255,0.7)]'
+                      : 'bg-gradient-to-t from-cyan-400 via-sky-300 to-cyan-200 text-zinc-950 border-cyan-300 ring-2 ring-cyan-400/90 shadow-[0_0_24px_rgba(6,182,212,1),inset_0_2px_8px_rgba(255,255,255,0.7)]'
                     : isLowerChordZone
                       ? 'bg-gradient-to-b from-zinc-900 via-amber-950 to-zinc-950 hover:bg-amber-900 border-black'
                       : 'bg-gradient-to-b from-zinc-800 via-zinc-900 to-black hover:bg-zinc-700 border-black'
