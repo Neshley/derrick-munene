@@ -337,19 +337,6 @@ export const WorkstationSidebar: React.FC<WorkstationSidebarProps> = ({
                 </button>
               )}
 
-              {/* Gemini API Key Button in Collapsed Rail */}
-              {onOpenApiKeyModal && (
-                <button
-                  id="btn-sidebar-rail-api-key"
-                  onClick={onOpenApiKeyModal}
-                  className="w-10 h-10 rounded-xl bg-zinc-900/90 hover:bg-zinc-800 text-amber-400 border border-zinc-700/80 flex flex-col items-center justify-center gap-0.5 transition-all shadow-xs cursor-pointer group"
-                  title="Add Gemini API Key (Saved in browser localStorage)"
-                >
-                  <Key className="w-4 h-4 group-hover:scale-110 transition-transform" />
-                  <span className="text-[8px] font-mono font-bold leading-none text-zinc-400 group-hover:text-amber-300">KEY</span>
-                </button>
-              )}
-
               {/* Worship Companion & User Guide Button */}
               {onOpenUserGuide && (
                 <button
@@ -443,41 +430,27 @@ export const WorkstationSidebar: React.FC<WorkstationSidebarProps> = ({
             {/* Featured AI Co-Producer Studio Launcher */}
             {onOpenAiStudio && (
               <div className="p-2 border-b border-zinc-800/80 bg-zinc-950/70">
-                <div className="flex items-center gap-1.5">
-                  <button
-                    id="btn-sidebar-open-ai-studio"
-                    onClick={onOpenAiStudio}
-                    className="flex-1 p-2.5 rounded-xl bg-gradient-to-r from-amber-500/20 via-cyan-500/15 to-purple-500/20 hover:from-amber-500/30 hover:via-cyan-500/25 hover:to-purple-500/30 border-2 border-amber-500/40 hover:border-amber-400 text-zinc-100 flex items-center justify-between gap-2 transition-all shadow-md shadow-amber-500/10 cursor-pointer group min-w-0"
-                  >
-                    <div className="flex items-center gap-2.5 overflow-hidden">
-                      <div className="p-2 rounded-lg bg-amber-500/30 border border-amber-400/50 text-amber-300 group-hover:scale-105 transition-transform shrink-0">
-                        <Sparkles className="w-4 h-4 text-amber-400 animate-pulse" />
+                <button
+                  id="btn-sidebar-open-ai-studio"
+                  onClick={onOpenAiStudio}
+                  className="w-full p-2.5 rounded-xl bg-gradient-to-r from-amber-500/20 via-cyan-500/15 to-purple-500/20 hover:from-amber-500/30 hover:via-cyan-500/25 hover:to-purple-500/30 border-2 border-amber-500/40 hover:border-amber-400 text-zinc-100 flex items-center justify-between gap-2 transition-all shadow-md shadow-amber-500/10 cursor-pointer group"
+                >
+                  <div className="flex items-center gap-2.5 overflow-hidden">
+                    <div className="p-2 rounded-lg bg-amber-500/30 border border-amber-400/50 text-amber-300 group-hover:scale-105 transition-transform shrink-0">
+                      <Sparkles className="w-4 h-4 text-amber-400 animate-pulse" />
+                    </div>
+                    <div className="text-left overflow-hidden">
+                      <div className="text-xs font-bold font-mono text-amber-300 uppercase tracking-wide flex items-center gap-1.5 truncate">
+                        <span>AI Co-Producer</span>
+                        <span className="text-[9px] px-1.5 py-0.2 bg-amber-500 text-zinc-950 rounded-full font-bold">3.7 FLASH</span>
                       </div>
-                      <div className="text-left overflow-hidden">
-                        <div className="text-xs font-bold font-mono text-amber-300 uppercase tracking-wide flex items-center gap-1.5 truncate">
-                          <span>AI Co-Producer</span>
-                          <span className="text-[9px] px-1.5 py-0.2 bg-amber-500 text-zinc-950 rounded-full font-bold">3.7 FLASH</span>
-                        </div>
-                        <div className="text-[10px] text-zinc-400 font-mono truncate">
-                          Styles • Chords • Songbook • Synth
-                        </div>
+                      <div className="text-[10px] text-zinc-400 font-mono truncate">
+                        Styles • Chords • Songbook • Synth
                       </div>
                     </div>
-                    <ChevronRight className="w-4 h-4 text-amber-400 group-hover:translate-x-0.5 transition-transform shrink-0" />
-                  </button>
-
-                  {onOpenApiKeyModal && (
-                    <button
-                      id="btn-sidebar-api-key"
-                      onClick={onOpenApiKeyModal}
-                      className="p-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border-2 border-zinc-700/80 hover:border-amber-500/50 text-amber-400 flex flex-col items-center justify-center gap-0.5 transition-all shadow-xs cursor-pointer group shrink-0"
-                      title="Add Gemini API Key (Saved in browser localStorage)"
-                    >
-                      <Key className="w-4 h-4 group-hover:scale-110 transition-transform text-amber-400" />
-                      <span className="text-[9px] font-mono font-bold text-zinc-400 group-hover:text-amber-300">KEY</span>
-                    </button>
-                  )}
-                </div>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-amber-400 group-hover:translate-x-0.5 transition-transform shrink-0" />
+                </button>
               </div>
             )}
 
