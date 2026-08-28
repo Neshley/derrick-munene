@@ -83,6 +83,7 @@ interface WorkstationSidebarProps {
   onOpenWorshipSongbook?: () => void;
   onOpenAudioRecording?: () => void;
   onOpenMidiAutomation?: () => void;
+  onOpenAiStudio?: () => void;
 }
 
 export const WorkstationSidebar: React.FC<WorkstationSidebarProps> = ({
@@ -103,6 +104,7 @@ export const WorkstationSidebar: React.FC<WorkstationSidebarProps> = ({
   onOpenWorshipSongbook,
   onOpenAudioRecording,
   onOpenMidiAutomation,
+  onOpenAiStudio,
   r1Voice,
   r2Voice,
   lVoice,
@@ -272,6 +274,19 @@ export const WorkstationSidebar: React.FC<WorkstationSidebarProps> = ({
         {isCollapsed ? (
           <div className="flex-1 py-3 flex flex-col items-center justify-between gap-3 overflow-y-auto custom-scrollbar">
             <div className="flex flex-col items-center gap-2 w-full px-1.5">
+              {/* Quick AI Studio Button */}
+              {onOpenAiStudio && (
+                <button
+                  id="btn-sidebar-rail-ai-studio"
+                  onClick={onOpenAiStudio}
+                  className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500/30 to-cyan-500/20 hover:from-amber-500/40 hover:to-cyan-500/30 text-amber-300 border border-amber-500/50 flex flex-col items-center justify-center gap-0.5 transition-all shadow-md shadow-amber-500/20 group cursor-pointer"
+                  title="Open Genos AI Co-Producer Studio (Gemini 2.5 Flash)"
+                >
+                  <Sparkles className="w-4 h-4 text-amber-400 animate-pulse" />
+                  <span className="text-[8px] font-mono font-bold leading-none text-amber-300">AI</span>
+                </button>
+              )}
+
               {/* Quick Styles Button */}
               <button
                 onClick={onOpenStyleBrowser}
@@ -396,6 +411,33 @@ export const WorkstationSidebar: React.FC<WorkstationSidebarProps> = ({
         ) : (
           /* --- EXPANDED VIEW --- */
           <div className="flex-1 flex flex-col overflow-hidden">
+            {/* Featured AI Co-Producer Studio Launcher */}
+            {onOpenAiStudio && (
+              <div className="p-2 border-b border-zinc-800/80 bg-zinc-950/70">
+                <button
+                  id="btn-sidebar-open-ai-studio"
+                  onClick={onOpenAiStudio}
+                  className="w-full p-2.5 rounded-xl bg-gradient-to-r from-amber-500/20 via-cyan-500/15 to-purple-500/20 hover:from-amber-500/30 hover:via-cyan-500/25 hover:to-purple-500/30 border-2 border-amber-500/40 hover:border-amber-400 text-zinc-100 flex items-center justify-between gap-2 transition-all shadow-md shadow-amber-500/10 cursor-pointer group"
+                >
+                  <div className="flex items-center gap-2.5 overflow-hidden">
+                    <div className="p-2 rounded-lg bg-amber-500/30 border border-amber-400/50 text-amber-300 group-hover:scale-105 transition-transform shrink-0">
+                      <Sparkles className="w-4 h-4 text-amber-400 animate-pulse" />
+                    </div>
+                    <div className="text-left overflow-hidden">
+                      <div className="text-xs font-bold font-mono text-amber-300 uppercase tracking-wide flex items-center gap-1.5 truncate">
+                        <span>AI Co-Producer</span>
+                        <span className="text-[9px] px-1.5 py-0.2 bg-amber-500 text-zinc-950 rounded-full font-bold">2.5 FLASH</span>
+                      </div>
+                      <div className="text-[10px] text-zinc-400 font-mono truncate">
+                        Styles • Chords • Songbook • Synth
+                      </div>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-amber-400 group-hover:translate-x-0.5 transition-transform shrink-0" />
+                </button>
+              </div>
+            )}
+
             {/* Top Navigation Tabs */}
             <div className="flex border-b border-zinc-800/80 bg-zinc-950/40 p-1 gap-1">
               <button
@@ -649,6 +691,15 @@ export const WorkstationSidebar: React.FC<WorkstationSidebarProps> = ({
                       Worship &amp; Studio Suite
                     </div>
                     <div className="grid grid-cols-2 gap-1.5">
+                      {onOpenAiStudio && (
+                        <button
+                          onClick={onOpenAiStudio}
+                          className="p-2 rounded-lg bg-gradient-to-r from-amber-950/60 via-zinc-900 to-cyan-950/60 hover:from-amber-900/80 hover:to-cyan-900/80 border border-amber-500/50 text-amber-300 text-xs font-bold font-mono text-left flex items-center gap-1.5 transition-all cursor-pointer col-span-2 shadow-xs"
+                        >
+                          <Sparkles className="w-3.5 h-3.5 text-amber-400 shrink-0 animate-pulse" />
+                          <span className="truncate">Genos AI Co-Producer Studio</span>
+                        </button>
+                      )}
                       {onOpenPrayerAtmosphere && (
                         <button
                           onClick={onOpenPrayerAtmosphere}
