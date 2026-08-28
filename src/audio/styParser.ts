@@ -1,12 +1,108 @@
+import JSZip from 'jszip';
 import { ArrangerStyle, NoteEvent, StyleSection, StyleSectionData, StyleTrackPattern, TrackType } from '../types/arranger';
 
+export interface ZipParseResult {
+  styles: ArrangerStyle[];
+  errors: { filename: string; error: string }[];
+  totalFilesScanned: number;
+  zipName: string;
+}
+
 export class StyParser {
-  public static async parseStyFile(file: File): Promise<ArrangerStyle> {
-    const arrayBuffer = await file.arrayBuffer();
-    return this.parseStyBuffer(arrayBuffer, file.name.replace(/\.(sty|prs|sst|bcf|mid)$/i, ''));
+  public static readonly SUPPORTED_EXTENSIONS = ['.sty', '.prs', '.sst', '.bcf', '.pst', '.fps', '.mid', '.midi'];
+
+  public static isZipFile(file: File | string): boolean {
+    const filename = typeof file === 'string' ? file : file.name;
+    return /\.zip$/i.test(filename) || (typeof file !== 'string' && file.type === 'application/zip');
   }
 
-  public static parseStyBuffer(buffer: ArrayBuffer, styleName: string = 'Imported Style'): ArrangerStyle {
+  public static isStyleFileName(filename: string): boolean {
+    const lower = filename.toLowerCase();
+    return this.SUPPORTED_EXTENSIONS.some(ext => lower.endsWith(ext));
+  }
+
+  public static async parseStyFile(file: File): Promise<ArrangerStyle> {
+    const arrayBuffer = await file.arrayBuffer();
+    return this.parseStyBuffer(arrayBuffer, file.name.replace(/\.(sty|prs|sst|bcf|pst|fps|mid|midi)$/i, ''), file.name);
+  }
+
+  /**
+   * Unzips a .zip archive and parses all embedded Yamaha style files (.sty, .prs, .sst, etc.)
+   */
+  public static async parseZipFile(file: File | ArrayBuffer, zipFileName: string = 'Archive.zip'): Promise<ZipParseResult> {
+    const zipName = file instanceof File ? file.name : zipFileName;
+    const arrayBuffer = file instanceof File ? await file.arrayBuffer() : file;
+    
+    const zip = await JSZip.loadAsync(arrayBuffer);
+    const styles: ArrangerStyle[] = [];
+    const errors: { filename: string; error: string }[] = [];
+    let totalFilesScanned = 0;
+
+    const entries = Object.keys(zip.files);
+
+    for (const relativePath of entries) {
+      const entry = zip.files[relativePath];
+      
+      // Skip directories and macOS resource fork files
+      if (entry.dir || relativePath.includes('__MACOSX') || relativePath.startsWith('.') || relativePath.includes('/.')) {
+        continue;
+      }
+
+      const fileName = relativePath.split('/').pop() || relativePath;
+
+      if (this.isStyleFileName(fileName)) {
+        totalFilesScanned++;
+        try {
+          const fileBuffer = await entry.async('arraybuffer');
+          const cleanName = fileName.replace(/\.(sty|prs|sst|bcf|pst|fps|mid|midi)$/i, '').replace(/_/g, ' ');
+          const parsedStyle = this.parseStyBuffer(fileBuffer, cleanName, fileName);
+          styles.push(parsedStyle);
+        } catch (err: any) {
+          errors.push({
+            filename: relativePath,
+            error: err.message || 'Corrupted or unreadable style format'
+          });
+        }
+      }
+    }
+
+    if (totalFilesScanned === 0) {
+      throw new Error(`No compatible style files found in "${zipName}". Archive must contain .sty, .prs, .sst, or .mid files.`);
+    }
+
+    return {
+      styles,
+      errors,
+      totalFilesScanned,
+      zipName
+    };
+  }
+
+  /**
+   * Intelligently parses either a direct .sty file OR a .zip archive
+   */
+  public static async parseAnyFile(file: File): Promise<{ styles: ArrangerStyle[]; isZip: boolean; zipStats?: { totalScanned: number; errorCount: number; zipName: string } }> {
+    if (this.isZipFile(file)) {
+      const result = await this.parseZipFile(file);
+      return {
+        styles: result.styles,
+        isZip: true,
+        zipStats: {
+          totalScanned: result.totalFilesScanned,
+          errorCount: result.errors.length,
+          zipName: result.zipName,
+        }
+      };
+    } else {
+      const style = await this.parseStyFile(file);
+      return {
+        styles: [style],
+        isZip: false,
+      };
+    }
+  }
+
+  public static parseStyBuffer(buffer: ArrayBuffer, styleName: string = 'Imported Style', originalFileName?: string): ArrangerStyle {
     const data = new DataView(buffer);
     let offset = 0;
 
@@ -167,23 +263,27 @@ export class StyParser {
       }
     }
 
-    // Process Markers to locate sections
+    // Process Markers to locate sections with comprehensive Yamaha naming patterns
     const standardSectionKeys: { raw: RegExp; key: StyleSection }[] = [
-      { raw: /main\s*a/i, key: 'main_a' },
-      { raw: /main\s*b/i, key: 'main_b' },
-      { raw: /main\s*c/i, key: 'main_c' },
-      { raw: /main\s*d/i, key: 'main_d' },
-      { raw: /fill\s*in\s*a/i, key: 'fill_aa' },
-      { raw: /fill\s*in\s*b/i, key: 'fill_bb' },
-      { raw: /fill\s*in\s*c/i, key: 'fill_cc' },
-      { raw: /fill\s*in\s*d/i, key: 'fill_dd' },
-      { raw: /intro\s*a/i, key: 'intro_a' },
-      { raw: /intro\s*b/i, key: 'intro_b' },
-      { raw: /intro\s*c/i, key: 'intro_c' },
-      { raw: /ending\s*a/i, key: 'ending_a' },
-      { raw: /ending\s*b/i, key: 'ending_b' },
-      { raw: /ending\s*c/i, key: 'ending_c' },
-      { raw: /break/i, key: 'break' },
+      // Fills first (so 'Fill In A' doesn't get confused with 'Main A' or 'Intro A')
+      { raw: /(fill\s*(in\s*)?aa?\b|fill_?aa?\b|fill\s*1\b|\bfa\b|fill_a\b)/i, key: 'fill_aa' },
+      { raw: /(fill\s*(in\s*)?bb?\b|fill_?bb?\b|fill\s*2\b|\bfb\b|fill_b\b)/i, key: 'fill_bb' },
+      { raw: /(fill\s*(in\s*)?cc?\b|fill_?cc?\b|fill\s*3\b|\bfc\b|fill_c\b)/i, key: 'fill_cc' },
+      { raw: /(fill\s*(in\s*)?dd?\b|fill_?dd?\b|fill\s*4\b|\bfd\b|fill_d\b)/i, key: 'fill_dd' },
+      { raw: /(break|brk|fill\s*break)/i, key: 'break' },
+      // Main variations
+      { raw: /(main\s*a\b|main_?a\b|main\s*1\b|\bma\b|pattern\s*a\b)/i, key: 'main_a' },
+      { raw: /(main\s*b\b|main_?b\b|main\s*2\b|\bmb\b|pattern\s*b\b)/i, key: 'main_b' },
+      { raw: /(main\s*c\b|main_?c\b|main\s*3\b|\bmc\b|pattern\s*c\b)/i, key: 'main_c' },
+      { raw: /(main\s*d\b|main_?d\b|main\s*4\b|\bmd\b|pattern\s*d\b)/i, key: 'main_d' },
+      // Intros
+      { raw: /(intro\s*a\b|intro_?a\b|intro\s*1\b|\bia\b)/i, key: 'intro_a' },
+      { raw: /(intro\s*b\b|intro_?b\b|intro\s*2\b|\bib\b)/i, key: 'intro_b' },
+      { raw: /(intro\s*c\b|intro_?c\b|intro\s*3\b|\bic\b)/i, key: 'intro_c' },
+      // Endings
+      { raw: /(ending\s*a\b|ending_?a\b|ending\s*1\b|\bea\b)/i, key: 'ending_a' },
+      { raw: /(ending\s*b\b|ending_?b\b|ending\s*2\b|\beb\b)/i, key: 'ending_b' },
+      { raw: /(ending\s*c\b|ending_?c\b|ending\s*3\b|\bec\b)/i, key: 'ending_c' },
     ];
 
     // Sort markers by tick
@@ -195,6 +295,7 @@ export class StyParser {
       const m = markers[i];
       for (const std of standardSectionKeys) {
         if (std.raw.test(m.text)) {
+          // Avoid duplicate section keys if same marker appears multiple times
           const nextMarker = markers[i + 1];
           const ticksPerMeasure = timeDivision * 4;
           const tickEnd = nextMarker ? nextMarker.tick : m.tick + ticksPerMeasure * 2;
@@ -304,13 +405,28 @@ export class StyParser {
       };
     });
 
+    const fillKeys = Object.keys(sections).filter(k => k.startsWith('fill_') || k === 'break');
+    const mainKeys = Object.keys(sections).filter(k => k.startsWith('main_'));
+    const fillNames = fillKeys.map(k => {
+      if (k === 'fill_aa') return 'Fill A';
+      if (k === 'fill_bb') return 'Fill B';
+      if (k === 'fill_cc') return 'Fill C';
+      if (k === 'fill_dd') return 'Fill D';
+      if (k === 'break') return 'Break';
+      return k;
+    });
+
+    const desc = fillNames.length > 0 
+      ? `Yamaha .STY • ${fillNames.length} Fills Available (${fillNames.join(', ')}) • ${mainKeys.length} Mains`
+      : `Yamaha .STY • ${Object.keys(sections).length} Sections Detected`;
+
     return {
       id: `sty_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
       name: styleName || 'Custom Yamaha Style',
       category: 'Custom',
       tempo: tempoBpm > 40 && tempoBpm < 260 ? tempoBpm : 120,
       timeSignature,
-      description: `Parsed from Yamaha .sty file (${Object.keys(sections).length} sections)`,
+      description: desc,
       sourceType: 'yamaha-sty',
       otsVoices: {
         ots1: { r1: 'piano', r2: 'strings', l: 'epiano' },

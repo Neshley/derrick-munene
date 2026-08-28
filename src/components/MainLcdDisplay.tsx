@@ -153,15 +153,98 @@ export const MainLcdDisplay: React.FC<MainLcdDisplayProps> = ({
             </button>
           </div>
 
-          <div className="mt-3 pt-2.5 border-t border-zinc-800/80 flex items-center justify-between gap-2">
+          {/* Section & Active Playing Status */}
+          <div className="mt-2.5 pt-2 border-t border-zinc-800/80 flex items-center justify-between gap-2">
             <div className="flex items-center gap-1.5">
-              <span className="text-[11px] text-zinc-400">Section:</span>
-              <span className={`text-xs font-mono font-bold uppercase px-2.5 py-0.5 rounded-md border ${getSectionBadgeClass(currentSection)}`}>
+              <span className="text-[11px] text-zinc-400">Playing:</span>
+              <span className={`text-xs font-mono font-bold uppercase px-2 py-0.5 rounded-md border ${getSectionBadgeClass(currentSection)}`}>
                 {currentSection.replace('_', ' ')}
               </span>
             </div>
             <div className="text-[11px] font-mono text-zinc-400">
               {style.timeSignature[0]}/{style.timeSignature[1]}
+            </div>
+          </div>
+
+          {/* Authentic LCD Beat Structure & Available Fills Matrix */}
+          <div className="mt-2 pt-2 border-t border-zinc-800/80 bg-zinc-950/70 -mx-1.5 p-2 rounded-lg border border-zinc-800/60 flex flex-col gap-1.5">
+            <div className="flex items-center justify-between text-[9px] font-mono font-bold text-zinc-400 uppercase tracking-wider">
+              <span className="flex items-center gap-1 text-purple-300">
+                <Layers className="w-3 h-3 text-purple-400" />
+                BEAT FILL MATRIX
+              </span>
+              <span className="text-zinc-500">
+                {Object.keys(style.sections).filter(k => k.startsWith('fill_')).length} Fills in Beat
+              </span>
+            </div>
+
+            {/* Fills Row: Fill A, B, C, D, Break */}
+            <div className="grid grid-cols-5 gap-1 text-center font-mono">
+              {[
+                { id: 'fill_aa' as StyleSection, label: 'FA', name: 'Fill A' },
+                { id: 'fill_bb' as StyleSection, label: 'FB', name: 'Fill B' },
+                { id: 'fill_cc' as StyleSection, label: 'FC', name: 'Fill C' },
+                { id: 'fill_dd' as StyleSection, label: 'FD', name: 'Fill D' },
+                { id: 'break' as StyleSection, label: 'BRK', name: 'Break' },
+              ].map(f => {
+                const isAvail = Boolean(style.sections[f.id]);
+                const isPlayingFill = currentSection === f.id;
+
+                return (
+                  <div
+                    key={f.id}
+                    className={`py-0.5 px-0.5 rounded text-[9px] font-bold border transition-all flex flex-col items-center justify-center ${
+                      isPlayingFill
+                        ? 'bg-purple-500 text-zinc-950 border-purple-300 shadow-md shadow-purple-500/50 animate-pulse font-black'
+                        : isAvail
+                          ? 'bg-purple-950/70 text-purple-200 border-purple-800/90 shadow-[inset_0_1px_3px_rgba(168,85,247,0.2)]'
+                          : 'bg-zinc-900/40 text-zinc-650 border-zinc-850 opacity-25'
+                    }`}
+                    title={isAvail ? `${f.name}: Available in this beat` : `${f.name}: Not present in this beat`}
+                  >
+                    <span className="leading-tight">{f.label}</span>
+                    <span className={`w-1 h-1 rounded-full mt-0.5 ${
+                      isPlayingFill 
+                        ? 'bg-zinc-950' 
+                        : isAvail 
+                          ? f.id === 'break' ? 'bg-yellow-400' : 'bg-purple-400 shadow-[0_0_3px_rgba(192,132,252,0.9)]' 
+                          : 'bg-zinc-750'
+                    }`} />
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Mains Row: Main A, B, C, D */}
+            <div className="grid grid-cols-4 gap-1 text-center font-mono">
+              {[
+                { id: 'main_a' as StyleSection, label: 'MAIN A' },
+                { id: 'main_b' as StyleSection, label: 'MAIN B' },
+                { id: 'main_c' as StyleSection, label: 'MAIN C' },
+                { id: 'main_d' as StyleSection, label: 'MAIN D' },
+              ].map(m => {
+                const isAvail = Boolean(style.sections[m.id]);
+                const isPlayingMain = currentSection === m.id;
+
+                return (
+                  <div
+                    key={m.id}
+                    className={`py-0.5 px-0.5 rounded text-[9px] font-bold border transition-all flex items-center justify-center gap-1 ${
+                      isPlayingMain
+                        ? 'bg-amber-400 text-zinc-950 border-amber-300 shadow-sm font-black'
+                        : isAvail
+                          ? 'bg-amber-950/40 text-amber-300 border-amber-800/60'
+                          : 'bg-zinc-900/40 text-zinc-650 border-zinc-850 opacity-25'
+                    }`}
+                    title={isAvail ? `${m.label}: Available` : `${m.label}: Not in beat`}
+                  >
+                    <span className={`w-1 h-1 rounded-full ${
+                      isPlayingMain ? 'bg-zinc-950' : isAvail ? 'bg-amber-400' : 'bg-zinc-750'
+                    }`} />
+                    <span>{m.label.replace('MAIN ', 'M-')}</span>
+                  </div>
+                );
+              })}
             </div>
           </div>
         </div>

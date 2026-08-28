@@ -11,9 +11,14 @@ import {
   Layers, 
   HelpCircle, 
   Maximize2, 
-  Radio
+  Radio,
+  Wifi,
+  WifiOff,
+  DownloadCloud,
+  CheckCircle2
 } from 'lucide-react';
 import { audioEngine } from '../audio/audioEngine';
+import { subscribePwaStatus, promptPwaInstall, PwaStatus } from '../pwaRegister';
 
 interface WorkstationHeaderProps {
   onOpenStyleBrowser: () => void;
@@ -39,6 +44,28 @@ export const WorkstationHeader: React.FC<WorkstationHeaderProps> = ({
   const [isRecording, setIsRecording] = useState(false);
   const [recordedUrl, setRecordedUrl] = useState<string | null>(null);
   const [recordDuration, setRecordDuration] = useState(0);
+  const [pwaStatus, setPwaStatus] = useState<PwaStatus>({
+    isInstalled: false,
+    canInstall: false,
+    isOnline: typeof navigator !== 'undefined' ? navigator.onLine : true,
+    isServiceWorkerReady: false,
+  });
+  const [installSuccess, setInstallSuccess] = useState(false);
+
+  useEffect(() => {
+    const unsubscribe = subscribePwaStatus((status) => {
+      setPwaStatus(status);
+    });
+    return unsubscribe;
+  }, []);
+
+  const handleInstallClick = async () => {
+    const installed = await promptPwaInstall();
+    if (installed) {
+      setInstallSuccess(true);
+      setTimeout(() => setInstallSuccess(false), 4000);
+    }
+  };
 
   useEffect(() => {
     let interval: number;
@@ -108,7 +135,7 @@ export const WorkstationHeader: React.FC<WorkstationHeaderProps> = ({
 
         {/* MIDI status badge */}
         <div 
-          className={`hidden md:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-mono border ${
+          className={`hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-mono border ${
             midiConnected 
               ? 'bg-emerald-950/60 text-emerald-300 border-emerald-800/80 shadow-sm shadow-emerald-950' 
               : 'bg-zinc-800/80 text-zinc-400 border-zinc-700'
@@ -116,22 +143,68 @@ export const WorkstationHeader: React.FC<WorkstationHeaderProps> = ({
           title={midiConnected ? `Connected to: ${midiDeviceName}` : 'Connect a USB/Bluetooth MIDI keyboard'}
         >
           <Radio className={`w-3.5 h-3.5 ${midiConnected ? 'text-emerald-400 animate-pulse' : 'text-zinc-500'}`} />
-          <span className="text-[11px] truncate max-w-[140px]">
-            {midiConnected ? midiDeviceName || 'MIDI In Active' : 'MIDI In: None'}
+          <span className="text-[11px] truncate max-w-[130px]">
+            {midiConnected ? midiDeviceName || 'MIDI In' : 'MIDI In: None'}
           </span>
+        </div>
+
+        {/* PWA Offline / Online Status Badge */}
+        <div 
+          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-mono border transition-all ${
+            !pwaStatus.isOnline
+              ? 'bg-amber-950/70 text-amber-300 border-amber-600/80 shadow-sm animate-pulse'
+              : 'bg-zinc-800/70 text-emerald-400 border-zinc-700'
+          }`}
+          title={
+            !pwaStatus.isOnline
+              ? 'Offline Mode Active: All sound synthesis, .STY accompaniment styles, and audio engines run locally without network connection.'
+              : 'PWA Ready: Arranger Workstation is cached and fully capable of running offline.'
+          }
+        >
+          {!pwaStatus.isOnline ? (
+            <>
+              <WifiOff className="w-3.5 h-3.5 text-amber-400" />
+              <span className="text-[10px] font-bold uppercase tracking-wider">OFFLINE • SYNTH READY</span>
+            </>
+          ) : (
+            <>
+              <Wifi className="w-3.5 h-3.5 text-emerald-400" />
+              <span className="text-[10px] font-bold text-zinc-300 tracking-wider">OFFLINE READY</span>
+            </>
+          )}
         </div>
       </div>
 
       {/* Top Action Buttons */}
       <div className="flex items-center gap-2 flex-wrap">
-        {/* Style Browser / .STY Upload */}
+        {/* PWA Install App Button (Visible when installable) */}
+        {pwaStatus.canInstall && (
+          <button
+            id="btn-install-pwa"
+            onClick={handleInstallClick}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs shadow-md shadow-purple-900/40 border border-purple-400/40 transition-all active:scale-95 animate-pulse"
+            title="Install Arranger Workstation to your home screen / desktop for standalone offline access"
+          >
+            <DownloadCloud className="w-3.5 h-3.5" />
+            <span>Install App</span>
+          </button>
+        )}
+
+        {installSuccess && (
+          <div className="flex items-center gap-1 text-xs text-emerald-400 bg-emerald-950/80 border border-emerald-700 px-2 py-1 rounded-lg animate-fade-in">
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+            <span>App Installed!</span>
+          </div>
+        )}
+
+        {/* Style Browser / .STY & .ZIP Upload */}
         <button
           id="btn-open-styles"
           onClick={onOpenStyleBrowser}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-amber-300 border border-amber-500/30 font-medium text-xs shadow transition-colors active:scale-95"
         >
           <Upload className="w-3.5 h-3.5 text-amber-400" />
-          <span>Styles &amp; .STY Load</span>
+          <span>Styles &amp; .STY / .ZIP</span>
         </button>
 
         {/* Chord Sequencer */}

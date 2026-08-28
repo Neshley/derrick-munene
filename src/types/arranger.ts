@@ -61,7 +61,7 @@ export interface StyleSectionData {
 export interface ArrangerStyle {
   id: string;
   name: string;
-  category: 'Pop' | 'Rock' | 'Dance' | 'Jazz & Swing' | 'Latin & Ballroom' | 'Ballad & Movie' | 'World' | 'Custom';
+  category: 'Worship & Praise' | 'Pop' | 'Rock' | 'Dance' | 'Jazz & Swing' | 'Latin & Ballroom' | 'Ballad & Movie' | 'World' | 'Custom';
   tempo: number;
   timeSignature: [number, number];
   description: string;

@@ -16,6 +16,28 @@ export interface ProgressionPreset {
 
 export const CHORD_PRESETS: ProgressionPreset[] = [
   {
+    id: 'worship_anthems',
+    name: 'Modern Worship Anthem (Am - F - C - G)',
+    category: 'Worship & Praise',
+    chords: [
+      { root: 'A', type: 'min', durationMeasures: 1 },
+      { root: 'F', type: 'maj', durationMeasures: 1 },
+      { root: 'C', type: 'maj', durationMeasures: 1 },
+      { root: 'G', type: 'maj', durationMeasures: 1 },
+    ],
+  },
+  {
+    id: 'worship_bridge_lift',
+    name: 'Worship Bridge Lift (F - C - G - Am)',
+    category: 'Worship & Praise',
+    chords: [
+      { root: 'F', type: 'maj', durationMeasures: 1 },
+      { root: 'C', type: 'maj', durationMeasures: 1 },
+      { root: 'G', type: 'maj', durationMeasures: 1 },
+      { root: 'A', type: 'min', durationMeasures: 1 },
+    ],
+  },
+  {
     id: 'pop_4chord',
     name: 'Famous Pop 4-Chords (C - G - Am - F)',
     category: 'Pop & Rock',

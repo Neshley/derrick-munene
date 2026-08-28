@@ -12,6 +12,12 @@ export class AudioEngine {
   private mediaRecorder: MediaRecorder | null = null;
   private recordedChunks: Blob[] = [];
 
+  // 3-Band Master Equalizer
+  private eqLow: BiquadFilterNode | null = null;
+  private eqMid: BiquadFilterNode | null = null;
+  private eqHigh: BiquadFilterNode | null = null;
+  private eqSettings: { low: number; mid: number; high: number } = { low: 0, mid: 0, high: 0 };
+
   private activeNotes: Map<string, { stop: (time?: number) => void }> = new Map();
 
   // Volume channels for 8 style accompaniment tracks + voices
@@ -62,7 +68,33 @@ export class AudioEngine {
       this.reverbNode.connect(this.reverbGain);
       this.reverbGain.connect(this.compressor);
     }
-    this.compressor.connect(this.masterGain);
+
+    // 3-Band Master Equalizer Nodes
+    // Low band: Low-shelf filter at 100 Hz
+    this.eqLow = this.ctx.createBiquadFilter();
+    this.eqLow.type = 'lowshelf';
+    this.eqLow.frequency.value = 100;
+    this.eqLow.gain.value = this.eqSettings.low;
+
+    // Mid band: Peaking filter at 1200 Hz with Q=1.0
+    this.eqMid = this.ctx.createBiquadFilter();
+    this.eqMid.type = 'peaking';
+    this.eqMid.frequency.value = 1200;
+    this.eqMid.Q.value = 1.0;
+    this.eqMid.gain.value = this.eqSettings.mid;
+
+    // High band: High-shelf filter at 6500 Hz
+    this.eqHigh = this.ctx.createBiquadFilter();
+    this.eqHigh.type = 'highshelf';
+    this.eqHigh.frequency.value = 6500;
+    this.eqHigh.gain.value = this.eqSettings.high;
+
+    // Chain: compressor -> EQ Low -> EQ Mid -> EQ High -> masterGain -> analyser -> destination
+    this.compressor.connect(this.eqLow);
+    this.eqLow.connect(this.eqMid);
+    this.eqMid.connect(this.eqHigh);
+    this.eqHigh.connect(this.masterGain);
+
     this.masterGain.connect(this.analyser);
     this.analyser.connect(this.ctx.destination);
 
@@ -115,6 +147,32 @@ export class AudioEngine {
     this.masterGain.gain.setTargetAtTime(Math.max(0, Math.min(1.2, vol)), this.ctx.currentTime, 0.02);
   }
 
+  public setMasterEq(band: 'low' | 'mid' | 'high', gainDb: number) {
+    const clampedGain = Math.max(-12, Math.min(12, gainDb));
+    this.eqSettings[band] = clampedGain;
+
+    if (!this.ctx) return;
+
+    let node: BiquadFilterNode | null = null;
+    if (band === 'low') node = this.eqLow;
+    else if (band === 'mid') node = this.eqMid;
+    else if (band === 'high') node = this.eqHigh;
+
+    if (node) {
+      node.gain.setTargetAtTime(clampedGain, this.ctx.currentTime, 0.02);
+    }
+  }
+
+  public getMasterEq(): { low: number; mid: number; high: number } {
+    return { ...this.eqSettings };
+  }
+
+  public resetMasterEq() {
+    this.setMasterEq('low', 0);
+    this.setMasterEq('mid', 0);
+    this.setMasterEq('high', 0);
+  }
+
   public setTrackVolume(track: string, vol: number, muted: boolean = false) {
     if (!this.ctx) return;
     const gainNode = this.trackGains.get(track);
@@ -126,6 +184,7 @@ export class AudioEngine {
 
   // --- RECORDING CAPABILITIES ---
   public startRecording(): boolean {
+    this.init();
     if (!this.mediaDest) return false;
     try {
       this.recordedChunks = [];
@@ -908,7 +967,7 @@ export class AudioEngine {
 
     filter.type = 'lowpass';
     filter.frequency.setValueAtTime(3500, t);
-    filter.resonance?.setValueAtTime(4, t);
+    filter.Q.setValueAtTime(4, t);
 
     gain.gain.setValueAtTime(0.001, t);
     gain.gain.linearRampToValueAtTime(0.6 * vel, t + 0.01);

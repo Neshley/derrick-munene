@@ -23,6 +23,8 @@ export class StylePlayer {
   private currentSection: StyleSection = 'main_a';
   private nextQueuedSection: StyleSection | null = null;
   private isFilling: boolean = false;
+  private fillIntensityThreshold: number = 5; // 1 to 10 scale
+  private dynamicFillMode: boolean = false;
 
   private currentChord: DetectedChord = {
     root: 'C',
@@ -145,6 +147,64 @@ export class StylePlayer {
     this.autoFill = val;
   }
 
+  public getFillIntensityThreshold(): number {
+    return this.fillIntensityThreshold;
+  }
+
+  public setFillIntensityThreshold(val: number) {
+    this.fillIntensityThreshold = Math.max(1, Math.min(10, Math.round(val)));
+  }
+
+  public getDynamicFillMode(): boolean {
+    return this.dynamicFillMode;
+  }
+
+  public setDynamicFillMode(val: boolean) {
+    this.dynamicFillMode = val;
+  }
+
+  /**
+   * Calculates the live accompaniment track volume intensity on a 1.0 to 10.0 scale.
+   */
+  public getTrackVolumeIntensity(): number {
+    const trackKeys = Object.keys(this.trackSettings) as TrackType[];
+    const hasSolo = trackKeys.some(t => this.trackSettings[t]?.solo);
+
+    let activeTrackCount = 0;
+    let totalVolume = 0;
+
+    for (const key of trackKeys) {
+      const setting = this.trackSettings[key];
+      if (!setting) continue;
+      if (setting.muted) continue;
+      if (hasSolo && !setting.solo) continue;
+
+      // If Accompaniment is switched off, only drums are active
+      if (!this.acmpEnabled && key !== 'rhythm1' && key !== 'rhythm2') {
+        continue;
+      }
+
+      totalVolume += setting.volume;
+      activeTrackCount++;
+    }
+
+    if (activeTrackCount === 0) return 1.0;
+    const avgVolume = totalVolume / activeTrackCount; // 0-100
+    const intensity = Math.max(1.0, Math.min(10.0, Math.round((avgVolume / 10) * 10) / 10));
+    return intensity;
+  }
+
+  /**
+   * Evaluates current live track volume against the Fill Intensity threshold (1-10)
+   * to automatically decide between a subtle 'Break' or a full 'Fill D'.
+   */
+  public getDynamicFillDecision(): 'break' | 'fill_dd' {
+    const currentIntensity = this.getTrackVolumeIntensity();
+    // If current track volume intensity is below the threshold, trigger subtle 'Break'.
+    // If at or above threshold, trigger full 'Fill D'.
+    return currentIntensity < this.fillIntensityThreshold ? 'break' : 'fill_dd';
+  }
+
   public getAcmpEnabled(): boolean {
     return this.acmpEnabled;
   }
@@ -172,21 +232,60 @@ export class StylePlayer {
   }
 
   // --- SECTION SELECTION & TRANSITIONS ---
-  public triggerSection(targetSection: StyleSection) {
+  public async triggerSection(targetSection: StyleSection, autoStartIfStopped: boolean = true) {
+    audioEngine.init();
+    const ctx = audioEngine.getContext();
+    if (ctx && ctx.state === 'suspended') {
+      try {
+        await ctx.resume();
+      } catch (e) {
+        console.warn('AudioContext resume failed', e);
+      }
+    }
+
     if (!this.isPlaying) {
       this.currentSection = targetSection;
       this.notifySectionChanged(targetSection);
+      if (autoStartIfStopped) {
+        await this.start();
+      }
       return;
     }
 
-    // If currently playing and auto-fill is enabled
+    // If user clicks the currently active main variation while playing, trigger its fill-in! (Yamaha standard)
+    if (this.currentSection === targetSection && targetSection.startsWith('main_')) {
+      const fillMap: Record<string, StyleSection> = {
+        'main_a': 'fill_aa',
+        'main_b': 'fill_bb',
+        'main_c': 'fill_cc',
+        'main_d': 'fill_dd',
+      };
+      const fillKey = fillMap[targetSection];
+      if (fillKey && this.currentStyle.sections[fillKey]) {
+        this.isFilling = true;
+        this.currentSection = fillKey;
+        this.nextQueuedSection = targetSection;
+        this.notifySectionChanged(this.currentSection);
+        return;
+      }
+    }
+
+    // If currently playing and auto-fill is enabled and switching to a different main variation
     if (this.autoFill && targetSection.startsWith('main_') && targetSection !== this.currentSection) {
-      // Pick corresponding fill
-      let fillKey: StyleSection = 'fill_aa';
-      if (this.currentSection === 'main_a') fillKey = 'fill_aa';
-      else if (this.currentSection === 'main_b') fillKey = 'fill_bb';
-      else if (this.currentSection === 'main_c') fillKey = 'fill_cc';
-      else if (this.currentSection === 'main_d') fillKey = 'fill_dd';
+      let fillKey: StyleSection;
+      if (this.dynamicFillMode) {
+        const decision = this.getDynamicFillDecision();
+        fillKey = decision === 'break' && this.currentStyle.sections['break'] ? 'break' : 'fill_dd';
+        if (!this.currentStyle.sections[fillKey]) {
+          fillKey = this.currentStyle.sections['fill_dd'] ? 'fill_dd' : 'fill_aa';
+        }
+      } else {
+        // Pick corresponding fill for current section
+        if (this.currentSection === 'main_a') fillKey = 'fill_aa';
+        else if (this.currentSection === 'main_b') fillKey = 'fill_bb';
+        else if (this.currentSection === 'main_c') fillKey = 'fill_cc';
+        else fillKey = 'fill_dd';
+      }
 
       if (this.currentStyle.sections[fillKey]) {
         this.isFilling = true;
@@ -200,19 +299,108 @@ export class StylePlayer {
     this.nextQueuedSection = targetSection;
   }
 
-  public triggerBreak() {
+  public async triggerBreak() {
+    audioEngine.init();
+    const ctx = audioEngine.getContext();
+    if (ctx && ctx.state === 'suspended') {
+      try {
+        await ctx.resume();
+      } catch (e) {
+        console.warn('AudioContext resume failed', e);
+      }
+    }
+
+    if (!this.isPlaying) {
+      if (this.currentStyle.sections['break']) {
+        this.currentSection = 'break';
+        this.nextQueuedSection = 'main_a';
+        this.notifySectionChanged(this.currentSection);
+        await this.start();
+      } else {
+        await this.start();
+      }
+      return;
+    }
+
     if (this.currentStyle.sections['break']) {
       const returnSection = this.currentSection.startsWith('main_') ? this.currentSection : 'main_a';
+      this.isFilling = true;
       this.currentSection = 'break';
       this.nextQueuedSection = returnSection;
       this.notifySectionChanged(this.currentSection);
     }
   }
 
-  public start() {
+  /**
+   * Automatically triggers either subtle 'Break' or full 'Fill D'
+   * depending on whether current track volume intensity is below or above the Fill Intensity threshold.
+   */
+  public async triggerDynamicFill(): Promise<{ decision: 'break' | 'fill_dd'; targetSection: StyleSection; intensity: number }> {
+    audioEngine.init();
+    const ctx = audioEngine.getContext();
+    if (ctx && ctx.state === 'suspended') {
+      try {
+        await ctx.resume();
+      } catch (e) {
+        console.warn('AudioContext resume failed', e);
+      }
+    }
+
+    const intensity = this.getTrackVolumeIntensity();
+    const decision = this.getDynamicFillDecision();
+    const returnSection = this.currentSection.startsWith('main_') ? this.currentSection : 'main_a';
+
+    let targetSection: StyleSection;
+    if (decision === 'break') {
+      if (this.currentStyle.sections['break']) {
+        targetSection = 'break';
+      } else if (this.currentStyle.sections['fill_aa']) {
+        targetSection = 'fill_aa';
+      } else {
+        targetSection = returnSection;
+      }
+    } else {
+      if (this.currentStyle.sections['fill_dd']) {
+        targetSection = 'fill_dd';
+      } else if (this.currentStyle.sections['fill_cc']) {
+        targetSection = 'fill_cc';
+      } else if (this.currentStyle.sections['fill_bb']) {
+        targetSection = 'fill_bb';
+      } else if (this.currentStyle.sections['fill_aa']) {
+        targetSection = 'fill_aa';
+      } else {
+        targetSection = returnSection;
+      }
+    }
+
+    if (!this.isPlaying) {
+      this.currentSection = targetSection;
+      this.nextQueuedSection = returnSection;
+      this.notifySectionChanged(targetSection);
+      await this.start();
+      return { decision, targetSection, intensity };
+    }
+
+    this.isFilling = true;
+    this.currentSection = targetSection;
+    this.nextQueuedSection = returnSection;
+    this.notifySectionChanged(this.currentSection);
+
+    return { decision, targetSection, intensity };
+  }
+
+  public async start() {
     audioEngine.init();
     const ctx = audioEngine.getContext();
     if (!ctx) return;
+
+    if (ctx.state === 'suspended') {
+      try {
+        await ctx.resume();
+      } catch (e) {
+        console.warn('Failed to resume AudioContext', e);
+      }
+    }
 
     this.isPlaying = true;
     this.currentStep = 0;
@@ -246,6 +434,11 @@ export class StylePlayer {
 
     const secondsPer16th = 60 / this.tempo / 4;
 
+    // Resynchronize if backgrounded or lagged
+    if (this.nextStepTime < ctx.currentTime - 0.5) {
+      this.nextStepTime = ctx.currentTime + 0.02;
+    }
+
     while (this.nextStepTime < ctx.currentTime + this.scheduleAheadTime) {
       this.scheduleStep(this.currentStep, this.nextStepTime);
       this.nextStepTime += secondsPer16th;
@@ -256,10 +449,16 @@ export class StylePlayer {
   };
 
   private scheduleStep(step: number, time: number) {
-    const sectionData = this.currentStyle.sections[this.currentSection] || this.currentStyle.sections['main_a'];
+    let sectionData = this.currentStyle.sections[this.currentSection];
+    if (!sectionData) {
+      sectionData = this.currentStyle.sections['main_a'] 
+        || this.currentStyle.sections['main_b'] 
+        || Object.values(this.currentStyle.sections)[0];
+    }
     if (!sectionData) return;
 
-    const totalStepsInSection = sectionData.measures * 16;
+    const measures = sectionData.measures || 1;
+    const totalStepsInSection = Math.max(16, measures * 16);
     const stepInSection = step % totalStepsInSection;
     const measure = Math.floor(stepInSection / 16) + 1;
     const beat = Math.floor((stepInSection % 16) / 4) + 1;
@@ -278,7 +477,7 @@ export class StylePlayer {
       } else if (this.currentSection.startsWith('intro_')) {
         this.currentSection = 'main_a';
         this.notifySectionChanged(this.currentSection);
-      } else if (this.currentSection.startsWith('ending_') && measure >= sectionData.measures) {
+      } else if (this.currentSection.startsWith('ending_') && measure >= measures) {
         setTimeout(() => this.stop(), 500);
       }
     }

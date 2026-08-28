@@ -1,6 +1,7 @@
 {
   "name": "Arranger Keyboard Workstation",
-  "description": "A feature-rich interactive arranger workstation keyboard with .sty Yamaha style file playback, accompaniment engine, real-time chord detection, multi-track mixer, and sound synthesizers.",
+  "description": "A feature-rich interactive arranger workstation keyboard with .sty Yamaha style file playback, accompaniment engine, real-time chord detection, multi-track mixer, sound synthesizers, and full offline PWA capabilities.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }
+

@@ -1,4 +1,7 @@
 import { ArrangerStyle, NoteEvent, StyleSection, StyleSectionData, TrackType } from '../types/arranger';
+import { STYLE_INTENSE_WORSHIP } from './worshipStyle';
+
+export { STYLE_INTENSE_WORSHIP };
 
 // Helper to create 16th note pattern
 function createTrackPattern(
@@ -1517,6 +1520,7 @@ export const STYLE_ROCK_8BEAT: ArrangerStyle = {
 };
 
 export const FACTORY_STYLES: ArrangerStyle[] = [
+  STYLE_INTENSE_WORSHIP,
   STYLE_80S_SYNTH_POP,
   STYLE_DISCO_FUNK,
   STYLE_BOSSA_NOVA,
