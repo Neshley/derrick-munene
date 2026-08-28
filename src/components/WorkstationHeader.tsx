@@ -116,11 +116,11 @@ export const WorkstationHeader: React.FC<WorkstationHeaderProps> = ({
         {onOpenWorshipSongbook && (
           <button
             onClick={onOpenWorshipSongbook}
-            className="px-2.5 py-1 rounded-lg text-xs font-mono font-bold text-cyan-300 bg-cyan-950/40 hover:bg-cyan-900/60 border border-cyan-500/40 flex items-center gap-1.5 transition-all"
-            title="Browse Worship Chords, Songs &amp; 1-Click Arranger Presets"
+            className="px-2.5 py-1 rounded-lg text-xs font-mono font-bold text-cyan-300 bg-cyan-950/40 hover:bg-cyan-900/60 border border-cyan-500/40 flex items-center gap-1.5 transition-all cursor-pointer"
+            title="Browse, Add, Edit &amp; Delete Setbooks, Song Lists &amp; 1-Click Arranger Presets"
           >
             <Music className="w-3.5 h-3.5 text-cyan-400" />
-            <span>Songbook</span>
+            <span>Setbook</span>
           </button>
         )}
 

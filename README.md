@@ -36,9 +36,21 @@ A feature-packed, professional interactive arranger workstation keyboard built w
 - **DSP Rack**: Master Reverb (Room, Hall, Cathedral, Plate), Stereo Delay with feedback control, Multi-Voice Chorus, and Master 3-Band Parametric EQ.
 - **10-Track Console**: Independent volume faders, mute, solo, and stereo pan controls for every accompaniment part and keyboard voice.
 
-### 7. 📖 Worship & Gospel Songbook
-- **Curated Repertoire**: Pre-loaded with contemporary worship and African gospel classics (*Way Maker*, *Excess Love*, *Goodness of God*, *Agidigba*, *Holy Forever*, and more).
-- **1-Click Arranger Setup**: Auto-selects appropriate style, tempo, starting section, and initial harmony.
+### 7. 📖 Worship & Gospel Setbooks & Songbook Studio
+- **Full Setbook / Setlist Management**:
+  - **Create & Add Setbooks**: Organize songs into curated service setlists (e.g. *Sunday Morning Service*, *African Praise Night*, *Communion Set*) with custom themes, dates, and flow notes.
+  - **Edit & Reorder Setbooks**: Easily drag or use up/down controls to arrange the service song order and sequence.
+  - **Delete Setbooks**: Safely manage and remove old setlists.
+- **Custom Song Creator & Editor**:
+  - **+ Add New Songs**: Custom chord progressions, key selector, BPM, time signatures, category tags, lyrics, and arranger style mapping.
+  - **Edit Any Song**: Full editing capabilities for chords, sections (Verse, Chorus, Bridge, Vamp), and band performance cues.
+  - **Delete Songs**: Delete custom songs with confirmation prompts.
+  - **Local Persistence & JSON Backup**: All songs and setlists automatically save to browser storage; export and import JSON for band backups.
+- **Live Performance & Transposer Engine**:
+  - **Real-Time Key Transposition**: On-the-fly transposition (+/- semitones) with dynamic chord progression roadmap re-calculation.
+  - **Interactive Section Triggers**: Direct 1-click jumps to arranger sections (Verse -> Main A, Chorus -> Main B, Bridge -> Main C).
+  - **1-Click Arranger Setup**: Auto-selects appropriate style, tempo, starting section, and initial harmony in the transposed key.
+  - **Live Setbook Stepper**: Navigate sequentially through songs during live services with Previous and Next controls.
 
 ### 8. 🔴 Master Audio Recording & MIDI CC Automation Studio
 - **Lossless Audio Capture**: Record complete workstation sessions directly to high-fidelity `.wav` or `.webm` audio files with accompaniment and vocals.

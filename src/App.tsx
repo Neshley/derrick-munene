@@ -727,6 +727,7 @@ export default function App() {
         onClose={() => setIsSongbookModalOpen(false)}
         onSelectStyle={handleSelectStyle}
         onSelectTempo={(bpm) => stylePlayer.setTempo(bpm)}
+        customStyles={customStyles}
       />
 
       {/* Master Audio & Session Recorder Modal */}

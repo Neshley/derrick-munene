@@ -661,10 +661,11 @@ export const WorkstationSidebar: React.FC<WorkstationSidebarProps> = ({
                       {onOpenWorshipSongbook && (
                         <button
                           onClick={onOpenWorshipSongbook}
-                          className="p-2 rounded-lg bg-cyan-950/40 hover:bg-cyan-900/60 border border-cyan-500/40 text-cyan-300 text-xs font-bold font-mono text-left flex items-center gap-1.5 transition-all"
+                          className="p-2 rounded-lg bg-cyan-950/40 hover:bg-cyan-900/60 border border-cyan-500/40 text-cyan-300 text-xs font-bold font-mono text-left flex items-center gap-1.5 transition-all cursor-pointer"
+                          title="Manage Setbooks & Worship Songs"
                         >
                           <BookOpen className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
-                          <span className="truncate">Songbook</span>
+                          <span className="truncate">Setbook</span>
                         </button>
                       )}
                       {onOpenEffectsRack && (
