@@ -14,7 +14,6 @@ import { MidiNoteOnEvent, MidiNoteOffEvent } from './midi/midiTypes';
 import { WorkstationHeader } from './components/WorkstationHeader';
 import { MainLcdDisplay } from './components/MainLcdDisplay';
 import { ArrangerControls } from './components/ArrangerControls';
-import { MidiPanel } from './components/MidiPanel';
 import { InteractiveKeyboard } from './components/InteractiveKeyboard';
 import { MixerSection } from './components/MixerSection';
 import { MultiPadsSection } from './components/MultiPadsSection';
@@ -432,6 +431,8 @@ export default function App() {
         onOpenWorshipSongbook={() => setIsSongbookModalOpen(true)}
         onOpenAudioRecording={() => setIsAudioRecordModalOpen(true)}
         onOpenMidiAutomation={() => setIsMidiAutomationOpen(true)}
+        splitPoint={splitPoint}
+        onSplitPointChange={(newSplit) => setSplitPoint(newSplit)}
       />
 
       {/* Main Console + Fixed Sidebar Body */}
@@ -576,19 +577,6 @@ export default function App() {
                 <MultiPadsSection />
               </div>
             </div>
-
-            {/* Professional Hardware MIDI Interface & Telemetry Panel */}
-            <MidiPanel
-              splitPoint={splitPoint}
-              onSplitPointChange={(newSplit) => setSplitPoint(newSplit)}
-              r1Voice={r1Voice}
-              r2Voice={r2Voice}
-              lVoice={lVoice}
-              r2Enabled={r2Enabled}
-              lEnabled={lEnabled}
-              acmpEnabled={acmpEnabled}
-              onOpenMidiAutomation={() => setIsMidiAutomationOpen(true)}
-            />
 
             {/* Interactive Piano Keyboard with Split Zones */}
             <InteractiveKeyboard

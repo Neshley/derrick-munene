@@ -13,9 +13,11 @@ import {
   Sliders,
   Mic,
   Music,
-  Circle
+  Circle,
+  Cpu
 } from 'lucide-react';
 import { subscribePwaStatus, PwaStatus } from '../pwaRegister';
+import { HardwareMidiDropdown } from './HardwareMidiDropdown';
 
 interface WorkstationHeaderProps {
   midiConnected: boolean;
@@ -30,6 +32,8 @@ interface WorkstationHeaderProps {
   onOpenWorshipSongbook?: () => void;
   onOpenAudioRecording?: () => void;
   onOpenMidiAutomation?: () => void;
+  splitPoint?: number;
+  onSplitPointChange?: (note: number) => void;
 }
 
 export const WorkstationHeader: React.FC<WorkstationHeaderProps> = ({
@@ -45,6 +49,8 @@ export const WorkstationHeader: React.FC<WorkstationHeaderProps> = ({
   onOpenWorshipSongbook,
   onOpenAudioRecording,
   onOpenMidiAutomation,
+  splitPoint = 54,
+  onSplitPointChange,
 }) => {
   const [pwaStatus, setPwaStatus] = useState<PwaStatus>({
     isInstalled: false,
@@ -171,6 +177,14 @@ export const WorkstationHeader: React.FC<WorkstationHeaderProps> = ({
 
       {/* Right Action & Status Indicators */}
       <div className="flex items-center gap-2">
+        {/* Hardware MIDI Interface Dropdown */}
+        <HardwareMidiDropdown
+          onOpenMidiAutomation={onOpenMidiAutomation}
+          splitPoint={splitPoint}
+          onSplitPointChange={onSplitPointChange}
+          variant="header"
+        />
+
         {/* Creator Message & Support Coffee Button */}
         {onOpenCreatorMessage && (
           <button
