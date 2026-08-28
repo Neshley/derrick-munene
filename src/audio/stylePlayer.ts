@@ -1,0 +1,351 @@
+import { ArrangerStyle, DetectedChord, NoteEvent, StyleSection, TrackType } from '../types/arranger';
+import { audioEngine } from './audioEngine';
+import { FACTORY_STYLES } from './builtInStyles';
+import { ChordEngine } from './chordEngine';
+
+export interface StylePlayerListener {
+  onBeat?: (measure: number, beat: number, stepInMeasure: number) => void;
+  onSectionChanged?: (section: StyleSection) => void;
+  onChordChanged?: (chord: DetectedChord) => void;
+  onPlaybackStateChanged?: (isPlaying: boolean) => void;
+  onTempoChanged?: (bpm: number) => void;
+}
+
+export class StylePlayer {
+  private currentStyle: ArrangerStyle = FACTORY_STYLES[0];
+  private tempo: number = 120;
+  private isPlaying: boolean = false;
+  private syncStart: boolean = false;
+  private syncStop: boolean = false;
+  private autoFill: boolean = true;
+  private acmpEnabled: boolean = true;
+
+  private currentSection: StyleSection = 'main_a';
+  private nextQueuedSection: StyleSection | null = null;
+  private isFilling: boolean = false;
+
+  private currentChord: DetectedChord = {
+    root: 'C',
+    rootIndex: 0,
+    type: 'maj',
+    displayName: 'C',
+    notes: [48, 52, 55],
+    source: 'manual',
+  };
+
+  // Timing & scheduling loop
+  private timerId: number | null = null;
+  private nextStepTime: number = 0;
+  private currentStep: number = 0; // absolute 16th steps elapsed
+  private lookaheadMs: number = 25;
+  private scheduleAheadTime: number = 0.1; // 100ms lookahead in Web Audio
+
+  private listeners: Set<StylePlayerListener> = new Set();
+  private tapTempoTimes: number[] = [];
+
+  // Track settings (volume 0-100, mute, solo)
+  public trackSettings: Record<TrackType, { volume: number; muted: boolean; solo: boolean }> = {
+    rhythm1: { volume: 85, muted: false, solo: false },
+    rhythm2: { volume: 75, muted: false, solo: false },
+    bass: { volume: 88, muted: false, solo: false },
+    chord1: { volume: 78, muted: false, solo: false },
+    chord2: { volume: 72, muted: false, solo: false },
+    pad: { volume: 70, muted: false, solo: false },
+    phrase1: { volume: 80, muted: false, solo: false },
+    phrase2: { volume: 75, muted: false, solo: false },
+  };
+
+  constructor() {
+    this.tempo = this.currentStyle.tempo;
+  }
+
+  public addListener(l: StylePlayerListener) {
+    this.listeners.add(l);
+  }
+
+  public removeListener(l: StylePlayerListener) {
+    this.listeners.delete(l);
+  }
+
+  public getStyle(): ArrangerStyle {
+    return this.currentStyle;
+  }
+
+  public setStyle(style: ArrangerStyle) {
+    const wasPlaying = this.isPlaying;
+    if (wasPlaying) this.stop();
+    this.currentStyle = style;
+    this.setTempo(style.tempo);
+
+    // Reset to Main A if available, else first available section
+    if (style.sections['main_a']) {
+      this.currentSection = 'main_a';
+    } else {
+      const keys = Object.keys(style.sections) as StyleSection[];
+      if (keys.length > 0) this.currentSection = keys[0];
+    }
+
+    this.notifySectionChanged(this.currentSection);
+    if (wasPlaying) this.start();
+  }
+
+  public getTempo(): number {
+    return this.tempo;
+  }
+
+  public setTempo(bpm: number) {
+    this.tempo = Math.max(40, Math.min(260, Math.round(bpm)));
+    this.listeners.forEach(l => l.onTempoChanged?.(this.tempo));
+  }
+
+  public tapTempo() {
+    const now = Date.now();
+    this.tapTempoTimes.push(now);
+    if (this.tapTempoTimes.length > 4) {
+      this.tapTempoTimes.shift();
+    }
+    if (this.tapTempoTimes.length >= 2) {
+      let totalDiff = 0;
+      for (let i = 1; i < this.tapTempoTimes.length; i++) {
+        totalDiff += this.tapTempoTimes[i] - this.tapTempoTimes[i - 1];
+      }
+      const avgInterval = totalDiff / (this.tapTempoTimes.length - 1);
+      const calculatedBpm = Math.round(60000 / avgInterval);
+      if (calculatedBpm >= 40 && calculatedBpm <= 260) {
+        this.setTempo(calculatedBpm);
+      }
+    }
+  }
+
+  public getIsPlaying(): boolean {
+    return this.isPlaying;
+  }
+
+  public getSyncStart(): boolean {
+    return this.syncStart;
+  }
+
+  public setSyncStart(val: boolean) {
+    this.syncStart = val;
+  }
+
+  public getSyncStop(): boolean {
+    return this.syncStop;
+  }
+
+  public setSyncStop(val: boolean) {
+    this.syncStop = val;
+  }
+
+  public getAutoFill(): boolean {
+    return this.autoFill;
+  }
+
+  public setAutoFill(val: boolean) {
+    this.autoFill = val;
+  }
+
+  public getAcmpEnabled(): boolean {
+    return this.acmpEnabled;
+  }
+
+  public setAcmpEnabled(val: boolean) {
+    this.acmpEnabled = val;
+  }
+
+  public getCurrentSection(): StyleSection {
+    return this.currentSection;
+  }
+
+  public getCurrentChord(): DetectedChord {
+    return this.currentChord;
+  }
+
+  public setChord(chord: DetectedChord) {
+    this.currentChord = chord;
+    this.listeners.forEach(l => l.onChordChanged?.(this.currentChord));
+
+    // If sync start is enabled and stopped, start immediately
+    if (!this.isPlaying && this.syncStart) {
+      this.start();
+    }
+  }
+
+  // --- SECTION SELECTION & TRANSITIONS ---
+  public triggerSection(targetSection: StyleSection) {
+    if (!this.isPlaying) {
+      this.currentSection = targetSection;
+      this.notifySectionChanged(targetSection);
+      return;
+    }
+
+    // If currently playing and auto-fill is enabled
+    if (this.autoFill && targetSection.startsWith('main_') && targetSection !== this.currentSection) {
+      // Pick corresponding fill
+      let fillKey: StyleSection = 'fill_aa';
+      if (this.currentSection === 'main_a') fillKey = 'fill_aa';
+      else if (this.currentSection === 'main_b') fillKey = 'fill_bb';
+      else if (this.currentSection === 'main_c') fillKey = 'fill_cc';
+      else if (this.currentSection === 'main_d') fillKey = 'fill_dd';
+
+      if (this.currentStyle.sections[fillKey]) {
+        this.isFilling = true;
+        this.currentSection = fillKey;
+        this.nextQueuedSection = targetSection;
+        this.notifySectionChanged(this.currentSection);
+        return;
+      }
+    }
+
+    this.nextQueuedSection = targetSection;
+  }
+
+  public triggerBreak() {
+    if (this.currentStyle.sections['break']) {
+      const returnSection = this.currentSection.startsWith('main_') ? this.currentSection : 'main_a';
+      this.currentSection = 'break';
+      this.nextQueuedSection = returnSection;
+      this.notifySectionChanged(this.currentSection);
+    }
+  }
+
+  public start() {
+    audioEngine.init();
+    const ctx = audioEngine.getContext();
+    if (!ctx) return;
+
+    this.isPlaying = true;
+    this.currentStep = 0;
+    this.nextStepTime = ctx.currentTime + 0.05;
+
+    this.listeners.forEach(l => l.onPlaybackStateChanged?.(true));
+
+    this.schedulerLoop();
+  }
+
+  public stop() {
+    this.isPlaying = false;
+    if (this.timerId !== null) {
+      clearTimeout(this.timerId);
+      this.timerId = null;
+    }
+    audioEngine.stopAllNotes();
+    this.listeners.forEach(l => l.onPlaybackStateChanged?.(false));
+  }
+
+  public togglePlay() {
+    if (this.isPlaying) this.stop();
+    else this.start();
+  }
+
+  // Lookahead audio sequencer
+  private schedulerLoop = () => {
+    if (!this.isPlaying) return;
+    const ctx = audioEngine.getContext();
+    if (!ctx) return;
+
+    const secondsPer16th = 60 / this.tempo / 4;
+
+    while (this.nextStepTime < ctx.currentTime + this.scheduleAheadTime) {
+      this.scheduleStep(this.currentStep, this.nextStepTime);
+      this.nextStepTime += secondsPer16th;
+      this.currentStep++;
+    }
+
+    this.timerId = window.setTimeout(this.schedulerLoop, this.lookaheadMs);
+  };
+
+  private scheduleStep(step: number, time: number) {
+    const sectionData = this.currentStyle.sections[this.currentSection] || this.currentStyle.sections['main_a'];
+    if (!sectionData) return;
+
+    const totalStepsInSection = sectionData.measures * 16;
+    const stepInSection = step % totalStepsInSection;
+    const measure = Math.floor(stepInSection / 16) + 1;
+    const beat = Math.floor((stepInSection % 16) / 4) + 1;
+    const stepInMeasure = stepInSection % 16;
+
+    // Notify listeners for LCD UI beat flash
+    this.notifyBeat(measure, beat, stepInMeasure);
+
+    // Check for section completion / queued transitions
+    if (stepInMeasure === 15) {
+      if (this.nextQueuedSection) {
+        this.currentSection = this.nextQueuedSection;
+        this.nextQueuedSection = null;
+        this.isFilling = false;
+        this.notifySectionChanged(this.currentSection);
+      } else if (this.currentSection.startsWith('intro_')) {
+        this.currentSection = 'main_a';
+        this.notifySectionChanged(this.currentSection);
+      } else if (this.currentSection.startsWith('ending_') && measure >= sectionData.measures) {
+        setTimeout(() => this.stop(), 500);
+      }
+    }
+
+    // Schedule each of the 8 accompaniment tracks
+    const trackKeys = Object.keys(sectionData.tracks) as TrackType[];
+    const hasSolo = trackKeys.some(t => this.trackSettings[t]?.solo);
+
+    trackKeys.forEach(trackKey => {
+      const trackData = sectionData.tracks[trackKey];
+      const setting = this.trackSettings[trackKey];
+
+      if (!trackData) return;
+      if (setting?.muted) return;
+      if (hasSolo && !setting?.solo) return;
+
+      // If Accompaniment is switched OFF, skip melodic/harmonic tracks and only play rhythm
+      if (!this.acmpEnabled && trackKey !== 'rhythm1' && trackKey !== 'rhythm2') {
+        return;
+      }
+
+      // Find notes starting at this 16th step
+      const notes = trackData.notes.filter(n => n.step === stepInSection);
+      notes.forEach(noteEvent => {
+        this.playTrackNote(trackKey, trackData.voiceId, noteEvent, time);
+      });
+    });
+  }
+
+  private playTrackNote(trackKey: TrackType, voiceId: string, noteEvent: NoteEvent, audioTime: number) {
+    const ctx = audioEngine.getContext();
+    if (!ctx) return;
+
+    const timeOffset = Math.max(0, audioTime - ctx.currentTime);
+    const durationSec = (noteEvent.duration * (60 / this.tempo / 4)) * 0.92;
+
+    // Rhythm 1 & Rhythm 2 (Drums)
+    if (trackKey === 'rhythm1' || trackKey === 'rhythm2') {
+      audioEngine.playDrum(noteEvent.note, noteEvent.velocity, trackKey, timeOffset);
+      return;
+    }
+
+    // Melodic / Harmony Tracks: apply real-time Chord Transposition!
+    const transposedNote = ChordEngine.transposeNoteForChord(
+      noteEvent.note,
+      this.currentChord,
+      60, // C4 root reference
+      trackKey === 'bass'
+    );
+
+    audioEngine.playNote(
+      transposedNote,
+      noteEvent.velocity,
+      voiceId,
+      trackKey,
+      durationSec,
+      timeOffset
+    );
+  }
+
+  private notifyBeat(measure: number, beat: number, step: number) {
+    this.listeners.forEach(l => l.onBeat?.(measure, beat, step));
+  }
+
+  private notifySectionChanged(sec: StyleSection) {
+    this.listeners.forEach(l => l.onSectionChanged?.(sec));
+  }
+}
+
+export const stylePlayer = new StylePlayer();
