@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Sparkles, Moon, Volume2, Flame, Heart, Play, Square, Clock, BookOpen, X, RefreshCw } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Sparkles, Moon, Volume2, Flame, Heart, Play, Square, Clock, BookOpen, X, RefreshCw, Plus, Upload, Trash2, Check, Music } from 'lucide-react';
 import { audioEngine } from '../audio/audioEngine';
 import { PrayerAtmospherePreset } from '../types/arranger';
 
@@ -14,9 +14,11 @@ interface WorshipPrayerItem {
   rootKey: string;
   description: string;
   scriptureTheme: string;
+  isCustom?: boolean;
+  audioUrl?: string;
 }
 
-const PRAYER_PRESETS: WorshipPrayerItem[] = [
+const DEFAULT_PRAYER_PRESETS: WorshipPrayerItem[] = [
   {
     id: 'deep_intimacy',
     name: 'Deep Intimacy',
@@ -66,10 +68,36 @@ const KEYS = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 export const PrayerAtmosphereModal: React.FC<PrayerAtmosphereModalProps> = ({ isOpen, onClose }) => {
   const [selectedKey, setSelectedKey] = useState<string>('C');
   const [isActive, setIsActive] = useState<boolean>(false);
-  const [activePreset, setActivePreset] = useState<WorshipPrayerItem>(PRAYER_PRESETS[0]);
+  const [presets, setPresets] = useState<WorshipPrayerItem[]>(DEFAULT_PRAYER_PRESETS);
+  const [activePreset, setActivePreset] = useState<WorshipPrayerItem>(DEFAULT_PRAYER_PRESETS[0]);
   const [timerSeconds, setTimerSeconds] = useState<number>(0);
   const [isTimerRunning, setIsTimerRunning] = useState<boolean>(false);
   const [selectedDurationMinutes, setSelectedDurationMinutes] = useState<number>(15);
+  
+  // Custom Pad creator state
+  const [isAddingPad, setIsAddingPad] = useState<boolean>(false);
+  const [newPadName, setNewPadName] = useState<string>('');
+  const [newPadKey, setNewPadKey] = useState<string>('C');
+  const [newPadDescription, setNewPadDescription] = useState<string>('');
+  const [newPadScripture, setNewPadScripture] = useState<string>('');
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Load custom prayer presets from localStorage on mount
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('yamaha_custom_prayer_pads');
+      if (stored) {
+        const customPads: WorshipPrayerItem[] = JSON.parse(stored);
+        if (Array.isArray(customPads) && customPads.length > 0) {
+          setPresets([...DEFAULT_PRAYER_PRESETS, ...customPads]);
+        }
+      }
+    } catch {
+      // Ignore
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     const currentKey = audioEngine.getActiveDroneKey();
@@ -91,6 +119,11 @@ export const PrayerAtmosphereModal: React.FC<PrayerAtmosphereModalProps> = ({ is
   }, [isTimerRunning]);
 
   if (!isOpen) return null;
+
+  const showToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 3000);
+  };
 
   const handleStartAtmosphere = (keyToPlay: string = selectedKey) => {
     audioEngine.setReverbPreset('cathedral', 4.5, 50);
@@ -114,6 +147,126 @@ export const PrayerAtmosphereModal: React.FC<PrayerAtmosphereModalProps> = ({ is
     }
   };
 
+  const handleCreateCustomPad = () => {
+    if (!newPadName.trim()) {
+      showToast('Please enter a name for the pad.');
+      return;
+    }
+
+    const newPad: WorshipPrayerItem = {
+      id: `custom_pad_${Date.now()}`,
+      name: newPadName.trim(),
+      rootKey: newPadKey,
+      description: newPadDescription.trim() || 'Custom worship atmosphere pad',
+      scriptureTheme: newPadScripture.trim() || `Key of ${newPadKey} Prayer Atmosphere`,
+      isCustom: true,
+    };
+
+    const updatedPresets = [...presets, newPad];
+    setPresets(updatedPresets);
+
+    // Save custom pads to localStorage
+    try {
+      const customOnly = updatedPresets.filter((p) => p.isCustom);
+      localStorage.setItem('yamaha_custom_prayer_pads', JSON.stringify(customOnly));
+    } catch {
+      // Ignore
+    }
+
+    setActivePreset(newPad);
+    setSelectedKey(newPad.rootKey);
+    setIsAddingPad(false);
+    setNewPadName('');
+    setNewPadDescription('');
+    setNewPadScripture('');
+    showToast(`Added pad "${newPad.name}" in Key of ${newPad.rootKey}`);
+  };
+
+  // Import pad from audio/JSON file on device
+  const handleDeviceFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // If it's a JSON file (custom pad bundle or preset)
+    if (file.name.endsWith('.json')) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        try {
+          const data = JSON.parse(event.target?.result as string);
+          const importedItems: WorshipPrayerItem[] = Array.isArray(data) ? data : [data];
+          const validPads = importedItems.map((item, idx) => ({
+            id: item.id || `imported_pad_${Date.now()}_${idx}`,
+            name: item.name || file.name.replace('.json', ''),
+            rootKey: KEYS.includes(item.rootKey) ? item.rootKey : 'C',
+            description: item.description || 'Imported prayer pad atmosphere',
+            scriptureTheme: item.scriptureTheme || 'Custom imported atmosphere',
+            isCustom: true,
+          }));
+
+          const updated = [...presets, ...validPads];
+          setPresets(updated);
+          const customOnly = updated.filter((p) => p.isCustom);
+          localStorage.setItem('yamaha_custom_prayer_pads', JSON.stringify(customOnly));
+          showToast(`Imported ${validPads.length} pad preset(s) from device`);
+        } catch {
+          showToast('Could not parse JSON preset file.');
+        }
+      };
+      reader.readAsText(file);
+    } else {
+      // If user uploaded an audio file (e.g. .mp3, .wav, .m4a) from their device
+      const fileNameClean = file.name.replace(/\.[^/.]+$/, '');
+      // Try to detect key from file name (e.g. "Pad_in_G.wav", "Warm Pad C.mp3")
+      let detectedKey = 'C';
+      for (const k of KEYS) {
+        const regex = new RegExp(`\\b${k}\\b`, 'i');
+        if (regex.test(fileNameClean)) {
+          detectedKey = k;
+          break;
+        }
+      }
+
+      const newPad: WorshipPrayerItem = {
+        id: `device_pad_${Date.now()}`,
+        name: fileNameClean,
+        rootKey: detectedKey,
+        description: `Imported from device (${file.name})`,
+        scriptureTheme: `Worship Pad Atmosphere (${file.name})`,
+        isCustom: true,
+      };
+
+      const updated = [...presets, newPad];
+      setPresets(updated);
+      const customOnly = updated.filter((p) => p.isCustom);
+      try {
+        localStorage.setItem('yamaha_custom_prayer_pads', JSON.stringify(customOnly));
+      } catch {
+        // Ignore
+      }
+      setActivePreset(newPad);
+      setSelectedKey(detectedKey);
+      showToast(`Added device pad "${fileNameClean}" (Key of ${detectedKey})`);
+    }
+
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
+  const handleDeleteCustomPad = (padId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const updated = presets.filter((p) => p.id !== padId);
+    setPresets(updated);
+    try {
+      const customOnly = updated.filter((p) => p.isCustom);
+      localStorage.setItem('yamaha_custom_prayer_pads', JSON.stringify(customOnly));
+    } catch {
+      // Ignore
+    }
+    if (activePreset.id === padId) {
+      setActivePreset(DEFAULT_PRAYER_PRESETS[0]);
+    }
+    showToast('Custom pad removed.');
+  };
+
   const formatTimer = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -122,7 +275,7 @@ export const PrayerAtmosphereModal: React.FC<PrayerAtmosphereModalProps> = ({ is
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fadeIn">
-      <div className="bg-zinc-950 border border-amber-500/30 rounded-2xl max-w-2xl w-full shadow-[0_0_50px_rgba(245,158,11,0.15)] flex flex-col max-h-[90vh] overflow-hidden">
+      <div className="bg-zinc-950 border border-amber-500/30 rounded-2xl max-w-3xl w-full shadow-[0_0_50px_rgba(245,158,11,0.15)] flex flex-col max-h-[90vh] overflow-hidden">
         {/* Header */}
         <div className="p-4 sm:p-5 border-b border-zinc-800/80 bg-gradient-to-r from-zinc-900 via-amber-950/20 to-zinc-900 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -143,14 +296,22 @@ export const PrayerAtmosphereModal: React.FC<PrayerAtmosphereModalProps> = ({ is
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 text-zinc-400 hover:text-white rounded-lg hover:bg-zinc-800 transition-colors"
+            className="p-1.5 text-zinc-400 hover:text-white rounded-lg hover:bg-zinc-800 transition-colors cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Content Area */}
-        <div className="p-4 sm:p-6 overflow-y-auto space-y-6">
+        <div className="p-4 sm:p-6 overflow-y-auto space-y-6 custom-scrollbar">
+          {/* Toast Alert */}
+          {toastMessage && (
+            <div className="p-3 bg-amber-500/20 border border-amber-500/40 text-amber-300 rounded-xl text-xs font-mono flex items-center gap-2 animate-in fade-in">
+              <Check className="w-4 h-4 shrink-0 text-amber-400" />
+              <span>{toastMessage}</span>
+            </div>
+          )}
+
           {/* Main Play / Key Selector Panel */}
           <div className="bg-zinc-900/90 rounded-xl p-4 sm:p-5 border border-zinc-800 flex flex-col gap-4">
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
@@ -171,7 +332,7 @@ export const PrayerAtmosphereModal: React.FC<PrayerAtmosphereModalProps> = ({ is
                 {isActive ? (
                   <button
                     onClick={handleStopAtmosphere}
-                    className="flex-1 sm:flex-none px-6 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-lg shadow-rose-600/30 active:scale-95 transition-all"
+                    className="flex-1 sm:flex-none px-6 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-lg shadow-rose-600/30 active:scale-95 transition-all cursor-pointer"
                   >
                     <Square className="w-4 h-4 fill-current" />
                     Fade Out Pad
@@ -179,7 +340,7 @@ export const PrayerAtmosphereModal: React.FC<PrayerAtmosphereModalProps> = ({ is
                 ) : (
                   <button
                     onClick={() => handleStartAtmosphere(selectedKey)}
-                    className="flex-1 sm:flex-none px-6 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-zinc-950 font-bold text-sm flex items-center justify-center gap-2 shadow-lg shadow-amber-500/30 active:scale-95 transition-all"
+                    className="flex-1 sm:flex-none px-6 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-zinc-950 font-bold text-sm flex items-center justify-center gap-2 shadow-lg shadow-amber-500/30 active:scale-95 transition-all cursor-pointer"
                   >
                     <Play className="w-4 h-4 fill-current" />
                     Start Atmosphere
@@ -199,7 +360,7 @@ export const PrayerAtmosphereModal: React.FC<PrayerAtmosphereModalProps> = ({ is
                       setSelectedKey(k);
                       if (isActive) handleStartAtmosphere(k);
                     }}
-                    className={`py-2 rounded-lg font-mono text-xs font-bold transition-all border ${
+                    className={`py-2 rounded-lg font-mono text-xs font-bold transition-all border cursor-pointer ${
                       isSelected
                         ? 'bg-amber-400 text-zinc-950 border-amber-300 shadow-md scale-105 font-black'
                         : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border-zinc-700'
@@ -212,39 +373,174 @@ export const PrayerAtmosphereModal: React.FC<PrayerAtmosphereModalProps> = ({ is
             </div>
           </div>
 
-          {/* Preset Selector */}
+          {/* Preset Selector & Device Add Pad Controls */}
           <div>
-            <div className="flex items-center justify-between mb-2.5">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-2.5">
               <span className="text-xs font-bold uppercase tracking-wider text-zinc-400 flex items-center gap-1.5">
                 <Moon className="w-3.5 h-3.5 text-amber-400" />
-                WORSHIP &amp; PRAYER PRESETS
+                WORSHIP &amp; PRAYER PRESETS ({presets.length})
               </span>
+
+              {/* Action Buttons: Add Pad from Device & Create Custom Pad */}
+              <div className="flex items-center gap-2">
+                {/* Add from Device file input */}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".json,.mp3,.wav,.ogg,.m4a,.aac"
+                  onChange={handleDeviceFileUpload}
+                  className="hidden"
+                  id="device-pad-upload-input"
+                />
+                <button
+                  id="btn-add-pad-from-device"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="px-3 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs cursor-pointer active:scale-95"
+                  title="Import prayer pad files from your device (.mp3, .wav, or .json preset)"
+                >
+                  <Upload className="w-3.5 h-3.5" />
+                  <span>Add from Device</span>
+                </button>
+
+                {/* Create Custom Pad Button */}
+                <button
+                  id="btn-create-custom-pad"
+                  onClick={() => setIsAddingPad(!isAddingPad)}
+                  className="px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer active:scale-95"
+                >
+                  <Plus className="w-3.5 h-3.5 text-amber-400" />
+                  <span>{isAddingPad ? 'Cancel' : 'New Pad Preset'}</span>
+                </button>
+              </div>
             </div>
+
+            {/* Custom Pad Creation Panel */}
+            {isAddingPad && (
+              <div className="p-4 mb-4 rounded-xl bg-zinc-900 border border-amber-500/40 space-y-3 animate-in fade-in">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-amber-300 flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5" />
+                    CREATE CUSTOM ATMOSPHERE PAD
+                  </span>
+                  <button
+                    onClick={() => setIsAddingPad(false)}
+                    className="text-zinc-500 hover:text-zinc-300"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="sm:col-span-2">
+                    <label className="text-[10px] font-mono uppercase text-zinc-400 block mb-1">Pad Name</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Heavenly Glory Shimmer"
+                      value={newPadName}
+                      onChange={(e) => setNewPadName(e.target.value)}
+                      className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-1.5 text-xs text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-amber-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] font-mono uppercase text-zinc-400 block mb-1">Root Key</label>
+                    <select
+                      value={newPadKey}
+                      onChange={(e) => setNewPadKey(e.target.value)}
+                      className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-1.5 text-xs text-amber-300 font-mono focus:outline-none focus:border-amber-500"
+                    >
+                      {KEYS.map((k) => (
+                        <option key={k} value={k}>
+                          Key of {k}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[10px] font-mono uppercase text-zinc-400 block mb-1">Sound Description</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Warm analog pad with celestial choir"
+                      value={newPadDescription}
+                      onChange={(e) => setNewPadDescription(e.target.value)}
+                      className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-1.5 text-xs text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-amber-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-[10px] font-mono uppercase text-zinc-400 block mb-1">Scripture / Theme</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Psalm 46:10 - Be still and know that I am God"
+                      value={newPadScripture}
+                      onChange={(e) => setNewPadScripture(e.target.value)}
+                      className="w-full bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-1.5 text-xs text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-amber-500"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-2 pt-1">
+                  <button
+                    onClick={() => setIsAddingPad(false)}
+                    className="px-3 py-1.5 rounded-lg bg-zinc-800 text-zinc-300 text-xs hover:bg-zinc-700"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleCreateCustomPad}
+                    className="px-4 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold text-xs flex items-center gap-1.5 shadow-md"
+                  >
+                    <Check className="w-3.5 h-3.5" />
+                    Save Pad Preset
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Presets Grid */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-              {PRAYER_PRESETS.map((p) => {
+              {presets.map((p) => {
                 const isCurrent = activePreset.id === p.id;
                 return (
-                  <button
+                  <div
                     key={p.id}
                     onClick={() => handleSelectPreset(p)}
-                    className={`text-left p-3 rounded-xl border transition-all flex flex-col justify-between ${
+                    className={`text-left p-3 rounded-xl border transition-all flex flex-col justify-between cursor-pointer group relative ${
                       isCurrent
                         ? 'bg-amber-950/40 border-amber-500/60 shadow-[inset_0_1px_4px_rgba(245,158,11,0.2)]'
                         : 'bg-zinc-900/60 hover:bg-zinc-900 border-zinc-800 text-zinc-300'
                     }`}
                   >
-                    <div className="flex items-center justify-between">
-                      <span className={`font-bold text-sm ${isCurrent ? 'text-amber-300' : 'text-zinc-200'}`}>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className={`font-bold text-sm flex items-center gap-1.5 ${isCurrent ? 'text-amber-300' : 'text-zinc-200'}`}>
                         {p.name}
+                        {p.isCustom && (
+                          <span className="text-[9px] px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-400 font-mono font-bold border border-amber-500/30">
+                            USER
+                          </span>
+                        )}
                       </span>
-                      <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-zinc-800 text-amber-400 border border-zinc-700">
-                        Key of {p.rootKey}
-                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-zinc-800 text-amber-400 border border-zinc-700">
+                          Key of {p.rootKey}
+                        </span>
+                        {p.isCustom && (
+                          <button
+                            onClick={(e) => handleDeleteCustomPad(p.id, e)}
+                            className="p-1 text-zinc-500 hover:text-red-400 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                            title="Delete custom pad"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </div>
                     </div>
                     <p className="text-[11px] text-zinc-400 line-clamp-2 mt-1 italic">
                       {p.scriptureTheme}
                     </p>
-                  </button>
+                  </div>
                 );
               })}
             </div>
@@ -271,7 +567,7 @@ export const PrayerAtmosphereModal: React.FC<PrayerAtmosphereModalProps> = ({ is
                 <button
                   key={mins}
                   onClick={() => setSelectedDurationMinutes(mins)}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-mono font-bold border transition-all ${
+                  className={`px-2.5 py-1 rounded-lg text-xs font-mono font-bold border transition-all cursor-pointer ${
                     selectedDurationMinutes === mins
                       ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
                       : 'bg-zinc-800 text-zinc-400 border-zinc-700 hover:bg-zinc-700'
@@ -282,7 +578,7 @@ export const PrayerAtmosphereModal: React.FC<PrayerAtmosphereModalProps> = ({ is
               ))}
               <button
                 onClick={() => setTimerSeconds(0)}
-                className="p-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-zinc-200 rounded-lg border border-zinc-700"
+                className="p-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-zinc-200 rounded-lg border border-zinc-700 cursor-pointer"
                 title="Reset timer"
               >
                 <RefreshCw className="w-3.5 h-3.5" />
@@ -294,11 +590,11 @@ export const PrayerAtmosphereModal: React.FC<PrayerAtmosphereModalProps> = ({ is
         {/* Footer */}
         <div className="p-4 border-t border-zinc-800 bg-zinc-950 flex items-center justify-between">
           <span className="text-xs text-zinc-500 italic">
-            Continuous pad drone remains active while you play chords and styles.
+            Continuous pad drone remains active while you play chords, voices, and styles.
           </span>
           <button
             onClick={onClose}
-            className="px-4 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-semibold"
+            className="px-4 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-semibold cursor-pointer"
           >
             Close
           </button>
@@ -307,3 +603,4 @@ export const PrayerAtmosphereModal: React.FC<PrayerAtmosphereModalProps> = ({ is
     </div>
   );
 };
+
