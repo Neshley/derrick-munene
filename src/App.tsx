@@ -59,7 +59,7 @@ export default function App() {
   const [beat, setBeat] = useState<number>(1);
 
   // Accompaniment toggles
-  const [acmpEnabled, setAcmpEnabled] = useState<boolean>(true);
+  const [acmpEnabled, setAcmpEnabled] = useState<boolean>(false);
   const [syncStart, setSyncStart] = useState<boolean>(false);
   const [syncStop, setSyncStop] = useState<boolean>(false);
   const [autoFill, setAutoFill] = useState<boolean>(true);

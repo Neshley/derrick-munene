@@ -29,7 +29,7 @@ export const RegistrationMemory: React.FC<RegistrationMemoryProps> = ({
   acmpEnabled,
   onRecallPreset,
 }) => {
-  const [activeSlot, setActiveSlot] = useState<number | null>(1);
+  const [activeSlot, setActiveSlot] = useState<number | null>(null);
   const [isArmingStore, setIsArmingStore] = useState(false);
   const [isFreezeActive, setIsFreezeActive] = useState(false);
 

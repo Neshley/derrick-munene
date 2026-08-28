@@ -18,7 +18,7 @@ export class StylePlayer {
   private syncStart: boolean = false;
   private syncStop: boolean = false;
   private autoFill: boolean = true;
-  private acmpEnabled: boolean = true;
+  private acmpEnabled: boolean = false;
 
   private currentSection: StyleSection = 'main_a';
   private nextQueuedSection: StyleSection | null = null;
