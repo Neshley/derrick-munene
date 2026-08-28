@@ -218,6 +218,11 @@ export default function App() {
 
   // Live Note Playing Handlers (Unified delegation to MidiManager)
   const handleLiveNoteOn = useCallback((note: number, velocity: number = 100) => {
+    setActiveMidiNotes((prev) => {
+      const next = new Set(prev);
+      next.add(note);
+      return next;
+    });
     midiManager.handleNoteOn(note, velocity);
     if (syncStart && !isPlaying) {
       if (!acmpEnabled || note < splitPoint) {
@@ -227,6 +232,11 @@ export default function App() {
   }, [syncStart, isPlaying, acmpEnabled, splitPoint]);
 
   const handleLiveNoteOff = useCallback((note: number) => {
+    setActiveMidiNotes((prev) => {
+      const next = new Set(prev);
+      next.delete(note);
+      return next;
+    });
     midiManager.handleNoteOff(note);
   }, []);
 

@@ -259,15 +259,13 @@ export class MidiManager {
   public handleParsedMidiEvent(event: MidiEvent) {
     switch (event.type) {
       case 'noteon':
-        this.handleNoteOn(event.note, event.velocity, event.channel);
         midiAutomationRecorder.recordNoteOn(event.note, event.velocity, event.channel);
-        this.listeners.forEach(l => l.onNoteOn?.(event));
+        this.handleNoteOn(event.note, event.velocity, event.channel);
         break;
 
       case 'noteoff':
-        this.handleNoteOff(event.note, event.channel);
         midiAutomationRecorder.recordNoteOff(event.note, event.channel);
-        this.listeners.forEach(l => l.onNoteOff?.(event));
+        this.handleNoteOff(event.note, event.channel);
         break;
 
       case 'cc':
@@ -384,6 +382,14 @@ export class MidiManager {
       activeNotesCount: this.activeNotes.size,
       lastMessageSummary: `Note On: ${this.midiNoteToName(note)} (Vel: ${velocity}, Ch: ${channel})`,
     });
+
+    this.listeners.forEach(l => l.onNoteOn?.({
+      type: 'noteon',
+      channel,
+      note,
+      velocity,
+      timestamp: performance.now(),
+    }));
   }
 
   /**
@@ -410,6 +416,14 @@ export class MidiManager {
       activeNotesCount: this.activeNotes.size,
       lastMessageSummary: `Note Off: ${this.midiNoteToName(note)} (Ch: ${channel})`,
     });
+
+    this.listeners.forEach(l => l.onNoteOff?.({
+      type: 'noteoff',
+      channel,
+      note,
+      velocity: 0,
+      timestamp: performance.now(),
+    }));
   }
 
   // --- CONTROL CHANGE (CC) PROCESSING ---
