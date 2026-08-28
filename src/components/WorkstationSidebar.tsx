@@ -86,6 +86,7 @@ interface WorkstationSidebarProps {
   onOpenMidiAutomation?: () => void;
   onOpenAiStudio?: () => void;
   onOpenApiKeyModal?: () => void;
+  onOpenSettings?: () => void;
 }
 
 export const WorkstationSidebar: React.FC<WorkstationSidebarProps> = ({
@@ -108,6 +109,7 @@ export const WorkstationSidebar: React.FC<WorkstationSidebarProps> = ({
   onOpenMidiAutomation,
   onOpenAiStudio,
   onOpenApiKeyModal,
+  onOpenSettings,
   r1Voice,
   r2Voice,
   lVoice,
@@ -413,6 +415,18 @@ export const WorkstationSidebar: React.FC<WorkstationSidebarProps> = ({
                 }`}
                 title={midiConnected ? `MIDI: ${midiDeviceName}` : 'MIDI: Disconnected'}
               />
+
+              {/* Settings button */}
+              {onOpenSettings && (
+                <button
+                  id="btn-sidebar-rail-settings"
+                  onClick={onOpenSettings}
+                  className="w-9 h-9 rounded-lg bg-zinc-900/80 hover:bg-zinc-800 text-zinc-400 hover:text-amber-300 flex items-center justify-center transition-colors cursor-pointer"
+                  title="Workstation Settings & Preferences"
+                >
+                  <Settings2 className="w-4 h-4" />
+                </button>
+              )}
 
               {/* Help button */}
               <button
@@ -966,6 +980,30 @@ export const WorkstationSidebar: React.FC<WorkstationSidebarProps> = ({
                       >
                         <Key className="w-3.5 h-3.5 text-amber-400" />
                         <span>Manage Gemini API Key</span>
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Full Workstation Settings Card */}
+                  {onOpenSettings && (
+                    <div className="p-3 rounded-xl bg-gradient-to-r from-zinc-900 via-zinc-950 to-zinc-900 border border-zinc-700/80 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Settings2 className="w-4 h-4 text-amber-400" />
+                          <span className="font-bold text-xs text-zinc-200">Workstation Settings</span>
+                        </div>
+                        <span className="text-[9px] font-mono uppercase px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-300 font-bold">SYSTEM</span>
+                      </div>
+                      <p className="text-[11px] text-zinc-400 leading-tight">
+                        Configure keyboard split presets, chord recognition modes, audio buffer &amp; engine backup JSON.
+                      </p>
+                      <button
+                        id="btn-sidebar-open-settings"
+                        onClick={onOpenSettings}
+                        className="w-full py-1.5 px-2.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-zinc-200 hover:text-amber-300 font-semibold text-xs flex items-center justify-center gap-1.5 transition-all shadow-sm active:scale-95 cursor-pointer"
+                      >
+                        <Settings2 className="w-3.5 h-3.5 text-amber-400" />
+                        <span>Open Settings Page</span>
                       </button>
                     </div>
                   )}

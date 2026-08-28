@@ -33,6 +33,7 @@ import { AudioRecordingModal } from './components/AudioRecordingModal';
 import { MidiAutomationModal } from './components/MidiAutomationModal';
 import { AiStudioModal } from './components/AiStudioModal';
 import { ApiKeyModal } from './components/ApiKeyModal';
+import { SettingsPage } from './components/SettingsPage';
 import { addMultiPadBank } from './audio/multiPads';
 
 export default function App() {
@@ -157,6 +158,7 @@ export default function App() {
   const [isMidiAutomationOpen, setIsMidiAutomationOpen] = useState(false);
   const [isAiStudioModalOpen, setIsAiStudioModalOpen] = useState(false);
   const [isApiKeyModalOpen, setIsApiKeyModalOpen] = useState(false);
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [styleNotification, setStyleNotification] = useState<{ name: string; fills: string[]; mains: string[] } | null>(null);
 
   // Keep MidiManager live performance configuration synchronized
@@ -446,6 +448,7 @@ export default function App() {
         onOpenWorshipSongbook={() => setIsSongbookModalOpen(true)}
         onOpenAudioRecording={() => setIsAudioRecordModalOpen(true)}
         onOpenMidiAutomation={() => setIsMidiAutomationOpen(true)}
+        onOpenSettings={() => setIsSettingsModalOpen(true)}
         splitPoint={splitPoint}
         onSplitPointChange={(newSplit) => setSplitPoint(newSplit)}
       />
@@ -473,6 +476,7 @@ export default function App() {
           onOpenMidiAutomation={() => setIsMidiAutomationOpen(true)}
           onOpenAiStudio={() => setIsAiStudioModalOpen(true)}
           onOpenApiKeyModal={() => setIsApiKeyModalOpen(true)}
+          onOpenSettings={() => setIsSettingsModalOpen(true)}
           r1Voice={r1Voice}
           r2Voice={r2Voice}
           lVoice={lVoice}
@@ -809,6 +813,36 @@ export default function App() {
       <ApiKeyModal
         isOpen={isApiKeyModalOpen}
         onClose={() => setIsApiKeyModalOpen(false)}
+      />
+
+      {/* Global Workstation Settings & System Configuration Page Modal */}
+      <SettingsPage
+        isOpen={isSettingsModalOpen}
+        onClose={() => setIsSettingsModalOpen(false)}
+        onOpenApiKeyModal={() => {
+          setIsSettingsModalOpen(false);
+          setIsApiKeyModalOpen(true);
+        }}
+        onOpenUserGuide={() => {
+          setIsSettingsModalOpen(false);
+          setIsUserGuideModalOpen(true);
+        }}
+        onOpenCreatorMessage={() => {
+          setIsSettingsModalOpen(false);
+          setIsCreatorModalOpen(true);
+        }}
+        splitPoint={splitPoint}
+        onSplitPointChange={(note) => setSplitPoint(note)}
+        chordMode={chordMode}
+        onChordModeChange={(mode) => setChordMode(mode)}
+        autoFill={autoFill}
+        onAutoFillChange={(val) => setAutoFill(val)}
+        dynamicFillMode={dynamicFillMode}
+        onDynamicFillChange={(val) => setDynamicFillMode(val)}
+        fillIntensityThreshold={fillIntensityThreshold}
+        onFillIntensityChange={(val) => setFillIntensityThreshold(val)}
+        masterVolume={masterVolume}
+        onMasterVolumeChange={handleMasterVolumeChange}
       />
     </div>
   );
