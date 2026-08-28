@@ -4,7 +4,9 @@ import {
   Wifi,
   WifiOff,
   PanelLeftClose,
-  PanelLeftOpen
+  PanelLeftOpen,
+  BookOpen,
+  FileDown
 } from 'lucide-react';
 import { subscribePwaStatus, PwaStatus } from '../pwaRegister';
 
@@ -13,6 +15,7 @@ interface WorkstationHeaderProps {
   midiDeviceName: string;
   onToggleSidebar?: () => void;
   isSidebarCollapsed?: boolean;
+  onOpenUserGuide?: () => void;
 }
 
 export const WorkstationHeader: React.FC<WorkstationHeaderProps> = ({
@@ -20,6 +23,7 @@ export const WorkstationHeader: React.FC<WorkstationHeaderProps> = ({
   midiDeviceName,
   onToggleSidebar,
   isSidebarCollapsed,
+  onOpenUserGuide,
 }) => {
   const [pwaStatus, setPwaStatus] = useState<PwaStatus>({
     isInstalled: false,
@@ -43,7 +47,7 @@ export const WorkstationHeader: React.FC<WorkstationHeaderProps> = ({
           <button
             id="btn-header-toggle-sidebar"
             onClick={onToggleSidebar}
-            className="p-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 hover:text-amber-400 transition-colors shadow-xs"
+            className="p-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 hover:text-amber-400 transition-colors shadow-xs cursor-pointer"
             title={isSidebarCollapsed ? 'Expand Sidebar Deck (Ctrl+B)' : 'Collapse Sidebar Deck (Ctrl+B)'}
             aria-label="Toggle Workstation Sidebar"
           >
@@ -69,14 +73,29 @@ export const WorkstationHeader: React.FC<WorkstationHeaderProps> = ({
               </span>
             </div>
             <p className="text-[11px] text-zinc-400 font-medium hidden sm:block">
-              Yamaha .STY Accompaniment Engine &amp; Polyphonic Synthesizer
+              Yamaha .STY Accompaniment Engine &amp; Worship Arranger
             </p>
           </div>
         </div>
       </div>
 
-      {/* Right Status Indicators */}
+      {/* Right Action & Status Indicators */}
       <div className="flex items-center gap-2">
+        {/* Worship Guide & Companion Download Trigger */}
+        {onOpenUserGuide && (
+          <button
+            id="btn-header-worship-guide"
+            onClick={onOpenUserGuide}
+            className="px-2.5 py-1 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 border border-amber-500/40 text-amber-300 hover:text-amber-200 text-xs font-semibold flex items-center gap-1.5 transition-all shadow-xs active:scale-95 cursor-pointer"
+            title="Open Worship Companion & User Guide (Download PDF / Word)"
+          >
+            <BookOpen className="w-3.5 h-3.5 text-amber-400" />
+            <span className="hidden sm:inline">User Guide &amp; Companion</span>
+            <span className="sm:hidden">Guide</span>
+            <span className="text-[9px] px-1 py-0.2 rounded bg-amber-500/30 text-amber-200 font-mono">PDF/DOCX</span>
+          </button>
+        )}
+
         {/* MIDI status badge */}
         <div 
           className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-mono border ${
@@ -87,7 +106,7 @@ export const WorkstationHeader: React.FC<WorkstationHeaderProps> = ({
           title={midiConnected ? `Connected to: ${midiDeviceName}` : 'Connect a USB/Bluetooth MIDI keyboard'}
         >
           <Radio className={`w-3.5 h-3.5 ${midiConnected ? 'text-emerald-400 animate-pulse' : 'text-zinc-500'}`} />
-          <span className="text-[11px] truncate max-w-[130px]">
+          <span className="text-[11px] truncate max-w-[110px] hidden md:inline">
             {midiConnected ? midiDeviceName || 'MIDI In' : 'MIDI In: None'}
           </span>
         </div>
@@ -108,13 +127,12 @@ export const WorkstationHeader: React.FC<WorkstationHeaderProps> = ({
           {!pwaStatus.isOnline ? (
             <>
               <WifiOff className="w-3.5 h-3.5 text-amber-400" />
-              <span className="text-[10px] font-bold uppercase tracking-wider hidden sm:inline">OFFLINE • SYNTH READY</span>
-              <span className="text-[10px] font-bold uppercase tracking-wider sm:hidden">OFFLINE</span>
+              <span className="text-[10px] font-bold uppercase tracking-wider hidden lg:inline">OFFLINE READY</span>
             </>
           ) : (
             <>
               <Wifi className="w-3.5 h-3.5 text-emerald-400" />
-              <span className="text-[10px] font-bold text-zinc-300 tracking-wider hidden sm:inline">OFFLINE READY</span>
+              <span className="text-[10px] font-bold text-zinc-300 tracking-wider hidden lg:inline">READY</span>
             </>
           )}
         </div>
@@ -122,3 +140,4 @@ export const WorkstationHeader: React.FC<WorkstationHeaderProps> = ({
     </header>
   );
 };
+

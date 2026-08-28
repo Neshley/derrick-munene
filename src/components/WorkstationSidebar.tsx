@@ -36,7 +36,10 @@ import {
   DownloadCloud,
   CheckCircle2,
   Wifi,
-  WifiOff
+  WifiOff,
+  BookOpen,
+  FileText,
+  FileDown
 } from 'lucide-react';
 
 interface WorkstationSidebarProps {
@@ -49,6 +52,7 @@ interface WorkstationSidebarProps {
   onOpenVoiceSelect: (part: 'r1' | 'r2' | 'left') => void;
   onOpenChordSequencer: () => void;
   onOpenMidiHelp: () => void;
+  onOpenUserGuide?: () => void;
   r1Voice: string;
   r2Voice: string;
   lVoice: string;
@@ -82,6 +86,7 @@ export const WorkstationSidebar: React.FC<WorkstationSidebarProps> = ({
   onOpenVoiceSelect,
   onOpenChordSequencer,
   onOpenMidiHelp,
+  onOpenUserGuide,
   r1Voice,
   r2Voice,
   lVoice,
@@ -284,6 +289,18 @@ export const WorkstationSidebar: React.FC<WorkstationSidebarProps> = ({
                 <Activity className="w-4 h-4" />
                 <span className="text-[8px] font-mono uppercase leading-none">ACMP</span>
               </button>
+
+              {/* Worship Companion & User Guide Button */}
+              {onOpenUserGuide && (
+                <button
+                  onClick={onOpenUserGuide}
+                  className="w-10 h-10 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 flex flex-col items-center justify-center gap-0.5 transition-all shadow-xs cursor-pointer"
+                  title="Worship Companion & User Guide (Download PDF / Word)"
+                >
+                  <BookOpen className="w-4 h-4 text-amber-400" />
+                  <span className="text-[8px] font-mono font-bold leading-none">GUIDE</span>
+                </button>
+              )}
 
               {/* Chord Sequencer */}
               <button
@@ -739,6 +756,30 @@ export const WorkstationSidebar: React.FC<WorkstationSidebarProps> = ({
                       <span>C5 (72)</span>
                     </div>
                   </div>
+
+                  {/* Worship Companion & User Guide Quick Launcher */}
+                  {onOpenUserGuide && (
+                    <div className="p-3 rounded-xl bg-gradient-to-r from-amber-950/40 via-zinc-900 to-zinc-900 border border-amber-500/30 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <BookOpen className="w-4 h-4 text-amber-400" />
+                          <span className="font-bold text-xs text-amber-300">Worship Companion Guide</span>
+                        </div>
+                        <span className="text-[9px] font-mono uppercase px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-bold">22 SEC</span>
+                      </div>
+                      <p className="text-[11px] text-zinc-400 leading-tight">
+                        Complete manual with prayer stages, arrangement levels (Main A–D), BPM, chords, &amp; quick reference.
+                      </p>
+                      <button
+                        id="btn-sidebar-open-worship-guide"
+                        onClick={onOpenUserGuide}
+                        className="w-full py-1.5 px-2.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-sm active:scale-95 cursor-pointer"
+                      >
+                        <BookOpen className="w-3.5 h-3.5" />
+                        <span>Open &amp; Download (PDF / Word)</span>
+                      </button>
+                    </div>
+                  )}
 
                   {/* Chord Progression Sequencer Quick Launcher */}
                   <button

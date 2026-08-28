@@ -20,6 +20,7 @@ import { StyleBrowserModal } from './components/StyleBrowserModal';
 import { VoiceSelectModal } from './components/VoiceSelectModal';
 import { ChordSequencerModal } from './components/ChordSequencerModal';
 import { MidiHelpModal } from './components/MidiHelpModal';
+import { UserGuideModal } from './components/UserGuideModal';
 import { WorkstationSidebar } from './components/WorkstationSidebar';
 
 export default function App() {
@@ -134,9 +135,60 @@ export default function App() {
   const [voiceModalPart, setVoiceModalPart] = useState<'r1' | 'r2' | 'left'>('r1');
   const [isChordSeqModalOpen, setIsChordSeqModalOpen] = useState(false);
   const [isMidiHelpModalOpen, setIsMidiHelpModalOpen] = useState(false);
+  const [isUserGuideModalOpen, setIsUserGuideModalOpen] = useState(false);
+  const [styleNotification, setStyleNotification] = useState<{ name: string; fills: string[]; mains: string[] } | null>(null);
 
   // Active playing note handles for live voices
   const activeVoiceNotesRef = useRef<Map<number, { stop: () => void }[]>>(new Map());
+
+  // Live Note Playing Handlers
+  const handleLiveNoteOn = useCallback((note: number, velocity: number = 100) => {
+    audioEngine.init();
+
+    setActiveMidiNotes(prev => {
+      const next = new Set(prev);
+      next.add(note);
+      return next;
+    });
+
+    const handles: { stop: () => void }[] = [];
+
+    // Lower split area (Chord recognition + Optional Left Voice)
+    if (note < splitPoint) {
+      if (lEnabled) {
+        const h = audioEngine.playNote(note, velocity, lVoice, 'left');
+        handles.push(h);
+      }
+    } else {
+      // Upper solo area: Right 1 (Lead)
+      const h1 = audioEngine.playNote(note, velocity, r1Voice, 'r1');
+      handles.push(h1);
+
+      // Right 2 (Layer)
+      if (r2Enabled) {
+        const h2 = audioEngine.playNote(note, Math.round(velocity * 0.85), r2Voice, 'r2');
+        handles.push(h2);
+      }
+    }
+
+    // Store handles
+    const existing = activeVoiceNotesRef.current.get(note) || [];
+    activeVoiceNotesRef.current.set(note, [...existing, ...handles]);
+  }, [splitPoint, lEnabled, lVoice, r1Voice, r2Enabled, r2Voice]);
+
+  const handleLiveNoteOff = useCallback((note: number) => {
+    setActiveMidiNotes(prev => {
+      const next = new Set(prev);
+      next.delete(note);
+      return next;
+    });
+
+    const handles = activeVoiceNotesRef.current.get(note);
+    if (handles) {
+      handles.forEach(h => h.stop());
+      activeVoiceNotesRef.current.delete(note);
+    }
+  }, []);
 
   // Subscribe to StylePlayer events
   useEffect(() => {
@@ -205,65 +257,13 @@ export default function App() {
           // Web MIDI not supported or denied
         });
     }
-  }, [splitPoint, acmpEnabled, chordMode, r1Voice, r2Voice, lVoice, r2Enabled, lEnabled]);
+  }, [handleLiveNoteOn, handleLiveNoteOff]);
 
   // Master Volume handler
   const handleMasterVolumeChange = (vol: number) => {
     setMasterVolume(vol);
     audioEngine.setMasterVolume(vol);
   };
-
-  // Live Note Playing Handlers
-  const handleLiveNoteOn = useCallback((note: number, velocity: number = 100) => {
-    audioEngine.init();
-
-    setActiveMidiNotes(prev => {
-      const next = new Set(prev);
-      next.add(note);
-      return next;
-    });
-
-    const handles: { stop: () => void }[] = [];
-
-    // Lower split area (Chord recognition + Optional Left Voice)
-    if (note < splitPoint) {
-      if (lEnabled) {
-        const h = audioEngine.playNote(note, velocity, lVoice, 'left');
-        handles.push(h);
-      }
-    } else {
-      // Upper solo area: Right 1 (Lead)
-      const h1 = audioEngine.playNote(note, velocity, r1Voice, 'r1');
-      handles.push(h1);
-
-      // Right 2 (Layer)
-      if (r2Enabled) {
-        const h2 = audioEngine.playNote(note, Math.round(velocity * 0.85), r2Voice, 'r2');
-        handles.push(h2);
-      }
-    }
-
-    // Store handles
-    const existing = activeVoiceNotesRef.current.get(note) || [];
-    activeVoiceNotesRef.current.set(note, [...existing, ...handles]);
-  }, [splitPoint, lEnabled, lVoice, r1Voice, r2Enabled, r2Voice]);
-
-  const handleLiveNoteOff = useCallback((note: number) => {
-    setActiveMidiNotes(prev => {
-      const next = new Set(prev);
-      next.delete(note);
-      return next;
-    });
-
-    const handles = activeVoiceNotesRef.current.get(note);
-    if (handles) {
-      handles.forEach(h => h.stop());
-      activeVoiceNotesRef.current.delete(note);
-    }
-  }, []);
-
-  // Toast message for loaded style & available fills
-  const [styleNotification, setStyleNotification] = useState<{ name: string; fills: string[]; mains: string[] } | null>(null);
 
   // Style change
   const handleSelectStyle = (style: ArrangerStyle) => {
@@ -432,6 +432,7 @@ export default function App() {
         midiDeviceName={midiDeviceName}
         onToggleSidebar={() => setIsSidebarCollapsed(prev => !prev)}
         isSidebarCollapsed={isSidebarCollapsed}
+        onOpenUserGuide={() => setIsUserGuideModalOpen(true)}
       />
 
       {/* Main Console + Fixed Sidebar Body */}
@@ -447,6 +448,7 @@ export default function App() {
           onOpenVoiceSelect={handleOpenVoiceSelect}
           onOpenChordSequencer={() => setIsChordSeqModalOpen(true)}
           onOpenMidiHelp={() => setIsMidiHelpModalOpen(true)}
+          onOpenUserGuide={() => setIsUserGuideModalOpen(true)}
           r1Voice={r1Voice}
           r2Voice={r2Voice}
           lVoice={lVoice}
@@ -664,6 +666,12 @@ export default function App() {
       <MidiHelpModal
         isOpen={isMidiHelpModalOpen}
         onClose={() => setIsMidiHelpModalOpen(false)}
+      />
+
+      {/* Worship Companion & User Guide Modal (with PDF / Word / Print download) */}
+      <UserGuideModal
+        isOpen={isUserGuideModalOpen}
+        onClose={() => setIsUserGuideModalOpen(false)}
       />
     </div>
   );
