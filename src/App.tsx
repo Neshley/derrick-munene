@@ -428,12 +428,6 @@ export default function App() {
     <div className="h-screen w-screen max-h-screen overflow-hidden bg-zinc-950 text-zinc-100 flex flex-col selection:bg-amber-500 selection:text-black">
       {/* Top Workstation Header (Fixed) */}
       <WorkstationHeader
-        onOpenStyleBrowser={() => setIsStyleModalOpen(true)}
-        onOpenChordSequencer={() => setIsChordSeqModalOpen(true)}
-        onOpenStyleEditor={() => setIsStyleModalOpen(true)}
-        onOpenMidiHelp={() => setIsMidiHelpModalOpen(true)}
-        masterVolume={masterVolume}
-        onMasterVolumeChange={handleMasterVolumeChange}
         midiConnected={midiConnected}
         midiDeviceName={midiDeviceName}
         onToggleSidebar={() => setIsSidebarCollapsed(prev => !prev)}
@@ -472,6 +466,8 @@ export default function App() {
           onSplitPointChange={(newSplit) => setSplitPoint(newSplit)}
           midiConnected={midiConnected}
           midiDeviceName={midiDeviceName}
+          masterVolume={masterVolume}
+          onMasterVolumeChange={handleMasterVolumeChange}
         />
 
         {/* Main Console Workstation Surface (Independently Scrollable) */}
