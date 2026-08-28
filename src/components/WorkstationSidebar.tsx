@@ -77,6 +77,11 @@ interface WorkstationSidebarProps {
   midiDeviceName: string;
   masterVolume: number;
   onMasterVolumeChange: (vol: number) => void;
+  onOpenPrayerAtmosphere?: () => void;
+  onOpenEffectsRack?: () => void;
+  onOpenVocalWorkstation?: () => void;
+  onOpenWorshipSongbook?: () => void;
+  onOpenAudioRecording?: () => void;
 }
 
 export const WorkstationSidebar: React.FC<WorkstationSidebarProps> = ({
@@ -91,6 +96,11 @@ export const WorkstationSidebar: React.FC<WorkstationSidebarProps> = ({
   onOpenMidiHelp,
   onOpenUserGuide,
   onOpenCreatorMessage,
+  onOpenPrayerAtmosphere,
+  onOpenEffectsRack,
+  onOpenVocalWorkstation,
+  onOpenWorshipSongbook,
+  onOpenAudioRecording,
   r1Voice,
   r2Voice,
   lVoice,
@@ -629,6 +639,51 @@ export const WorkstationSidebar: React.FC<WorkstationSidebarProps> = ({
                       onChange={(e) => onMasterVolumeChange(parseFloat(e.target.value))}
                       className="w-full accent-amber-500 h-1.5 bg-zinc-700 rounded-lg cursor-pointer"
                     />
+                  </div>
+
+                  {/* Worship & Studio Suite Launchers */}
+                  <div className="p-2.5 rounded-xl bg-zinc-900/80 border border-zinc-800 space-y-2">
+                    <div className="text-[10px] font-mono font-bold uppercase tracking-wider text-zinc-400">
+                      Worship &amp; Studio Suite
+                    </div>
+                    <div className="grid grid-cols-2 gap-1.5">
+                      {onOpenPrayerAtmosphere && (
+                        <button
+                          onClick={onOpenPrayerAtmosphere}
+                          className="p-2 rounded-lg bg-amber-950/40 hover:bg-amber-900/60 border border-amber-500/40 text-amber-300 text-xs font-bold font-mono text-left flex items-center gap-1.5 transition-all"
+                        >
+                          <Sparkles className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                          <span className="truncate">Prayer Pad</span>
+                        </button>
+                      )}
+                      {onOpenWorshipSongbook && (
+                        <button
+                          onClick={onOpenWorshipSongbook}
+                          className="p-2 rounded-lg bg-cyan-950/40 hover:bg-cyan-900/60 border border-cyan-500/40 text-cyan-300 text-xs font-bold font-mono text-left flex items-center gap-1.5 transition-all"
+                        >
+                          <BookOpen className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                          <span className="truncate">Songbook</span>
+                        </button>
+                      )}
+                      {onOpenEffectsRack && (
+                        <button
+                          onClick={onOpenEffectsRack}
+                          className="p-2 rounded-lg bg-purple-950/40 hover:bg-purple-900/60 border border-purple-500/40 text-purple-300 text-xs font-bold font-mono text-left flex items-center gap-1.5 transition-all"
+                        >
+                          <Sliders className="w-3.5 h-3.5 text-purple-400 shrink-0" />
+                          <span className="truncate">DSP Effects</span>
+                        </button>
+                      )}
+                      {onOpenVocalWorkstation && (
+                        <button
+                          onClick={onOpenVocalWorkstation}
+                          className="p-2 rounded-lg bg-rose-950/40 hover:bg-rose-900/60 border border-rose-500/40 text-rose-300 text-xs font-bold font-mono text-left flex items-center gap-1.5 transition-all"
+                        >
+                          <Activity className="w-3.5 h-3.5 text-rose-400 shrink-0" />
+                          <span className="truncate">Vocal Mic</span>
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   {/* Audio Performance Recorder */}

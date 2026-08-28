@@ -8,7 +8,8 @@ export type StyleSection =
 export type ChordType = 
   | 'maj' | 'min' | '7' | 'maj7' | 'min7' 
   | 'dim' | 'aug' | 'sus4' | 'sus2' | '6' | 'm6'
-  | '9' | 'add9' | 'm7b5' | '7sus4' | '1+5';
+  | '9' | 'add9' | 'maj9' | 'min9' | 'm7b5' | 'dim7' | '7sus4' | '1+5'
+  | '7b9' | '7#9' | '11' | '13';
 
 export interface DetectedChord {
   root: string; // 'C', 'C#', 'D', etc.
@@ -46,6 +47,10 @@ export interface StyleTrackPattern {
   volume: number; // 0-100
   pan: number; // -50 to 50
   reverb: number; // 0-100
+  chorus?: number; // 0-100
+  eqLow?: number; // -12 to 12 dB
+  eqMid?: number; // -12 to 12 dB
+  eqHigh?: number; // -12 to 12 dB
   muted: boolean;
   solo: boolean;
   notes: NoteEvent[]; // Default notes (usually recorded in C Major)
@@ -61,7 +66,7 @@ export interface StyleSectionData {
 export interface ArrangerStyle {
   id: string;
   name: string;
-  category: 'Worship & Praise' | 'Pop' | 'Rock' | 'Dance' | 'Jazz & Swing' | 'Latin & Ballroom' | 'Ballad & Movie' | 'World' | 'Custom';
+  category: 'African Gospel' | 'Worship & Praise' | 'Pop' | 'Rock' | 'Dance' | 'Jazz & Swing' | 'Latin & Ballroom' | 'Ballad & Movie' | 'World' | 'Custom';
   tempo: number;
   timeSignature: [number, number];
   description: string;
@@ -117,4 +122,146 @@ export interface RegistrationMemoryPreset {
   acmpEnabled: boolean;
   harmonyEnabled: boolean;
   transpose: number;
+}
+
+// --- PRAYER ATMOSPHERE ENGINE ---
+export type PrayerAtmospherePresetId = 
+  | 'peaceful_prayer'
+  | 'deep_worship'
+  | 'morning_devotion'
+  | 'night_prayer'
+  | 'african_worship'
+  | 'gospel_prayer'
+  | 'ambient_worship';
+
+export interface PrayerAtmospherePreset {
+  id: PrayerAtmospherePresetId;
+  name: string;
+  description: string;
+  defaultBpm: number;
+  defaultKey: string;
+  drums: boolean;
+  shaker: boolean;
+  piano: boolean;
+  organ: boolean;
+  pad: boolean;
+  bassLevel: 'OFF' | 'LOW' | 'FULL';
+  reverbType: 'room' | 'hall' | 'cathedral' | 'plate';
+  reverbMix: number; // 0-100
+  droneKey?: string;
+  progression: string[];
+}
+
+// --- AUTO BUILD ENGINE ---
+export interface AutoBuildConfig {
+  enabled: boolean;
+  durationMinutes: number; // 1, 2, 3, 5, 10
+  currentProgressPercent: number;
+  currentLadderStep: 'A' | 'B' | 'C' | 'D';
+}
+
+// --- STUDIO EFFECTS RACK ---
+export type ReverbType = 'room' | 'hall' | 'cathedral' | 'plate';
+export type DelayTimeMode = 'short' | 'medium' | 'long';
+export type ChorusDepthMode = 'light' | 'medium' | 'wide';
+
+export interface EffectsRackSettings {
+  reverb: {
+    enabled: boolean;
+    type: ReverbType;
+    decay: number; // 0.5 to 6.0 seconds
+    mix: number; // 0 to 100%
+  };
+  delay: {
+    enabled: boolean;
+    timeMode: DelayTimeMode;
+    feedback: number; // 0 to 80%
+    mix: number; // 0 to 100%
+  };
+  chorus: {
+    enabled: boolean;
+    depthMode: ChorusDepthMode;
+    rate: number; // 0.2 to 5.0 Hz
+    mix: number; // 0 to 100%
+  };
+  masterEq: {
+    low: number; // -12 to +12 dB
+    mid: number; // -12 to +12 dB
+    high: number; // -12 to +12 dB
+  };
+}
+
+// --- VOCAL WORKSTATION / MICROPHONE ---
+export interface VocalWorkstationSettings {
+  enabled: boolean;
+  volume: number; // 0-100
+  reverbSend: number; // 0-100
+  delaySend: number; // 0-100
+  lowGain: number; // -12 to +12 dB
+  midGain: number; // -12 to +12 dB
+  highGain: number; // -12 to +12 dB
+  compressor: boolean;
+  echo: boolean;
+  muted: boolean;
+}
+
+// --- WORSHIP SONGBOOK ---
+export interface WorshipSong {
+  id: string;
+  title: string;
+  artist?: string;
+  key: string;
+  tempo: number;
+  styleId: string;
+  startingSection: StyleSection;
+  r1Voice?: string;
+  r2Voice?: string;
+  lVoice?: string;
+  chordProgression: string; // e.g. "Cmaj7 | Am7 | Fmaj7 | Gsus4"
+  lyricsChords?: string;
+  category?: 'Worship' | 'Praise' | 'Prayer' | 'Hymn' | 'Gospel';
+  notes?: string;
+}
+
+// --- MIDI RECORDING ---
+export interface RecordedMidiNote {
+  track: string;
+  note: number;
+  velocity: number;
+  time: number; // in seconds from start
+  duration: number;
+}
+
+export interface MidiRecordingSession {
+  id: string;
+  name: string;
+  tempo: number;
+  timeSignature: [number, number];
+  notes: RecordedMidiNote[];
+  durationSeconds: number;
+  createdAt: number;
+}
+
+// --- FULL WORKSTATION PROJECT EXPORT ---
+export interface WorkstationProject {
+  version: string;
+  name: string;
+  createdAt: number;
+  currentStyleId: string;
+  tempo: number;
+  transpose: number;
+  masterVolume: number;
+  r1Voice: string;
+  r2Voice: string;
+  lVoice: string;
+  r2Enabled: boolean;
+  lEnabled: boolean;
+  splitPoint: number;
+  acmpEnabled: boolean;
+  chordMode: 'fingered' | 'single_finger';
+  effects: EffectsRackSettings;
+  trackSettings: Record<TrackType, { volume: number; pan?: number; reverb?: number; chorus?: number; eqLow?: number; eqMid?: number; eqHigh?: number; muted: boolean; solo: boolean }>;
+  registrations: RegistrationMemoryPreset[];
+  customStyles: ArrangerStyle[];
+  songbook: WorshipSong[];
 }

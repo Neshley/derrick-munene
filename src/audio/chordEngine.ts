@@ -3,6 +3,35 @@ import { ChordType, DetectedChord } from '../types/arranger';
 export const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 
 export class ChordEngine {
+  private static chordHistory: DetectedChord[] = [];
+  private static maxHistory: number = 8;
+  private static historyListeners: Set<(history: DetectedChord[]) => void> = new Set();
+
+  public static subscribeHistory(listener: (history: DetectedChord[]) => void): () => void {
+    this.historyListeners.add(listener);
+    listener([...this.chordHistory]);
+    return () => this.historyListeners.delete(listener);
+  }
+
+  public static getHistory(): DetectedChord[] {
+    return [...this.chordHistory];
+  }
+
+  public static clearHistory() {
+    this.chordHistory = [];
+    this.historyListeners.forEach(l => l([]));
+  }
+
+  public static recordChordToHistory(chord: DetectedChord) {
+    // Avoid immediate duplicate
+    const last = this.chordHistory[this.chordHistory.length - 1];
+    if (last && last.displayName === chord.displayName) {
+      return;
+    }
+    this.chordHistory = [...this.chordHistory, chord].slice(-this.maxHistory);
+    this.historyListeners.forEach(l => l([...this.chordHistory]));
+  }
+
   // Identify chord from an array of MIDI notes played on lower keyboard
   public static detectChord(midiNotes: number[], mode: 'fingered' | 'single_finger' = 'fingered'): DetectedChord {
     if (!midiNotes || midiNotes.length === 0) {
@@ -18,11 +47,15 @@ export class ChordEngine {
 
     const sorted = [...midiNotes].sort((a, b) => a - b);
 
+    let chord: DetectedChord;
     if (mode === 'single_finger') {
-      return this.detectSingleFingerChord(sorted);
+      chord = this.detectSingleFingerChord(sorted);
+    } else {
+      chord = this.detectFingeredChord(sorted);
     }
 
-    return this.detectFingeredChord(sorted);
+    this.recordChordToHistory(chord);
+    return chord;
   }
 
   // Single Finger Mode (Standard Yamaha Easy Play system)
@@ -121,10 +154,10 @@ export class ChordEngine {
     const rootName = NOTE_NAMES[bestMatch.rootIndex];
     let displayName = this.formatChordName(rootName, bestMatch.type);
 
-    // Check for inversion / slash chord (e.g. C/E)
+    // Check for inversion / slash chord (e.g. C/E, G/B, F/A)
     let bass: string | undefined;
     let bassIndex: number | undefined;
-    if (lowestIndex !== bestMatch.rootIndex && notes.length >= 3) {
+    if (lowestIndex !== bestMatch.rootIndex && notes.length >= 2) {
       bass = lowestName;
       bassIndex = lowestIndex;
       displayName = `${displayName}/${bass}`;
@@ -162,15 +195,21 @@ export class ChordEngine {
       '0,4,7,10': { type: '7', weight: 12 },
       '0,4,7,11': { type: 'maj7', weight: 12 },
       '0,3,7,10': { type: 'min7', weight: 12 },
-      '0,3,6,9': { type: 'dim', weight: 10 },
+      '0,3,6,9': { type: 'dim7', weight: 12 },
       '0,3,6,10': { type: 'm7b5', weight: 11 },
       '0,4,7,9': { type: '6', weight: 10 },
       '0,3,7,9': { type: 'm6', weight: 10 },
       '0,5,7,10': { type: '7sus4', weight: 10 },
       '0,2,4,7': { type: 'add9', weight: 10 },
 
-      // 5-Note Chords
-      '0,2,4,7,10': { type: '9', weight: 13 },
+      // 5-Note & Extended Chords
+      '0,2,4,7,10': { type: '9', weight: 14 },
+      '0,2,4,7,11': { type: 'maj9', weight: 14 },
+      '0,2,3,7,10': { type: 'min9', weight: 14 },
+      '0,1,4,7,10': { type: '7b9', weight: 13 },
+      '0,3,4,7,10': { type: '7#9', weight: 13 },
+      '0,4,5,7,10': { type: '11', weight: 13 },
+      '0,4,7,9,10': { type: '13', weight: 13 },
     };
 
     if (map[key]) return map[key];
@@ -179,6 +218,10 @@ export class ChordEngine {
     if (intervals.includes(0) && intervals.includes(4) && intervals.includes(10)) return { type: '7', weight: 9 };
     if (intervals.includes(0) && intervals.includes(3) && intervals.includes(10)) return { type: 'min7', weight: 9 };
     if (intervals.includes(0) && intervals.includes(4) && intervals.includes(11)) return { type: 'maj7', weight: 9 };
+    if (intervals.includes(0) && intervals.includes(3) && intervals.includes(6) && intervals.includes(9)) return { type: 'dim7', weight: 9 };
+    if (intervals.includes(0) && intervals.includes(2) && intervals.includes(4)) return { type: 'add9', weight: 8 };
+    if (intervals.includes(0) && intervals.includes(5) && intervals.includes(7)) return { type: 'sus4', weight: 7 };
+    if (intervals.includes(0) && intervals.includes(2) && intervals.includes(7)) return { type: 'sus2', weight: 7 };
     if (intervals.includes(0) && intervals.includes(4)) return { type: 'maj', weight: 4 };
     if (intervals.includes(0) && intervals.includes(3)) return { type: 'min', weight: 4 };
 
@@ -193,6 +236,7 @@ export class ChordEngine {
       case 'maj7': return `${root}maj7`;
       case 'min7': return `${root}m7`;
       case 'dim': return `${root}dim`;
+      case 'dim7': return `${root}dim7`;
       case 'aug': return `${root}aug`;
       case 'sus4': return `${root}sus4`;
       case 'sus2': return `${root}sus2`;
@@ -200,10 +244,142 @@ export class ChordEngine {
       case 'm6': return `${root}m6`;
       case '9': return `${root}9`;
       case 'add9': return `${root}add9`;
+      case 'maj9': return `${root}maj9`;
+      case 'min9': return `${root}m9`;
       case 'm7b5': return `${root}m7b5`;
       case '7sus4': return `${root}7sus4`;
+      case '7b9': return `${root}7b9`;
+      case '7#9': return `${root}7#9`;
+      case '11': return `${root}11`;
+      case '13': return `${root}13`;
       case '1+5': return `${root}5`;
       default: return root;
+    }
+  }
+
+  // Parse text chord input into DetectedChord (e.g. "Cmaj7", "Am7", "G/B", "Fadd9", "Dm", "Bb")
+  public static parseChordSymbol(symbol: string): DetectedChord | null {
+    if (!symbol) return null;
+    const clean = symbol.trim();
+    if (!clean) return null;
+
+    let rootPart = '';
+    let rest = '';
+    let slashBass = '';
+
+    const slashSplit = clean.split('/');
+    const mainSymbol = slashSplit[0].trim();
+    if (slashSplit.length > 1) {
+      slashBass = slashSplit[1].trim();
+    }
+
+    // Match root note (e.g. C, C#, Db, D, etc.)
+    const rootMatch = mainSymbol.match(/^([A-Ga-g][#b]?)(.*)$/);
+    if (!rootMatch) return null;
+
+    let rawRoot = rootMatch[1].toUpperCase();
+    // Normalize flats to sharps
+    if (rawRoot === 'DB') rawRoot = 'C#';
+    else if (rawRoot === 'EB') rawRoot = 'D#';
+    else if (rawRoot === 'GB') rawRoot = 'F#';
+    else if (rawRoot === 'AB') rawRoot = 'G#';
+    else if (rawRoot === 'BB') rawRoot = 'A#';
+
+    const rootIndex = NOTE_NAMES.indexOf(rawRoot);
+    if (rootIndex === -1) return null;
+
+    rest = rootMatch[2].trim().toLowerCase();
+
+    let type: ChordType = 'maj';
+    if (rest === 'm' || rest === 'min' || rest === '-') type = 'min';
+    else if (rest === '7' || rest === 'dom7') type = '7';
+    else if (rest === 'maj7' || rest === 'm7+' || rest === 'ma7' || rest === 'major7') type = 'maj7';
+    else if (rest === 'm7' || rest === 'min7' || rest === '-7') type = 'min7';
+    else if (rest === 'sus4' || rest === 'sus') type = 'sus4';
+    else if (rest === 'sus2') type = 'sus2';
+    else if (rest === 'add9' || rest === '2') type = 'add9';
+    else if (rest === 'maj9') type = 'maj9';
+    else if (rest === 'm9' || rest === 'min9') type = 'min9';
+    else if (rest === '9') type = '9';
+    else if (rest === '6') type = '6';
+    else if (rest === 'm6' || rest === 'min6') type = 'm6';
+    else if (rest === 'dim' || rest === 'o') type = 'dim';
+    else if (rest === 'dim7' || rest === 'o7') type = 'dim7';
+    else if (rest === 'aug' || rest === '+') type = 'aug';
+    else if (rest === 'm7b5' || rest === 'ø') type = 'm7b5';
+    else if (rest === '7sus4' || rest === '7sus') type = '7sus4';
+    else if (rest === '5') type = '1+5';
+
+    let bassName: string | undefined;
+    let bassIndex: number | undefined;
+    if (slashBass) {
+      let bNorm = slashBass.toUpperCase();
+      if (bNorm === 'DB') bNorm = 'C#';
+      else if (bNorm === 'EB') bNorm = 'D#';
+      else if (bNorm === 'GB') bNorm = 'F#';
+      else if (bNorm === 'AB') bNorm = 'G#';
+      else if (bNorm === 'BB') bNorm = 'A#';
+      const bIdx = NOTE_NAMES.indexOf(bNorm);
+      if (bIdx !== -1) {
+        bassName = bNorm;
+        bassIndex = bIdx;
+      }
+    }
+
+    const baseNotes = this.getChordVoicingNotes(rootIndex, type, 48);
+    const displayName = bassName ? `${this.formatChordName(rawRoot, type)}/${bassName}` : this.formatChordName(rawRoot, type);
+
+    return {
+      root: rawRoot,
+      rootIndex,
+      type,
+      bass: bassName,
+      bassIndex,
+      displayName,
+      notes: baseNotes,
+      source: 'sequencer'
+    };
+  }
+
+  // Parse a text string of chord progressions like "Cmaj7 | Am7 | Fmaj7 | Gsus4"
+  public static parseProgressionString(text: string): DetectedChord[] {
+    const rawTokens = text.split(/[|\-,;\n\t]+/).map(s => s.trim()).filter(Boolean);
+    const chords: DetectedChord[] = [];
+    for (const token of rawTokens) {
+      // Split spaces within segment if any
+      const subTokens = token.split(/\s+/).filter(Boolean);
+      for (const st of subTokens) {
+        const parsed = this.parseChordSymbol(st);
+        if (parsed) chords.push(parsed);
+      }
+    }
+    return chords;
+  }
+
+  // Get canonical MIDI notes for a chord in a given base octave
+  public static getChordVoicingNotes(rootIndex: number, type: ChordType, baseMidi: number = 48): number[] {
+    const root = baseMidi + rootIndex;
+    switch (type) {
+      case 'maj': return [root, root + 4, root + 7];
+      case 'min': return [root, root + 3, root + 7];
+      case '7': return [root, root + 4, root + 7, root + 10];
+      case 'maj7': return [root, root + 4, root + 7, root + 11];
+      case 'min7': return [root, root + 3, root + 7, root + 10];
+      case 'dim': return [root, root + 3, root + 6];
+      case 'dim7': return [root, root + 3, root + 6, root + 9];
+      case 'aug': return [root, root + 4, root + 8];
+      case 'sus4': return [root, root + 5, root + 7];
+      case 'sus2': return [root, root + 2, root + 7];
+      case '6': return [root, root + 4, root + 7, root + 9];
+      case 'm6': return [root, root + 3, root + 7, root + 9];
+      case '9': return [root, root + 4, root + 7, root + 10, root + 14];
+      case 'add9': return [root, root + 2, root + 4, root + 7];
+      case 'maj9': return [root, root + 4, root + 7, root + 11, root + 14];
+      case 'min9': return [root, root + 3, root + 7, root + 10, root + 14];
+      case 'm7b5': return [root, root + 3, root + 6, root + 10];
+      case '7sus4': return [root, root + 5, root + 7, root + 10];
+      case '1+5': return [root, root + 7];
+      default: return [root, root + 4, root + 7];
     }
   }
 

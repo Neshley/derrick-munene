@@ -235,6 +235,32 @@ export const InteractiveKeyboard: React.FC<InteractiveKeyboardProps> = ({
           </button>
         </div>
 
+        {/* Live Detected Chord Progression Breadcrumb */}
+        <div className="flex items-center gap-1.5 bg-zinc-900/90 px-3 py-1.5 rounded-xl border border-zinc-800 max-w-full overflow-x-auto">
+          <span className="text-[10px] font-mono font-bold text-zinc-500 uppercase shrink-0 flex items-center gap-1">
+            <Sparkles className="w-3 h-3 text-cyan-400" />
+            CHORD FLOW:
+          </span>
+          <div className="flex items-center gap-1">
+            {ChordEngine.getHistory().length === 0 ? (
+              <span className="text-[11px] font-mono text-zinc-600 italic">Play lower keys to build progression</span>
+            ) : (
+              ChordEngine.getHistory().map((ch, i, arr) => (
+                <React.Fragment key={`${ch.displayName}-${i}`}>
+                  <button
+                    onClick={() => onChordDetected(ch)}
+                    className="px-2 py-0.5 rounded bg-cyan-950/70 hover:bg-cyan-900 text-cyan-300 text-xs font-mono font-bold border border-cyan-800/80 transition-all hover:scale-105"
+                    title={`Click to switch arranger to ${ch.displayName}`}
+                  >
+                    {ch.displayName}
+                  </button>
+                  {i < arr.length - 1 && <span className="text-zinc-600 text-xs font-mono">→</span>}
+                </React.Fragment>
+              ))
+            )}
+          </div>
+        </div>
+
         {/* Center: Split Point status & Assignment */}
         <div className="flex items-center gap-2">
           <div className={`flex items-center gap-2 px-3 py-1 rounded-lg border text-xs font-mono transition-all ${

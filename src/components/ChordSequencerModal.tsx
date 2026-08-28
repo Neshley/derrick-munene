@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { CHORD_PRESETS, ChordStep, ProgressionPreset, convertStepToDetectedChord } from '../audio/chordSequencer';
 import { ChordType, DetectedChord } from '../types/arranger';
 import { stylePlayer } from '../audio/stylePlayer';
+import { ChordEngine } from '../audio/chordEngine';
 import { 
   X, 
   Play, 
@@ -12,7 +13,8 @@ import {
   Sparkles, 
   RotateCcw, 
   Music, 
-  Check 
+  Check,
+  FileText
 } from 'lucide-react';
 
 interface ChordSequencerModalProps {
@@ -32,6 +34,7 @@ export const ChordSequencerModal: React.FC<ChordSequencerModalProps> = ({
   const [steps, setSteps] = useState<ChordStep[]>(CHORD_PRESETS[0].chords);
   const [activeStepIndex, setActiveStepIndex] = useState<number>(0);
   const [isAutoAdvancing, setIsAutoAdvancing] = useState<boolean>(false);
+  const [customTextProgression, setCustomTextProgression] = useState<string>('Cmaj7 | Am7 | Fmaj7 | Gsus4');
 
   // New step input state
   const [newRoot, setNewRoot] = useState('C');
@@ -40,6 +43,20 @@ export const ChordSequencerModal: React.FC<ChordSequencerModalProps> = ({
 
   const roots = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
   const chordTypes: ChordType[] = ['maj', 'min', '7', 'maj7', 'min7', 'dim', 'aug', 'sus4', 'sus2', '6', 'm6', '9', 'add9'];
+
+  const handleParseCustomText = () => {
+    const parsed = ChordEngine.parseProgressionString(customTextProgression);
+    if (parsed.length > 0) {
+      const newSteps: ChordStep[] = parsed.map((ch) => ({
+        root: ch.root,
+        type: ch.type,
+        durationMeasures: 1,
+      }));
+      setSteps(newSteps);
+      setActiveStepIndex(0);
+      setSelectedPresetId('custom_text');
+    }
+  };
 
   // Listen to beats from style player to advance steps
   useEffect(() => {
@@ -163,6 +180,27 @@ export const ChordSequencerModal: React.FC<ChordSequencerModalProps> = ({
               );
             })}
           </div>
+        </div>
+
+        {/* Text-Based Chord Progression Input */}
+        <div className="p-3.5 bg-zinc-900/80 border-b border-zinc-800 flex flex-col sm:flex-row items-center gap-2">
+          <div className="flex items-center gap-2 text-xs font-mono font-bold text-zinc-300 shrink-0">
+            <FileText className="w-4 h-4 text-amber-400" />
+            <span>TYPE / PASTE CHORDS:</span>
+          </div>
+          <input
+            type="text"
+            value={customTextProgression}
+            onChange={(e) => setCustomTextProgression(e.target.value)}
+            placeholder="e.g. Cmaj7 | Am7 | Fmaj7 | Gsus4"
+            className="flex-1 bg-zinc-950 border border-zinc-700 rounded-lg px-3 py-1.5 text-xs font-mono text-cyan-300 placeholder-zinc-500 focus:outline-none focus:border-amber-400 w-full"
+          />
+          <button
+            onClick={handleParseCustomText}
+            className="px-3 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold text-xs font-mono whitespace-nowrap shadow-sm active:scale-95 transition-all"
+          >
+            Parse &amp; Load
+          </button>
         </div>
 
         {/* Active Progression Visualizer Strip */}

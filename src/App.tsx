@@ -26,6 +26,11 @@ import { MidiHelpModal } from './components/MidiHelpModal';
 import { UserGuideModal } from './components/UserGuideModal';
 import { CreatorMessageModal } from './components/CreatorMessageModal';
 import { WorkstationSidebar } from './components/WorkstationSidebar';
+import { PrayerAtmosphereModal } from './components/PrayerAtmosphereModal';
+import { EffectsRackModal } from './components/EffectsRackModal';
+import { VocalWorkstationModal } from './components/VocalWorkstationModal';
+import { WorshipSongbookModal } from './components/WorshipSongbookModal';
+import { AudioRecordingModal } from './components/AudioRecordingModal';
 
 export default function App() {
   // --- Workstation Engine States ---
@@ -141,6 +146,11 @@ export default function App() {
   const [isMidiHelpModalOpen, setIsMidiHelpModalOpen] = useState(false);
   const [isUserGuideModalOpen, setIsUserGuideModalOpen] = useState(false);
   const [isCreatorModalOpen, setIsCreatorModalOpen] = useState(false);
+  const [isPrayerModalOpen, setIsPrayerModalOpen] = useState(false);
+  const [isEffectsModalOpen, setIsEffectsModalOpen] = useState(false);
+  const [isVocalModalOpen, setIsVocalModalOpen] = useState(false);
+  const [isSongbookModalOpen, setIsSongbookModalOpen] = useState(false);
+  const [isAudioRecordModalOpen, setIsAudioRecordModalOpen] = useState(false);
   const [styleNotification, setStyleNotification] = useState<{ name: string; fills: string[]; mains: string[] } | null>(null);
 
   // Keep MidiManager live performance configuration synchronized
@@ -414,6 +424,11 @@ export default function App() {
         isSidebarCollapsed={isSidebarCollapsed}
         onOpenUserGuide={() => setIsUserGuideModalOpen(true)}
         onOpenCreatorMessage={() => setIsCreatorModalOpen(true)}
+        onOpenPrayerAtmosphere={() => setIsPrayerModalOpen(true)}
+        onOpenEffectsRack={() => setIsEffectsModalOpen(true)}
+        onOpenVocalWorkstation={() => setIsVocalModalOpen(true)}
+        onOpenWorshipSongbook={() => setIsSongbookModalOpen(true)}
+        onOpenAudioRecording={() => setIsAudioRecordModalOpen(true)}
       />
 
       {/* Main Console + Fixed Sidebar Body */}
@@ -431,6 +446,11 @@ export default function App() {
           onOpenMidiHelp={() => setIsMidiHelpModalOpen(true)}
           onOpenUserGuide={() => setIsUserGuideModalOpen(true)}
           onOpenCreatorMessage={() => setIsCreatorModalOpen(true)}
+          onOpenPrayerAtmosphere={() => setIsPrayerModalOpen(true)}
+          onOpenEffectsRack={() => setIsEffectsModalOpen(true)}
+          onOpenVocalWorkstation={() => setIsVocalModalOpen(true)}
+          onOpenWorshipSongbook={() => setIsSongbookModalOpen(true)}
+          onOpenAudioRecording={() => setIsAudioRecordModalOpen(true)}
           r1Voice={r1Voice}
           r2Voice={r2Voice}
           lVoice={lVoice}
@@ -676,6 +696,38 @@ export default function App() {
       <CreatorMessageModal
         isOpen={isCreatorModalOpen}
         onClose={() => setIsCreatorModalOpen(false)}
+      />
+
+      {/* Continuous Prayer & Worship Atmosphere Pad Modal */}
+      <PrayerAtmosphereModal
+        isOpen={isPrayerModalOpen}
+        onClose={() => setIsPrayerModalOpen(false)}
+      />
+
+      {/* DSP Effects Rack Modal */}
+      <EffectsRackModal
+        isOpen={isEffectsModalOpen}
+        onClose={() => setIsEffectsModalOpen(false)}
+      />
+
+      {/* Vocal Channel Strip Modal */}
+      <VocalWorkstationModal
+        isOpen={isVocalModalOpen}
+        onClose={() => setIsVocalModalOpen(false)}
+      />
+
+      {/* Worship & Gospel Songbook Modal */}
+      <WorshipSongbookModal
+        isOpen={isSongbookModalOpen}
+        onClose={() => setIsSongbookModalOpen(false)}
+        onSelectStyle={handleSelectStyle}
+        onSelectTempo={(bpm) => stylePlayer.setTempo(bpm)}
+      />
+
+      {/* Master Audio & Session Recorder Modal */}
+      <AudioRecordingModal
+        isOpen={isAudioRecordModalOpen}
+        onClose={() => setIsAudioRecordModalOpen(false)}
       />
     </div>
   );

@@ -1,5 +1,7 @@
 // Web Audio API Polyphonic Synthesizer and Arranger Drum Engine
 
+import { EffectsRackSettings, ReverbType, VocalWorkstationSettings } from '../types/arranger';
+
 export interface AudioEngineActiveNote {
   stop: (releaseTime?: number) => void;
   setPitchBend: (semitones: number) => void;
@@ -18,18 +20,72 @@ export class AudioEngine {
   private mediaRecorder: MediaRecorder | null = null;
   private recordedChunks: Blob[] = [];
 
+  // Delay Effect Nodes
+  private delayNode: DelayNode | null = null;
+  private delayFeedbackGain: GainNode | null = null;
+  private delayWetGain: GainNode | null = null;
+  private delayFilter: BiquadFilterNode | null = null;
+
+  // Chorus Effect Nodes
+  private chorusDelayL: DelayNode | null = null;
+  private chorusDelayR: DelayNode | null = null;
+  private chorusLfo: OscillatorNode | null = null;
+  private chorusLfoGain: GainNode | null = null;
+  private chorusWetGain: GainNode | null = null;
+
   // 3-Band Master Equalizer
   private eqLow: BiquadFilterNode | null = null;
   private eqMid: BiquadFilterNode | null = null;
   private eqHigh: BiquadFilterNode | null = null;
   private eqSettings: { low: number; mid: number; high: number } = { low: 0, mid: 0, high: 0 };
 
+  // Microphone / Vocal Processing Nodes
+  private micStream: MediaStream | null = null;
+  private micSourceNode: MediaStreamAudioSourceNode | null = null;
+  private micGainNode: GainNode | null = null;
+  private micEqLow: BiquadFilterNode | null = null;
+  private micEqMid: BiquadFilterNode | null = null;
+  private micEqHigh: BiquadFilterNode | null = null;
+  private micCompressor: DynamicsCompressorNode | null = null;
+  private micReverbSend: GainNode | null = null;
+  private micDelaySend: GainNode | null = null;
+  public micAnalyser: AnalyserNode | null = null;
+  private micSettings: VocalWorkstationSettings = {
+    enabled: false,
+    volume: 85,
+    reverbSend: 40,
+    delaySend: 25,
+    lowGain: 0,
+    midGain: 2,
+    highGain: 3,
+    compressor: true,
+    echo: false,
+    muted: false
+  };
+
+  // Ambient Worship Drone Generator
+  private droneOscs: OscillatorNode[] = [];
+  private droneGain: GainNode | null = null;
+  private droneFilter: BiquadFilterNode | null = null;
+  private currentDroneKey: string | null = null;
+
+  // Effects Rack state
+  private effectsSettings: EffectsRackSettings = {
+    reverb: { enabled: true, type: 'hall', decay: 2.2, mix: 35 },
+    delay: { enabled: false, timeMode: 'medium', feedback: 30, mix: 25 },
+    chorus: { enabled: false, depthMode: 'medium', rate: 1.2, mix: 25 },
+    masterEq: { low: 0, mid: 0, high: 0 }
+  };
+
   private activeNotes: Map<string, AudioEngineActiveNote> = new Map();
   private currentPitchBend: Map<string, number> = new Map();
   private currentModulation: Map<string, number> = new Map();
 
-  // Volume channels for 8 style accompaniment tracks + voices
+  // Volume channels for 8 style accompaniment tracks + voices + pan
   private trackGains: Map<string, GainNode> = new Map();
+  private trackPanners: Map<string, StereoPannerNode> = new Map();
+  private trackRevSends: Map<string, GainNode> = new Map();
+  private trackChorusSends: Map<string, GainNode> = new Map();
 
   constructor() {
     // Lazy initialize on first user gesture
@@ -64,11 +120,56 @@ export class AudioEngine {
     // Create algorithmic synthetic impulse response for lush reverb
     this.reverbNode = this.ctx.createConvolver();
     this.reverbGain = this.ctx.createGain();
-    this.reverbGain.gain.value = 0.28;
+    this.reverbGain.gain.value = 0.35;
     this.dryGain = this.ctx.createGain();
     this.dryGain.gain.value = 0.85;
 
-    this.createSyntheticReverbBuffer();
+    this.createSyntheticReverbBuffer(this.effectsSettings.reverb.type, this.effectsSettings.reverb.decay);
+
+    // --- Delay Bus Setup ---
+    this.delayNode = this.ctx.createDelay(2.0);
+    this.delayNode.delayTime.value = 0.35; // 350ms default medium delay
+    this.delayFeedbackGain = this.ctx.createGain();
+    this.delayFeedbackGain.gain.value = 0.3;
+    this.delayFilter = this.ctx.createBiquadFilter();
+    this.delayFilter.type = 'lowpass';
+    this.delayFilter.frequency.value = 3500; // Warm tape-style roll-off
+    this.delayWetGain = this.ctx.createGain();
+    this.delayWetGain.gain.value = 0.0; // dry initially
+
+    // Delay loop: delayNode -> delayFilter -> delayFeedbackGain -> delayNode
+    this.delayNode.connect(this.delayFilter);
+    this.delayFilter.connect(this.delayFeedbackGain);
+    this.delayFeedbackGain.connect(this.delayNode);
+    this.delayFilter.connect(this.delayWetGain);
+    this.delayWetGain.connect(this.compressor);
+
+    // --- Chorus Bus Setup ---
+    try {
+      this.chorusDelayL = this.ctx.createDelay(0.1);
+      this.chorusDelayR = this.ctx.createDelay(0.1);
+      this.chorusDelayL.delayTime.value = 0.025;
+      this.chorusDelayR.delayTime.value = 0.032;
+
+      this.chorusLfo = this.ctx.createOscillator();
+      this.chorusLfo.frequency.value = 1.2;
+      this.chorusLfoGain = this.ctx.createGain();
+      this.chorusLfoGain.gain.value = 0.003;
+
+      this.chorusLfo.connect(this.chorusLfoGain);
+      this.chorusLfoGain.connect(this.chorusDelayL.delayTime);
+      this.chorusLfoGain.connect(this.chorusDelayR.delayTime);
+      this.chorusLfo.start();
+
+      this.chorusWetGain = this.ctx.createGain();
+      this.chorusWetGain.gain.value = 0.0;
+
+      this.chorusDelayL.connect(this.chorusWetGain);
+      this.chorusDelayR.connect(this.chorusWetGain);
+      this.chorusWetGain.connect(this.compressor);
+    } catch {
+      // Ignored if unsupported
+    }
 
     // Routing
     this.dryGain.connect(this.compressor);
@@ -114,18 +215,40 @@ export class AudioEngine {
       // Ignored if not supported
     }
 
-    // Initialize track gain nodes for 8 style channels + 3 live voice channels
+    // Initialize track gain & pan nodes for 8 style channels + 3 live voice channels
     const trackNames = ['rhythm1', 'rhythm2', 'bass', 'chord1', 'chord2', 'pad', 'phrase1', 'phrase2', 'r1', 'r2', 'left', 'multipad'];
     trackNames.forEach(name => {
       const g = this.ctx!.createGain();
       g.gain.value = 0.8;
-      g.connect(this.dryGain!);
+
+      let panner: StereoPannerNode | null = null;
+      if (this.ctx!.createStereoPanner) {
+        panner = this.ctx!.createStereoPanner();
+        panner.pan.value = 0;
+        g.connect(panner);
+        panner.connect(this.dryGain!);
+        this.trackPanners.set(name, panner);
+      } else {
+        g.connect(this.dryGain!);
+      }
+
       if (this.reverbNode) {
         const revSend = this.ctx!.createGain();
         revSend.gain.value = 0.25;
         g.connect(revSend);
         revSend.connect(this.reverbNode);
+        this.trackRevSends.set(name, revSend);
       }
+
+      if (this.chorusDelayL && this.chorusDelayR) {
+        const chorSend = this.ctx!.createGain();
+        chorSend.gain.value = 0.15;
+        g.connect(chorSend);
+        chorSend.connect(this.chorusDelayL);
+        chorSend.connect(this.chorusDelayR);
+        this.trackChorusSends.set(name, chorSend);
+      }
+
       this.trackGains.set(name, g);
     });
   }
@@ -134,20 +257,268 @@ export class AudioEngine {
     return this.ctx;
   }
 
-  private createSyntheticReverbBuffer() {
+  // --- STUDIO REVERB IMPULSE BUILDER ---
+  public setReverbPreset(type: ReverbType, decayTime?: number, mixPercent?: number) {
+    this.effectsSettings.reverb.type = type;
+    if (decayTime !== undefined) this.effectsSettings.reverb.decay = decayTime;
+    if (mixPercent !== undefined) this.effectsSettings.reverb.mix = mixPercent;
+
+    let targetDecay = this.effectsSettings.reverb.decay;
+    if (type === 'room') targetDecay = Math.min(targetDecay, 1.2);
+    else if (type === 'hall') targetDecay = Math.max(1.5, Math.min(targetDecay, 3.0));
+    else if (type === 'cathedral') targetDecay = Math.max(3.5, targetDecay);
+    else if (type === 'plate') targetDecay = Math.max(1.0, Math.min(targetDecay, 2.5));
+
+    this.createSyntheticReverbBuffer(type, targetDecay);
+
+    if (this.reverbGain && this.ctx) {
+      const mix = this.effectsSettings.reverb.enabled ? (this.effectsSettings.reverb.mix / 100) * 0.7 : 0;
+      this.reverbGain.gain.setTargetAtTime(mix, this.ctx.currentTime, 0.05);
+    }
+  }
+
+  private createSyntheticReverbBuffer(type: ReverbType = 'hall', decayDuration: number = 2.2) {
     if (!this.ctx || !this.reverbNode) return;
     const sampleRate = this.ctx.sampleRate;
-    const length = sampleRate * 1.8; // 1.8 sec reverb tail
+    const length = Math.floor(sampleRate * Math.max(0.5, Math.min(7.0, decayDuration)));
     const buffer = this.ctx.createBuffer(2, length, sampleRate);
     const left = buffer.getChannelData(0);
     const right = buffer.getChannelData(1);
 
+    const decayFactor = type === 'cathedral' ? 0.75 : type === 'plate' ? 0.35 : type === 'room' ? 0.25 : 0.45;
+
     for (let i = 0; i < length; i++) {
-      const decay = Math.exp(-i / (sampleRate * 0.45));
+      const decay = Math.exp(-i / (sampleRate * decayFactor));
+      // Subtle stereo diffusion & warmth
       left[i] = (Math.random() * 2 - 1) * decay;
       right[i] = (Math.random() * 2 - 1) * decay;
     }
     this.reverbNode.buffer = buffer;
+  }
+
+  // --- STUDIO DELAY CONTROL ---
+  public setDelaySettings(settings: Partial<EffectsRackSettings['delay']>) {
+    this.effectsSettings.delay = { ...this.effectsSettings.delay, ...settings };
+    if (!this.ctx || !this.delayNode || !this.delayFeedbackGain || !this.delayWetGain) return;
+
+    let timeSec = 0.35;
+    if (this.effectsSettings.delay.timeMode === 'short') timeSec = 0.18;
+    else if (this.effectsSettings.delay.timeMode === 'medium') timeSec = 0.38;
+    else if (this.effectsSettings.delay.timeMode === 'long') timeSec = 0.65;
+
+    this.delayNode.delayTime.setTargetAtTime(timeSec, this.ctx.currentTime, 0.03);
+    const fb = (this.effectsSettings.delay.feedback / 100) * 0.75;
+    this.delayFeedbackGain.gain.setTargetAtTime(fb, this.ctx.currentTime, 0.03);
+
+    const wet = this.effectsSettings.delay.enabled ? (this.effectsSettings.delay.mix / 100) * 0.6 : 0;
+    this.delayWetGain.gain.setTargetAtTime(wet, this.ctx.currentTime, 0.03);
+  }
+
+  // --- STUDIO CHORUS CONTROL ---
+  public setChorusSettings(settings: Partial<EffectsRackSettings['chorus']>) {
+    this.effectsSettings.chorus = { ...this.effectsSettings.chorus, ...settings };
+    if (!this.ctx || !this.chorusWetGain || !this.chorusLfo || !this.chorusLfoGain) return;
+
+    this.chorusLfo.frequency.setTargetAtTime(this.effectsSettings.chorus.rate, this.ctx.currentTime, 0.05);
+    const depthScale = this.effectsSettings.chorus.depthMode === 'light' ? 0.0015 : this.effectsSettings.chorus.depthMode === 'wide' ? 0.006 : 0.0035;
+    this.chorusLfoGain.gain.setTargetAtTime(depthScale, this.ctx.currentTime, 0.05);
+
+    const wet = this.effectsSettings.chorus.enabled ? (this.effectsSettings.chorus.mix / 100) * 0.5 : 0;
+    this.chorusWetGain.gain.setTargetAtTime(wet, this.ctx.currentTime, 0.05);
+  }
+
+  public getEffectsSettings(): EffectsRackSettings {
+    return { ...this.effectsSettings };
+  }
+
+  // --- VOCAL MICROPHONE INPUT & EFFECTS STRIP ---
+  public async enableMicrophone(): Promise<boolean> {
+    this.init();
+    if (!this.ctx) return false;
+
+    try {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        return false;
+      }
+      this.micStream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: false,
+        },
+      });
+
+      this.micSourceNode = this.ctx.createMediaStreamSource(this.micStream);
+      this.micGainNode = this.ctx.createGain();
+      this.micGainNode.gain.value = (this.micSettings.volume / 100) * 1.1;
+
+      this.micAnalyser = this.ctx.createAnalyser();
+      this.micAnalyser.fftSize = 64;
+
+      // Vocal 3-band EQ
+      this.micEqLow = this.ctx.createBiquadFilter();
+      this.micEqLow.type = 'lowshelf';
+      this.micEqLow.frequency.value = 120;
+      this.micEqLow.gain.value = this.micSettings.lowGain;
+
+      this.micEqMid = this.ctx.createBiquadFilter();
+      this.micEqMid.type = 'peaking';
+      this.micEqMid.frequency.value = 2500;
+      this.micEqMid.Q.value = 1.2;
+      this.micEqMid.gain.value = this.micSettings.midGain;
+
+      this.micEqHigh = this.ctx.createBiquadFilter();
+      this.micEqHigh.type = 'highshelf';
+      this.micEqHigh.frequency.value = 8000;
+      this.micEqHigh.gain.value = this.micSettings.highGain;
+
+      // Vocal dynamics compressor
+      this.micCompressor = this.ctx.createDynamicsCompressor();
+      this.micCompressor.threshold.value = -18;
+      this.micCompressor.ratio.value = 4;
+      this.micCompressor.attack.value = 0.003;
+      this.micCompressor.release.value = 0.1;
+
+      // Sends
+      this.micReverbSend = this.ctx.createGain();
+      this.micReverbSend.gain.value = (this.micSettings.reverbSend / 100) * 0.5;
+      if (this.reverbNode) {
+        this.micReverbSend.connect(this.reverbNode);
+      }
+
+      this.micDelaySend = this.ctx.createGain();
+      this.micDelaySend.gain.value = (this.micSettings.delaySend / 100) * 0.45;
+      if (this.delayNode) {
+        this.micDelaySend.connect(this.delayNode);
+      }
+
+      // Chain: source -> micGain -> micEqLow -> micEqMid -> micEqHigh -> micCompressor -> dryGain / sends / analyser
+      this.micSourceNode.connect(this.micGainNode);
+      this.micGainNode.connect(this.micAnalyser);
+      this.micGainNode.connect(this.micEqLow);
+      this.micEqLow.connect(this.micEqMid);
+      this.micEqMid.connect(this.micEqHigh);
+      this.micEqHigh.connect(this.micCompressor);
+
+      this.micCompressor.connect(this.dryGain!);
+      this.micCompressor.connect(this.micReverbSend);
+      this.micCompressor.connect(this.micDelaySend);
+
+      this.micSettings.enabled = true;
+      return true;
+    } catch (e) {
+      console.warn('Microphone permission denied or failed to initialize', e);
+      this.micSettings.enabled = false;
+      return false;
+    }
+  }
+
+  public disableMicrophone() {
+    if (this.micStream) {
+      this.micStream.getTracks().forEach((t) => t.stop());
+      this.micStream = null;
+    }
+    this.micSettings.enabled = false;
+  }
+
+  public setVocalSettings(settings: Partial<VocalWorkstationSettings>) {
+    this.micSettings = { ...this.micSettings, ...settings };
+    if (!this.ctx) return;
+
+    if (this.micGainNode) {
+      const vol = this.micSettings.muted ? 0 : (this.micSettings.volume / 100) * 1.2;
+      this.micGainNode.gain.setTargetAtTime(vol, this.ctx.currentTime, 0.03);
+    }
+    if (this.micEqLow) this.micEqLow.gain.setTargetAtTime(this.micSettings.lowGain, this.ctx.currentTime, 0.03);
+    if (this.micEqMid) this.micEqMid.gain.setTargetAtTime(this.micSettings.midGain, this.ctx.currentTime, 0.03);
+    if (this.micEqHigh) this.micEqHigh.gain.setTargetAtTime(this.micSettings.highGain, this.ctx.currentTime, 0.03);
+
+    if (this.micReverbSend) {
+      const rev = (this.micSettings.reverbSend / 100) * 0.6;
+      this.micReverbSend.gain.setTargetAtTime(rev, this.ctx.currentTime, 0.03);
+    }
+    if (this.micDelaySend) {
+      const del = (this.micSettings.delaySend / 100) * 0.5;
+      this.micDelaySend.gain.setTargetAtTime(del, this.ctx.currentTime, 0.03);
+    }
+  }
+
+  public getVocalSettings(): VocalWorkstationSettings {
+    return { ...this.micSettings };
+  }
+
+  // --- AMBIENT WORSHIP PAD DRONE GENERATOR ---
+  // Plays continuous, warm atmospheric drone in the chosen root key (e.g. C, D, E, F, G, A, B)
+  public startAmbientDrone(rootKey: string = 'C') {
+    this.stopAmbientDrone();
+    this.init();
+    if (!this.ctx) return;
+
+    this.currentDroneKey = rootKey;
+    const noteMap: Record<string, number> = {
+      C: 48, 'C#': 49, D: 50, 'D#': 51, E: 52, F: 53, 'F#': 54, G: 55, 'G#': 56, A: 57, 'A#': 58, B: 59,
+    };
+    const baseMidi = noteMap[rootKey] || 48;
+    const freqs = [
+      440 * Math.pow(2, (baseMidi - 12 - 69) / 12), // Sub root
+      440 * Math.pow(2, (baseMidi - 69) / 12),      // Root
+      440 * Math.pow(2, (baseMidi + 7 - 69) / 12),  // 5th
+      440 * Math.pow(2, (baseMidi + 12 - 69) / 12), // Octave
+      440 * Math.pow(2, (baseMidi + 14 - 69) / 12), // 9th shimmer
+    ];
+
+    this.droneGain = this.ctx.createGain();
+    this.droneGain.gain.setValueAtTime(0.001, this.ctx.currentTime);
+    this.droneGain.gain.linearRampToValueAtTime(0.35, this.ctx.currentTime + 3.0); // 3 sec fade in
+
+    this.droneFilter = this.ctx.createBiquadFilter();
+    this.droneFilter.type = 'lowpass';
+    this.droneFilter.frequency.setValueAtTime(800, this.ctx.currentTime);
+
+    this.droneGain.connect(this.droneFilter);
+    this.droneFilter.connect(this.dryGain!);
+    if (this.reverbNode) {
+      const droneRev = this.ctx.createGain();
+      droneRev.gain.value = 0.55;
+      this.droneFilter.connect(droneRev);
+      droneRev.connect(this.reverbNode);
+    }
+
+    this.droneOscs = freqs.map((f, i) => {
+      const osc = this.ctx!.createOscillator();
+      osc.type = i === 0 ? 'sine' : i === 4 ? 'triangle' : 'sawtooth';
+      osc.frequency.setValueAtTime(f * (1 + (Math.random() * 0.004 - 0.002)), this.ctx!.currentTime);
+      osc.connect(this.droneGain!);
+      osc.start();
+      return osc;
+    });
+  }
+
+  public stopAmbientDrone() {
+    if (!this.ctx || this.droneOscs.length === 0) return;
+    const now = this.ctx.currentTime;
+    if (this.droneGain) {
+      this.droneGain.gain.cancelScheduledValues(now);
+      this.droneGain.gain.setValueAtTime(this.droneGain.gain.value, now);
+      this.droneGain.gain.linearRampToValueAtTime(0.001, now + 2.0); // 2 sec fade out
+    }
+    const oscsToStop = [...this.droneOscs];
+    this.droneOscs = [];
+    this.currentDroneKey = null;
+    setTimeout(() => {
+      oscsToStop.forEach((o) => {
+        try {
+          o.stop();
+          o.disconnect();
+        } catch {
+          // Ignored
+        }
+      });
+    }, 2200);
+  }
+
+  public getActiveDroneKey(): string | null {
+    return this.currentDroneKey;
   }
 
   public setMasterVolume(vol: number) {
@@ -190,6 +561,15 @@ export class AudioEngine {
     }
   }
 
+  public setTrackPan(track: string, pan: number) {
+    if (!this.ctx) return;
+    const panner = this.trackPanners.get(track);
+    if (panner) {
+      const clamped = Math.max(-1, Math.min(1, pan / 50));
+      panner.pan.setTargetAtTime(clamped, this.ctx.currentTime, 0.02);
+    }
+  }
+
   // --- RECORDING CAPABILITIES ---
   public startRecording(): boolean {
     this.init();
@@ -220,6 +600,82 @@ export class AudioEngine {
       };
       this.mediaRecorder.stop();
     });
+  }
+
+  // Convert WebM Blob to PCM WAV Blob
+  public async exportAsWav(audioBlob: Blob): Promise<Blob | null> {
+    try {
+      const arrayBuffer = await audioBlob.arrayBuffer();
+      const tempCtx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+      const audioBuffer = await tempCtx.decodeAudioData(arrayBuffer);
+
+      const numOfChan = audioBuffer.numberOfChannels;
+      const length = audioBuffer.length * numOfChan * 2 + 44;
+      const outBuffer = new ArrayBuffer(length);
+      const view = new DataView(outBuffer);
+      const channels: Float32Array[] = [];
+      let sampleRate = audioBuffer.sampleRate;
+      let offset = 0;
+      let pos = 0;
+
+      // write WAVE header
+      function setUint16(data: number) {
+        view.setUint16(pos, data, true);
+        pos += 2;
+      }
+      function setUint32(data: number) {
+        view.setUint32(pos, data, true);
+        pos += 4;
+      }
+
+      // "RIFF"
+      view.setUint32(0, 0x46464952, true);
+      // file length - 8
+      view.setUint32(4, length - 8, true);
+      // "WAVE"
+      view.setUint32(8, 0x45564157, true);
+      // "fmt " chunk
+      view.setUint32(12, 0x20746d66, true);
+      // length = 16
+      view.setUint32(16, 16, true);
+      // PCM (uncompressed)
+      view.setUint16(20, 1, true);
+      // channels
+      view.setUint16(22, numOfChan, true);
+      // sample rate
+      view.setUint32(24, sampleRate, true);
+      // byte rate
+      view.setUint32(28, sampleRate * 2 * numOfChan, true);
+      // block align
+      view.setUint16(32, numOfChan * 2, true);
+      // bits per sample
+      view.setUint16(34, 16, true);
+      // "data" chunk
+      view.setUint32(36, 0x61746164, true);
+      // data length
+      view.setUint32(40, length - 44, true);
+
+      pos = 44;
+
+      for (let i = 0; i < audioBuffer.numberOfChannels; i++) {
+        channels.push(audioBuffer.getChannelData(i));
+      }
+
+      while (offset < audioBuffer.length) {
+        for (let i = 0; i < numOfChan; i++) {
+          let sample = Math.max(-1, Math.min(1, channels[i][offset]));
+          sample = (0.5 + sample < 0 ? sample * 32768 : sample * 32767) | 0;
+          view.setInt16(pos, sample, true);
+          pos += 2;
+        }
+        offset++;
+      }
+
+      return new Blob([outBuffer], { type: 'audio/wav' });
+    } catch (e) {
+      console.warn('WAV export conversion failed, falling back to original blob', e);
+      return audioBlob;
+    }
   }
 
   // --- DRUM SYNTHESIS ENGINE (GM Drum Standard Mapping) ---
