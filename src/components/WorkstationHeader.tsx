@@ -15,7 +15,9 @@ import {
   Wifi,
   WifiOff,
   DownloadCloud,
-  CheckCircle2
+  CheckCircle2,
+  PanelLeftClose,
+  PanelLeftOpen
 } from 'lucide-react';
 import { audioEngine } from '../audio/audioEngine';
 import { subscribePwaStatus, promptPwaInstall, PwaStatus } from '../pwaRegister';
@@ -29,6 +31,8 @@ interface WorkstationHeaderProps {
   onMasterVolumeChange: (vol: number) => void;
   midiConnected: boolean;
   midiDeviceName: string;
+  onToggleSidebar?: () => void;
+  isSidebarCollapsed?: boolean;
 }
 
 export const WorkstationHeader: React.FC<WorkstationHeaderProps> = ({
@@ -40,6 +44,8 @@ export const WorkstationHeader: React.FC<WorkstationHeaderProps> = ({
   onMasterVolumeChange,
   midiConnected,
   midiDeviceName,
+  onToggleSidebar,
+  isSidebarCollapsed,
 }) => {
   const [isRecording, setIsRecording] = useState(false);
   const [recordedUrl, setRecordedUrl] = useState<string | null>(null);
@@ -111,9 +117,25 @@ export const WorkstationHeader: React.FC<WorkstationHeaderProps> = ({
   };
 
   return (
-    <header className="bg-gradient-to-r from-zinc-950 via-zinc-900 to-zinc-950 border-b border-zinc-800 text-zinc-100 px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 select-none">
+    <header className="bg-gradient-to-r from-zinc-950 via-zinc-900 to-zinc-950 border-b border-zinc-800 text-zinc-100 px-4 py-2.5 flex flex-wrap items-center justify-between gap-3 select-none shrink-0 sticky top-0 z-30">
       {/* Brand & Model Info */}
       <div className="flex items-center gap-3">
+        {onToggleSidebar && (
+          <button
+            id="btn-header-toggle-sidebar"
+            onClick={onToggleSidebar}
+            className="p-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 hover:text-amber-400 transition-colors shadow-xs"
+            title={isSidebarCollapsed ? 'Expand Sidebar Deck' : 'Collapse Sidebar Deck'}
+            aria-label="Toggle Workstation Sidebar"
+          >
+            {isSidebarCollapsed ? (
+              <PanelLeftOpen className="w-4 h-4" />
+            ) : (
+              <PanelLeftClose className="w-4 h-4" />
+            )}
+          </button>
+        )}
+
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-amber-600 to-amber-400 flex items-center justify-center shadow-lg shadow-amber-500/20 text-zinc-950 font-black text-sm tracking-tighter">
             STY

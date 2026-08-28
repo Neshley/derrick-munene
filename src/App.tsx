@@ -20,9 +20,43 @@ import { StyleBrowserModal } from './components/StyleBrowserModal';
 import { VoiceSelectModal } from './components/VoiceSelectModal';
 import { ChordSequencerModal } from './components/ChordSequencerModal';
 import { MidiHelpModal } from './components/MidiHelpModal';
+import { WorkstationSidebar } from './components/WorkstationSidebar';
 
 export default function App() {
   // --- Workstation Engine States ---
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem('yamaha_sidebar_collapsed');
+      if (saved !== null) {
+        return JSON.parse(saved);
+      }
+    } catch (e) {
+      console.warn('Failed to read sidebar collapsed state from localStorage', e);
+    }
+    return false;
+  });
+
+  // Persist sidebar state
+  useEffect(() => {
+    try {
+      localStorage.setItem('yamaha_sidebar_collapsed', JSON.stringify(isSidebarCollapsed));
+    } catch (e) {
+      console.warn('Failed to persist sidebar state', e);
+    }
+  }, [isSidebarCollapsed]);
+
+  // Global hotkey (Ctrl/Cmd + B) to toggle sidebar
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') {
+        e.preventDefault();
+        setIsSidebarCollapsed(prev => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   const [currentStyle, setCurrentStyle] = useState<ArrangerStyle>(FACTORY_STYLES[0]);
   const [customStyles, setCustomStyles] = useState<ArrangerStyle[]>(() => {
     try {
@@ -391,8 +425,8 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col justify-between selection:bg-amber-500 selection:text-black">
-      {/* Top Workstation Header */}
+    <div className="h-screen w-screen max-h-screen overflow-hidden bg-zinc-950 text-zinc-100 flex flex-col selection:bg-amber-500 selection:text-black">
+      {/* Top Workstation Header (Fixed) */}
       <WorkstationHeader
         onOpenStyleBrowser={() => setIsStyleModalOpen(true)}
         onOpenChordSequencer={() => setIsChordSeqModalOpen(true)}
@@ -402,91 +436,59 @@ export default function App() {
         onMasterVolumeChange={handleMasterVolumeChange}
         midiConnected={midiConnected}
         midiDeviceName={midiDeviceName}
+        onToggleSidebar={() => setIsSidebarCollapsed(prev => !prev)}
+        isSidebarCollapsed={isSidebarCollapsed}
       />
 
-      {/* Main Console Workstation Surface */}
-      <main className="flex-1 max-w-7xl w-full mx-auto p-2 sm:p-4 flex flex-col gap-3.5">
-        
-        {/* LCD Screen Display */}
-        <MainLcdDisplay
-          style={currentStyle}
-          tempo={tempo}
-          onTempoChange={(bpm) => stylePlayer.setTempo(bpm)}
-          onTapTempo={() => stylePlayer.tapTempo()}
-          currentSection={currentSection}
-          currentChord={currentChord}
-          measure={measure}
-          beat={beat}
-          isPlaying={isPlaying}
+      {/* Main Console + Fixed Sidebar Body */}
+      <div className="flex-1 flex overflow-hidden min-h-0 relative">
+        {/* Collapsible Fixed Sidebar */}
+        <WorkstationSidebar
+          isCollapsed={isSidebarCollapsed}
+          onToggleCollapse={() => setIsSidebarCollapsed(prev => !prev)}
+          currentStyle={currentStyle}
+          onSelectStyle={handleSelectStyle}
+          customStyles={customStyles}
+          onOpenStyleBrowser={() => setIsStyleModalOpen(true)}
+          onOpenVoiceSelect={handleOpenVoiceSelect}
+          onOpenChordSequencer={() => setIsChordSeqModalOpen(true)}
+          onOpenMidiHelp={() => setIsMidiHelpModalOpen(true)}
           r1Voice={r1Voice}
           r2Voice={r2Voice}
           lVoice={lVoice}
           r2Enabled={r2Enabled}
           lEnabled={lEnabled}
-          splitPoint={splitPoint}
+          onToggleR2={() => setR2Enabled(prev => !prev)}
+          onToggleL={() => setLEnabled(prev => !prev)}
           acmpEnabled={acmpEnabled}
-          chordMode={chordMode}
-          onOpenStyleBrowser={() => setIsStyleModalOpen(true)}
-          onOpenVoiceSelect={handleOpenVoiceSelect}
-        />
-
-        {/* Style & Fill Capability Notification Banner */}
-        {styleNotification && (
-          <div className="bg-gradient-to-r from-purple-950/90 via-zinc-900/90 to-amber-950/90 border border-purple-500/40 rounded-xl p-2.5 px-4 text-xs flex items-center justify-between gap-3 shadow-lg shadow-purple-950/40 animate-fade-in">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-bold text-amber-300">Style Loaded:</span>
-              <span className="text-zinc-200 font-semibold">{styleNotification.name}</span>
-              <span className="text-zinc-500">•</span>
-              <span className="text-purple-300 font-bold">
-                {styleNotification.fills.length > 0
-                  ? `Available Fills: [ ${styleNotification.fills.join(', ')} ]`
-                  : 'No Fill Patterns in Beat'}
-              </span>
-            </div>
-            <button
-              onClick={() => setStyleNotification(null)}
-              className="text-zinc-400 hover:text-zinc-200 text-[10px] font-mono px-2 py-0.5 rounded bg-zinc-800"
-            >
-              DISMISS
-            </button>
-          </div>
-        )}
-
-        {/* Section Matrix & Arranger Controls */}
-        <ArrangerControls
-          isPlaying={isPlaying}
-          onTogglePlay={() => stylePlayer.togglePlay()}
-          currentSection={currentSection}
-          onSelectSection={(sec) => stylePlayer.triggerSection(sec)}
-          onTriggerBreak={() => stylePlayer.triggerBreak()}
+          onToggleAcmp={handleToggleAcmp}
           syncStart={syncStart}
           onToggleSyncStart={handleToggleSyncStart}
           syncStop={syncStop}
           onToggleSyncStop={handleToggleSyncStop}
           autoFill={autoFill}
           onToggleAutoFill={handleToggleAutoFill}
-          acmpEnabled={acmpEnabled}
-          onToggleAcmp={handleToggleAcmp}
-          chordMode={chordMode}
-          onToggleChordMode={handleToggleChordMode}
-          activeOtsIndex={activeOtsIndex}
-          onSelectOts={(idx) => applyOtsPreset(currentStyle, idx)}
-          style={currentStyle}
-          fillIntensityThreshold={fillIntensityThreshold}
-          onChangeFillIntensityThreshold={handleChangeFillIntensityThreshold}
-          dynamicFillMode={dynamicFillMode}
-          onToggleDynamicFillMode={handleToggleDynamicFillMode}
-          onTriggerDynamicFill={handleTriggerDynamicFill}
-          currentTrackVolumeIntensity={stylePlayer.getTrackVolumeIntensity()}
+          splitPoint={splitPoint}
+          onSplitPointChange={(newSplit) => setSplitPoint(newSplit)}
+          midiConnected={midiConnected}
+          midiDeviceName={midiDeviceName}
         />
 
-        {/* Mid-tier Module: Registration Memory & Multi-Pads */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-3">
-          <div className="lg:col-span-6">
-            <RegistrationMemory
-              currentStyleId={currentStyle.id}
-              currentTempo={tempo}
+        {/* Main Console Workstation Surface (Independently Scrollable) */}
+        <div className="flex-1 flex flex-col overflow-y-auto overflow-x-hidden min-w-0 custom-scrollbar h-full">
+          <main className="max-w-7xl w-full mx-auto p-2 sm:p-4 flex flex-col gap-3.5 flex-1">
+            
+            {/* LCD Screen Display */}
+            <MainLcdDisplay
+              style={currentStyle}
+              tempo={tempo}
+              onTempoChange={(bpm) => stylePlayer.setTempo(bpm)}
+              onTapTempo={() => stylePlayer.tapTempo()}
               currentSection={currentSection}
+              currentChord={currentChord}
+              measure={measure}
+              beat={beat}
+              isPlaying={isPlaying}
               r1Voice={r1Voice}
               r2Voice={r2Voice}
               lVoice={lVoice}
@@ -494,61 +496,131 @@ export default function App() {
               lEnabled={lEnabled}
               splitPoint={splitPoint}
               acmpEnabled={acmpEnabled}
-              onRecallPreset={handleRecallPreset}
+              chordMode={chordMode}
+              onOpenStyleBrowser={() => setIsStyleModalOpen(true)}
+              onOpenVoiceSelect={handleOpenVoiceSelect}
             />
-          </div>
-          <div className="lg:col-span-6">
-            <MultiPadsSection />
-          </div>
+
+            {/* Style & Fill Capability Notification Banner */}
+            {styleNotification && (
+              <div className="bg-gradient-to-r from-purple-950/90 via-zinc-900/90 to-amber-950/90 border border-purple-500/40 rounded-xl p-2.5 px-4 text-xs flex items-center justify-between gap-3 shadow-lg shadow-purple-950/40 animate-fade-in">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-bold text-amber-300">Style Loaded:</span>
+                  <span className="text-zinc-200 font-semibold">{styleNotification.name}</span>
+                  <span className="text-zinc-500">•</span>
+                  <span className="text-purple-300 font-bold">
+                    {styleNotification.fills.length > 0
+                      ? `Available Fills: [ ${styleNotification.fills.join(', ')} ]`
+                      : 'No Fill Patterns in Beat'}
+                  </span>
+                </div>
+                <button
+                  onClick={() => setStyleNotification(null)}
+                  className="text-zinc-400 hover:text-zinc-200 text-[10px] font-mono px-2 py-0.5 rounded bg-zinc-800"
+                >
+                  DISMISS
+                </button>
+              </div>
+            )}
+
+            {/* Section Matrix & Arranger Controls */}
+            <ArrangerControls
+              isPlaying={isPlaying}
+              onTogglePlay={() => stylePlayer.togglePlay()}
+              currentSection={currentSection}
+              onSelectSection={(sec) => stylePlayer.triggerSection(sec)}
+              onTriggerBreak={() => stylePlayer.triggerBreak()}
+              syncStart={syncStart}
+              onToggleSyncStart={handleToggleSyncStart}
+              syncStop={syncStop}
+              onToggleSyncStop={handleToggleSyncStop}
+              autoFill={autoFill}
+              onToggleAutoFill={handleToggleAutoFill}
+              acmpEnabled={acmpEnabled}
+              onToggleAcmp={handleToggleAcmp}
+              chordMode={chordMode}
+              onToggleChordMode={handleToggleChordMode}
+              activeOtsIndex={activeOtsIndex}
+              onSelectOts={(idx) => applyOtsPreset(currentStyle, idx)}
+              style={currentStyle}
+              fillIntensityThreshold={fillIntensityThreshold}
+              onChangeFillIntensityThreshold={handleChangeFillIntensityThreshold}
+              dynamicFillMode={dynamicFillMode}
+              onToggleDynamicFillMode={handleToggleDynamicFillMode}
+              onTriggerDynamicFill={handleTriggerDynamicFill}
+              currentTrackVolumeIntensity={stylePlayer.getTrackVolumeIntensity()}
+            />
+
+            {/* Mid-tier Module: Registration Memory & Multi-Pads */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-3">
+              <div className="lg:col-span-6">
+                <RegistrationMemory
+                  currentStyleId={currentStyle.id}
+                  currentTempo={tempo}
+                  currentSection={currentSection}
+                  r1Voice={r1Voice}
+                  r2Voice={r2Voice}
+                  lVoice={lVoice}
+                  r2Enabled={r2Enabled}
+                  lEnabled={lEnabled}
+                  splitPoint={splitPoint}
+                  acmpEnabled={acmpEnabled}
+                  onRecallPreset={handleRecallPreset}
+                />
+              </div>
+              <div className="lg:col-span-6">
+                <MultiPadsSection />
+              </div>
+            </div>
+
+            {/* Interactive Piano Keyboard with Split Zones */}
+            <InteractiveKeyboard
+              splitPoint={splitPoint}
+              onSplitPointChange={(newSplit) => setSplitPoint(newSplit)}
+              r1Voice={r1Voice}
+              r2Voice={r2Voice}
+              lVoice={lVoice}
+              r2Enabled={r2Enabled}
+              lEnabled={lEnabled}
+              acmpEnabled={acmpEnabled}
+              chordMode={chordMode}
+              onChordDetected={(chord) => stylePlayer.setChord(chord)}
+              activeNotes={activeMidiNotes}
+              onNoteOn={handleLiveNoteOn}
+              onNoteOff={handleLiveNoteOff}
+            />
+
+            {/* Multi-Track Mixer Console */}
+            <MixerSection
+              trackSettings={trackSettings}
+              onTrackSettingChange={handleTrackSettingChange}
+              r1Voice={r1Voice}
+              r2Voice={r2Voice}
+              lVoice={lVoice}
+              r1Volume={r1Volume}
+              r2Volume={r2Volume}
+              lVolume={lVolume}
+              onLiveVoiceVolumeChange={(part, vol) => {
+                if (part === 'r1') {
+                  setR1Volume(vol);
+                  audioEngine.setTrackVolume('r1', vol / 100);
+                } else if (part === 'r2') {
+                  setR2Volume(vol);
+                  audioEngine.setTrackVolume('r2', vol / 100);
+                } else if (part === 'left') {
+                  setLVolume(vol);
+                  audioEngine.setTrackVolume('left', vol / 100);
+                }
+              }}
+            />
+
+          </main>
+          {/* Footer Branding */}
+          <footer className="border-t border-zinc-900 bg-zinc-950/80 px-4 py-2.5 text-center text-[11px] text-zinc-500 font-mono shrink-0">
+            Arranger Workstation Engine • Yamaha .STY Parser • Web Audio FM &amp; Subtractive Synthesizer • Web MIDI Compatible
+          </footer>
         </div>
-
-        {/* Interactive Piano Keyboard with Split Zones */}
-        <InteractiveKeyboard
-          splitPoint={splitPoint}
-          onSplitPointChange={(newSplit) => setSplitPoint(newSplit)}
-          r1Voice={r1Voice}
-          r2Voice={r2Voice}
-          lVoice={lVoice}
-          r2Enabled={r2Enabled}
-          lEnabled={lEnabled}
-          acmpEnabled={acmpEnabled}
-          chordMode={chordMode}
-          onChordDetected={(chord) => stylePlayer.setChord(chord)}
-          activeNotes={activeMidiNotes}
-          onNoteOn={handleLiveNoteOn}
-          onNoteOff={handleLiveNoteOff}
-        />
-
-        {/* Multi-Track Mixer Console */}
-        <MixerSection
-          trackSettings={trackSettings}
-          onTrackSettingChange={handleTrackSettingChange}
-          r1Voice={r1Voice}
-          r2Voice={r2Voice}
-          lVoice={lVoice}
-          r1Volume={r1Volume}
-          r2Volume={r2Volume}
-          lVolume={lVolume}
-          onLiveVoiceVolumeChange={(part, vol) => {
-            if (part === 'r1') {
-              setR1Volume(vol);
-              audioEngine.setTrackVolume('r1', vol / 100);
-            } else if (part === 'r2') {
-              setR2Volume(vol);
-              audioEngine.setTrackVolume('r2', vol / 100);
-            } else if (part === 'left') {
-              setLVolume(vol);
-              audioEngine.setTrackVolume('left', vol / 100);
-            }
-          }}
-        />
-
-      </main>
-
-      {/* Footer Branding */}
-      <footer className="border-t border-zinc-900 bg-zinc-950 px-4 py-2 text-center text-[11px] text-zinc-500 font-mono">
-        Arranger Workstation Engine • Yamaha .STY Parser • Web Audio FM &amp; Subtractive Synthesizer • Web MIDI Compatible
-      </footer>
+      </div>
 
       {/* --- Modals --- */}
       {/* Style Browser & .STY Loader Modal */}
