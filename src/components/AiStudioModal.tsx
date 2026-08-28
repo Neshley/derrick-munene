@@ -16,11 +16,13 @@ import {
   Disc,
   Download,
   Flame,
+  Key,
   Layers,
   Music,
   Play,
   Radio,
   RefreshCw,
+  ShieldCheck,
   Sliders,
   Sparkles,
   Square,
@@ -30,6 +32,8 @@ import {
   X,
   Zap,
 } from 'lucide-react';
+import { getAiFetchHeaders, getStoredApiKey } from '../utils/apiKeyManager';
+import { ApiKeyModal } from './ApiKeyModal';
 
 interface AiStudioModalProps {
   isOpen: boolean;
@@ -102,8 +106,19 @@ export const AiStudioModal: React.FC<AiStudioModalProps> = ({
   const [multipadsKey, setMultipadsKey] = useState<string>('C');
   const [generatedMultiPads, setGeneratedMultiPads] = useState<any>(null);
 
+  // API Key Management (Stored strictly in browser localStorage)
+  const [isApiKeyModalOpen, setIsApiKeyModalOpen] = useState<boolean>(false);
+  const [hasBrowserKey, setHasBrowserKey] = useState<boolean>(() => Boolean(getStoredApiKey()));
+
   useEffect(() => {
+    const updateKeyStatus = () => {
+      setHasBrowserKey(Boolean(getStoredApiKey()));
+    };
+    window.addEventListener('genos-api-key-updated', updateKeyStatus);
+    window.addEventListener('storage', updateKeyStatus);
     return () => {
+      window.removeEventListener('genos-api-key-updated', updateKeyStatus);
+      window.removeEventListener('storage', updateKeyStatus);
       if (progressionTimeoutRef.current) clearTimeout(progressionTimeoutRef.current);
     };
   }, []);
@@ -185,7 +200,7 @@ export const AiStudioModal: React.FC<AiStudioModalProps> = ({
     try {
       const res = await fetch('/api/ai/generate-style', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAiFetchHeaders(),
         body: JSON.stringify({
           prompt: stylePrompt,
           category: styleCategory,
@@ -214,7 +229,7 @@ export const AiStudioModal: React.FC<AiStudioModalProps> = ({
     try {
       const res = await fetch('/api/ai/generate-chords', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAiFetchHeaders(),
         body: JSON.stringify({
           rootKey: chordKey,
           chordStyle,
@@ -241,7 +256,7 @@ export const AiStudioModal: React.FC<AiStudioModalProps> = ({
     try {
       const res = await fetch('/api/ai/generate-song', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAiFetchHeaders(),
         body: JSON.stringify({
           songQuery,
           key: songKey,
@@ -268,7 +283,7 @@ export const AiStudioModal: React.FC<AiStudioModalProps> = ({
     try {
       const res = await fetch('/api/ai/generate-voice', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAiFetchHeaders(),
         body: JSON.stringify({
           prompt: voicePrompt,
           targetPart: voiceTargetPart,
@@ -294,7 +309,7 @@ export const AiStudioModal: React.FC<AiStudioModalProps> = ({
     try {
       const res = await fetch('/api/ai/generate-mix', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAiFetchHeaders(),
         body: JSON.stringify({
           presetTarget: mixPresetTarget,
           currentStyle: currentStyle.name,
@@ -320,7 +335,7 @@ export const AiStudioModal: React.FC<AiStudioModalProps> = ({
     try {
       const res = await fetch('/api/ai/generate-multipads', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAiFetchHeaders(),
         body: JSON.stringify({
           theme: multipadsTheme,
           key: multipadsKey,
@@ -435,13 +450,31 @@ export const AiStudioModal: React.FC<AiStudioModalProps> = ({
             </div>
           </div>
 
-          <button
-            onClick={onClose}
-            className="p-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-400 hover:text-zinc-100 transition-colors cursor-pointer"
-            title="Close AI Studio"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              id="btn-ai-studio-api-key"
+              onClick={() => setIsApiKeyModalOpen(true)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold flex items-center gap-1.5 transition-all border cursor-pointer ${
+                hasBrowserKey
+                  ? 'bg-emerald-950/80 hover:bg-emerald-900/90 text-emerald-300 border-emerald-500/50 shadow-xs'
+                  : 'bg-amber-950/60 hover:bg-amber-900/80 text-amber-300 border-amber-500/40'
+              }`}
+              title="Manage Gemini API Key (Saved only in browser localStorage)"
+            >
+              <Key className="w-3.5 h-3.5 text-amber-400" />
+              <span>{hasBrowserKey ? 'API Key Active' : 'Add API Key'}</span>
+              <span className="text-[10px] px-1 py-0.2 bg-black/40 rounded text-zinc-300 font-normal">Browser</span>
+              {hasBrowserKey && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />}
+            </button>
+
+            <button
+              onClick={onClose}
+              className="p-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-400 hover:text-zinc-100 transition-colors cursor-pointer"
+              title="Close AI Studio"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* Tab Switcher Rail */}
@@ -1356,7 +1389,16 @@ export const AiStudioModal: React.FC<AiStudioModalProps> = ({
 
         {/* Modal Footer */}
         <div className="px-4 sm:px-6 py-3 bg-zinc-950 border-t border-zinc-800/80 flex items-center justify-between text-xs font-mono text-zinc-400 shrink-0">
-          <span>Engine: Google GenAI SDK (Gemini 2.5 Flash)</span>
+          <div className="flex items-center gap-3">
+            <span>Engine: Google GenAI SDK (Gemini 3.7 Flash)</span>
+            <button
+              onClick={() => setIsApiKeyModalOpen(true)}
+              className="text-amber-400 hover:text-amber-300 underline font-mono text-[11px] flex items-center gap-1 cursor-pointer"
+            >
+              <Key className="w-3 h-3" />
+              <span>{hasBrowserKey ? 'Key Configured (Browser Storage)' : 'Set Custom Browser API Key'}</span>
+            </button>
+          </div>
           <button
             onClick={onClose}
             className="px-4 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border border-zinc-700 font-bold transition-colors cursor-pointer"
@@ -1365,6 +1407,12 @@ export const AiStudioModal: React.FC<AiStudioModalProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Browser-Only API Key Configuration Modal */}
+      <ApiKeyModal
+        isOpen={isApiKeyModalOpen}
+        onClose={() => setIsApiKeyModalOpen(false)}
+      />
     </div>
   );
 };

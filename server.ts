@@ -14,9 +14,25 @@ const PORT = 3000;
 
 app.use(express.json({ limit: '10mb' }));
 
-// Lazy GoogleGenAI client
+// Helper to extract custom API key provided from client request (browser localStorage)
+function extractApiKey(req: express.Request): string | undefined {
+  const headerKey = req.headers['x-gemini-api-key'];
+  if (typeof headerKey === 'string' && headerKey.trim()) {
+    return headerKey.trim();
+  }
+  if (req.body && typeof req.body.apiKey === 'string' && req.body.apiKey.trim()) {
+    return req.body.apiKey.trim();
+  }
+  return undefined;
+}
+
+// Lazy GoogleGenAI client or custom client instantiation
 let genAIClient: GoogleGenAI | null = null;
-function getGenAI(): GoogleGenAI | null {
+function getGenAI(customKey?: string): GoogleGenAI | null {
+  const trimmedCustom = customKey?.trim();
+  if (trimmedCustom) {
+    return new GoogleGenAI({ apiKey: trimmedCustom });
+  }
   if (!genAIClient && process.env.GEMINI_API_KEY) {
     genAIClient = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
   }
@@ -31,11 +47,33 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// 1b. Validate API Key endpoint
+app.post('/api/ai/validate-key', async (req, res) => {
+  try {
+    const customKey = extractApiKey(req);
+    const ai = getGenAI(customKey);
+    if (!ai) {
+      return res.status(400).json({ success: false, error: 'No API key provided or configured.' });
+    }
+    const response = await ai.models.generateContent({
+      model: 'gemini-3.7-flash',
+      contents: 'Respond with JSON {"status": "ok", "message": "Key is valid"}',
+      config: {
+        responseMimeType: 'application/json',
+      },
+    });
+    return res.json({ success: true, message: 'Gemini API key is valid and working!', keyActive: true });
+  } catch (error: any) {
+    console.error('Key validation error:', error);
+    return res.status(400).json({ success: false, error: error.message || 'Invalid API Key' });
+  }
+});
+
 // 2. AI Style Generator API
 app.post('/api/ai/generate-style', async (req, res) => {
   try {
     const { prompt, category = 'African Gospel', currentTempo = 118 } = req.body;
-    const ai = getGenAI();
+    const ai = getGenAI(extractApiKey(req));
 
     if (!ai) {
       // Return smart programmatic preset style if key is not provided
@@ -123,7 +161,7 @@ Return ONLY raw JSON with:
 app.post('/api/ai/generate-chords', async (req, res) => {
   try {
     const { rootKey = 'C', chordStyle = 'Gospel 2-5-1', mood = 'Inspiring & Uplifting', currentChords = '' } = req.body;
-    const ai = getGenAI();
+    const ai = getGenAI(extractApiKey(req));
 
     if (!ai) {
       // Smart offline gospel / jazz progression defaults
@@ -199,7 +237,7 @@ Return ONLY raw JSON with:
 app.post('/api/ai/generate-song', async (req, res) => {
   try {
     const { songQuery = '', key = 'D', category = 'Worship' } = req.body;
-    const ai = getGenAI();
+    const ai = getGenAI(extractApiKey(req));
 
     if (!ai) {
       return res.json({
@@ -287,7 +325,7 @@ Return ONLY raw JSON with:
 app.post('/api/ai/generate-voice', async (req, res) => {
   try {
     const { prompt = '80s Warm Lush Silk Pad with Chorus', targetPart = 'r1' } = req.body;
-    const ai = getGenAI();
+    const ai = getGenAI(extractApiKey(req));
 
     if (!ai) {
       return res.json({
@@ -375,7 +413,7 @@ Return ONLY raw JSON with:
 app.post('/api/ai/generate-mix', async (req, res) => {
   try {
     const { presetTarget = 'Sanctuary Worship (Warm & Reverb)', currentStyle = 'Worship Ballad' } = req.body;
-    const ai = getGenAI();
+    const ai = getGenAI(extractApiKey(req));
 
     if (!ai) {
       return res.json({
@@ -448,7 +486,7 @@ Return ONLY raw JSON with:
 app.post('/api/ai/generate-multipads', async (req, res) => {
   try {
     const { theme = 'Gospel & Worship Hits', key = 'C' } = req.body;
-    const ai = getGenAI();
+    const ai = getGenAI(extractApiKey(req));
 
     if (!ai) {
       return res.json({

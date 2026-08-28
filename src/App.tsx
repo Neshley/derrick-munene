@@ -32,6 +32,7 @@ import { WorshipSongbookModal } from './components/WorshipSongbookModal';
 import { AudioRecordingModal } from './components/AudioRecordingModal';
 import { MidiAutomationModal } from './components/MidiAutomationModal';
 import { AiStudioModal } from './components/AiStudioModal';
+import { ApiKeyModal } from './components/ApiKeyModal';
 import { addMultiPadBank } from './audio/multiPads';
 
 export default function App() {
@@ -155,6 +156,7 @@ export default function App() {
   const [isAudioRecordModalOpen, setIsAudioRecordModalOpen] = useState(false);
   const [isMidiAutomationOpen, setIsMidiAutomationOpen] = useState(false);
   const [isAiStudioModalOpen, setIsAiStudioModalOpen] = useState(false);
+  const [isApiKeyModalOpen, setIsApiKeyModalOpen] = useState(false);
   const [styleNotification, setStyleNotification] = useState<{ name: string; fills: string[]; mains: string[] } | null>(null);
 
   // Keep MidiManager live performance configuration synchronized
@@ -460,6 +462,7 @@ export default function App() {
           onOpenAudioRecording={() => setIsAudioRecordModalOpen(true)}
           onOpenMidiAutomation={() => setIsMidiAutomationOpen(true)}
           onOpenAiStudio={() => setIsAiStudioModalOpen(true)}
+          onOpenApiKeyModal={() => setIsApiKeyModalOpen(true)}
           r1Voice={r1Voice}
           r2Voice={r2Voice}
           lVoice={lVoice}
@@ -790,6 +793,12 @@ export default function App() {
         onApplyMultiPads={(pads, bankName) => {
           addMultiPadBank({ name: bankName, pads });
         }}
+      />
+
+      {/* Standalone Browser-Only Gemini API Key Modal */}
+      <ApiKeyModal
+        isOpen={isApiKeyModalOpen}
+        onClose={() => setIsApiKeyModalOpen(false)}
       />
     </div>
   );
