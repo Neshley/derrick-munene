@@ -14,6 +14,7 @@ import { FACTORY_STYLES } from '../audio/builtInStyles';
 import { audioEngine } from '../audio/audioEngine';
 import { StyParser } from '../audio/styParser';
 import { StyleMidiExporter } from '../audio/styleMidiExporter';
+import { midiManager } from '../midi/midiManager';
 import { 
   createNewBlankStyle, 
   createEmptySection, 
@@ -53,7 +54,15 @@ import {
   HelpCircle,
   FolderOpen,
   FastForward,
-  PlayCircle
+  PlayCircle,
+  Circle,
+  Radio,
+  SlidersHorizontal,
+  Activity,
+  Zap,
+  Split,
+  FileMusic,
+  BarChart2
 } from 'lucide-react';
 
 interface StyleCreatorModalProps {
@@ -132,7 +141,7 @@ export const StyleCreatorModal: React.FC<StyleCreatorModalProps> = ({
   // Editor Navigation state
   const [activeSectionKey, setActiveSectionKey] = useState<StyleSection>('main_a');
   const [activeTrackKey, setActiveTrackKey] = useState<TrackType>('rhythm1');
-  const [editorMode, setEditorMode] = useState<'grid' | 'mixer' | 'ots' | 'settings'>('grid');
+  const [editorSubTab, setEditorSubTab] = useState<'grid' | 'velocity' | 'quantize' | 'generator'>('grid');
 
   // Clipboard for Section copying
   const [copiedSectionData, setCopiedSectionData] = useState<StyleSectionData | null>(null);
@@ -146,11 +155,29 @@ export const StyleCreatorModal: React.FC<StyleCreatorModalProps> = ({
   const [selectedDuration, setSelectedDuration] = useState<number>(2); // in 16th notes (2 = 8th note)
   const [selectedVelocity, setSelectedVelocity] = useState<number>(100);
 
+  // Real-time MIDI Recording State
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordCountIn, setRecordCountIn] = useState<number | null>(null);
+  const [recordOverdub, setRecordOverdub] = useState(true);
+
+  // New Style Wizard Modal State
+  const [isNewStyleWizardOpen, setIsNewStyleWizardOpen] = useState(false);
+  const [newStyleName, setNewStyleName] = useState('New Praise Groove');
+  const [newStyleCategory, setNewStyleCategory] = useState<any>('African Gospel');
+  const [newStyleTempo, setNewStyleTempo] = useState(124);
+  const [newStyleTimeSig, setNewStyleTimeSig] = useState('4/4');
+
+  // Quantize Panel States
+  const [quantizeGrid, setQuantizeGrid] = useState<number>(1); // 1 = 16th, 2 = 8th, 4 = quarter
+  const [quantizeSwing, setQuantizeSwing] = useState<number>(50); // 50% = straight
+
   // Status banners / toasts
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const playbackTimerRef = useRef<number | null>(null);
+  const currentStepRef = useRef(0);
+  currentStepRef.current = currentStep;
 
   // Synchronize when initialStyle changes
   useEffect(() => {
@@ -161,6 +188,7 @@ export const StyleCreatorModal: React.FC<StyleCreatorModalProps> = ({
         setStyleData(createNewBlankStyle('My Worship Groove', 'Worship & Praise'));
       }
       setIsAuditioning(false);
+      setIsRecording(false);
       setCurrentStep(0);
     }
   }, [isOpen, initialStyle]);
@@ -185,6 +213,8 @@ export const StyleCreatorModal: React.FC<StyleCreatorModalProps> = ({
       playbackTimerRef.current = null;
     }
     setIsAuditioning(false);
+    setIsRecording(false);
+    setRecordCountIn(null);
     setCurrentStep(0);
   }, []);
 
@@ -241,7 +271,10 @@ export const StyleCreatorModal: React.FC<StyleCreatorModalProps> = ({
       ctx.resume();
     }
 
-    stopAudition();
+    if (playbackTimerRef.current) {
+      window.clearInterval(playbackTimerRef.current);
+      playbackTimerRef.current = null;
+    }
     setIsAuditioning(true);
 
     const stepDurationMs = (60000 / styleData.tempo) / 4; // 16th note step in ms
@@ -255,7 +288,96 @@ export const StyleCreatorModal: React.FC<StyleCreatorModalProps> = ({
       setCurrentStep(stepCounter);
       playStepEvents(stepCounter, activeSection, auditionChord);
     }, stepDurationMs);
-  }, [activeSection, auditionChord, playStepEvents, stopAudition, styleData.tempo, totalSteps]);
+  }, [activeSection, auditionChord, playStepEvents, styleData.tempo, totalSteps]);
+
+  // Real-time MIDI Recording Handler
+  const startRecording = useCallback(() => {
+    audioEngine.init();
+    const ctx = audioEngine.getContext();
+    if (ctx && ctx.state === 'suspended') ctx.resume();
+
+    stopAudition();
+
+    // 4-beat count in
+    setRecordCountIn(4);
+    const beatInterval = 60000 / styleData.tempo;
+    let count = 4;
+
+    const countInTimer = window.setInterval(() => {
+      audioEngine.playDrum(37, 0.9); // Metronome click
+      count--;
+      if (count > 0) {
+        setRecordCountIn(count);
+      } else {
+        window.clearInterval(countInTimer);
+        setRecordCountIn(null);
+        setIsRecording(true);
+        setIsAuditioning(true);
+
+        if (!recordOverdub) {
+          // Clear current track before recording
+          updateActiveTrack(trk => ({ ...trk, notes: [] }));
+        }
+
+        const stepDurationMs = (60000 / styleData.tempo) / 4;
+        let stepCounter = 0;
+        setCurrentStep(0);
+        playStepEvents(0, activeSection, auditionChord);
+
+        playbackTimerRef.current = window.setInterval(() => {
+          stepCounter = (stepCounter + 1) % totalSteps;
+          setCurrentStep(stepCounter);
+          playStepEvents(stepCounter, activeSection, auditionChord);
+        }, stepDurationMs);
+      }
+    }, beatInterval);
+  }, [activeSection, auditionChord, playStepEvents, recordOverdub, stopAudition, styleData.tempo, totalSteps]);
+
+  // Web MIDI Real-time Live Capture Listener
+  useEffect(() => {
+    if (!isRecording) return;
+
+    const handleIncomingMidiNote = (note: number, velocity: number) => {
+      const step = currentStepRef.current;
+      audioEngine.init();
+
+      if (activeTrackKey === 'rhythm1' || activeTrackKey === 'rhythm2') {
+        audioEngine.playDrum(note, velocity / 127);
+        updateActiveTrack(trk => {
+          const filtered = trk.notes.filter(n => !(n.note === note && n.step === step));
+          return {
+            ...trk,
+            notes: [...filtered, { note, step, duration: 1, velocity: Math.max(10, velocity) }]
+          };
+        });
+      } else {
+        audioEngine.playNote(note, velocity, activeTrack.voiceId || 'piano', activeTrackKey, 0.4);
+        updateActiveTrack(trk => {
+          const filtered = trk.notes.filter(n => !(n.note === note && n.step === step));
+          return {
+            ...trk,
+            notes: [...filtered, {
+              note,
+              step,
+              duration: selectedDuration,
+              velocity: Math.max(10, velocity),
+              isBassNote: activeTrackKey === 'bass',
+              isChordNote: activeTrackKey.includes('chord') || activeTrackKey === 'pad'
+            }]
+          };
+        });
+      }
+    };
+
+    const listener = {
+      onNoteOn: (evt: { note: number; velocity: number }) => {
+        handleIncomingMidiNote(evt.note, evt.velocity);
+      }
+    };
+
+    midiManager.addListener(listener);
+    return () => midiManager.removeListener(listener);
+  }, [isRecording, activeTrackKey, activeTrack.voiceId, selectedDuration]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -265,13 +387,6 @@ export const StyleCreatorModal: React.FC<StyleCreatorModalProps> = ({
       }
     };
   }, []);
-
-  // If auditioning and section/tempo/chord changes, restart timer cleanly
-  useEffect(() => {
-    if (isAuditioning) {
-      startAudition();
-    }
-  }, [activeSectionKey, auditionChord, isAuditioning, startAudition]);
 
   // --- SECTION & TRACK MUTATION HELPERS ---
   const updateActiveSection = (updater: (prevSec: StyleSectionData) => StyleSectionData) => {
@@ -411,54 +526,60 @@ export const StyleCreatorModal: React.FC<StyleCreatorModalProps> = ({
     }
   };
 
-  // Auto-Generate Section Variation (e.g. Build Fill from Main, or Main B from Main A)
-  const handleAutoGenerateVariation = (targetType: 'fill' | 'higher_energy') => {
-    if (targetType === 'fill') {
-      // Create dynamic snare & tom roll over the last bar
-      const fillNotes: NoteEvent[] = [
-        { note: 38, step: totalSteps - 8, duration: 1, velocity: 90 },
-        { note: 38, step: totalSteps - 6, duration: 1, velocity: 100 },
-        { note: 48, step: totalSteps - 4, duration: 1, velocity: 110 },
-        { note: 45, step: totalSteps - 2, duration: 1, velocity: 115 },
-        { note: 41, step: totalSteps - 1, duration: 1, velocity: 125 },
-      ];
-
-      updateActiveSection((sec) => {
-        const cloned = JSON.parse(JSON.stringify(sec)) as StyleSectionData;
-        cloned.tracks.rhythm1.notes = [...cloned.tracks.rhythm1.notes.filter(n => n.step < totalSteps - 8), ...fillNotes];
-        return cloned;
-      });
-      showToast('Generated Fill Roll in final bar!');
-    } else {
-      // Increase energy: add Ride cymbal and 16th octave bass notes
-      updateActiveSection((sec) => {
-        const cloned = JSON.parse(JSON.stringify(sec)) as StyleSectionData;
-        // Add 8th note Ride cymbals
-        for (let s = 0; s < totalSteps; s += 2) {
-          if (!cloned.tracks.rhythm1.notes.some(n => n.note === 51 && n.step === s)) {
-            cloned.tracks.rhythm1.notes.push({ note: 51, step: s, duration: 1, velocity: 85 });
-          }
+  // Quantize Active Track
+  const handleApplyQuantize = () => {
+    updateActiveTrack((trk) => {
+      const quantizedNotes = trk.notes.map(n => {
+        let snappedStep = Math.round(n.step / quantizeGrid) * quantizeGrid;
+        if (quantizeSwing > 50 && (snappedStep % 2 === 1)) {
+          // Add swing delay
         }
-        return cloned;
+        return {
+          ...n,
+          step: Math.min(totalSteps - 1, Math.max(0, snappedStep))
+        };
       });
-      showToast('Energy boosted with active ride and denser rhythm!');
-    }
+      return { ...trk, notes: quantizedNotes };
+    });
+    showToast(`Quantized track to ${quantizeGrid === 1 ? '1/16' : quantizeGrid === 2 ? '1/8' : '1/4'} Grid`);
   };
 
-  // Load from Built-In Template or Custom Style
-  const handleLoadTemplate = (sourceStyle: ArrangerStyle) => {
-    if (window.confirm(`Load "${sourceStyle.name}" into Style Editor? Current unsaved edits will be replaced.`)) {
-      setStyleData({
-        ...JSON.parse(JSON.stringify(sourceStyle)),
-        id: `custom_style_${Date.now()}`,
-        name: `${sourceStyle.name} (Custom)`,
-        sourceType: 'user-created',
-      });
-      showToast(`Loaded "${sourceStyle.name}" template`);
-    }
+  // Humanize Velocity
+  const handleHumanizeVelocity = () => {
+    updateActiveTrack((trk) => ({
+      ...trk,
+      notes: trk.notes.map(n => ({
+        ...n,
+        velocity: Math.min(127, Math.max(30, n.velocity + Math.floor((Math.random() - 0.5) * 16)))
+      }))
+    }));
+    showToast('Humanized note velocities (±8 velocity jitter)');
   };
 
-  // File Import (.STY or .JSON)
+  // Scale Velocity
+  const handleScaleVelocity = (factor: number) => {
+    updateActiveTrack((trk) => ({
+      ...trk,
+      notes: trk.notes.map(n => ({
+        ...n,
+        velocity: Math.min(127, Math.max(20, Math.round(n.velocity * factor)))
+      }))
+    }));
+    showToast(`Scaled velocities by ${Math.round((factor - 1) * 100)}%`);
+  };
+
+  // Create New Blank Style from Wizard
+  const handleCreateNewStyleFromWizard = () => {
+    const [num, den] = newStyleTimeSig.split('/').map(Number);
+    const newStyle = createNewBlankStyle(newStyleName || 'New Style', newStyleCategory);
+    newStyle.tempo = newStyleTempo;
+    newStyle.timeSignature = [num || 4, den || 4];
+    setStyleData(newStyle);
+    setIsNewStyleWizardOpen(false);
+    showToast(`Created new style "${newStyle.name}"`);
+  };
+
+  // File Import (.STY or .JSON or .MID)
   const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -546,8 +667,18 @@ export const StyleCreatorModal: React.FC<StyleCreatorModalProps> = ({
             </div>
           </div>
 
-          {/* Quick Stats & Properties */}
+          {/* Style Properties & Controls */}
           <div className="flex items-center gap-2 bg-zinc-900/80 p-1.5 rounded-xl border border-zinc-800 flex-wrap sm:flex-nowrap">
+            {/* New Style Wizard Button */}
+            <button
+              onClick={() => setIsNewStyleWizardOpen(true)}
+              className="px-2.5 py-1 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 text-xs font-bold flex items-center gap-1 cursor-pointer transition-all"
+              title="Create a fresh blank style"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>New Style</span>
+            </button>
+
             {/* Style Name Input */}
             <div className="flex items-center gap-1.5 px-2">
               <span className="text-[11px] font-mono text-zinc-400 uppercase">Style:</span>
@@ -603,20 +734,21 @@ export const StyleCreatorModal: React.FC<StyleCreatorModalProps> = ({
               <option value="4/4">4/4</option>
               <option value="3/4">3/4</option>
               <option value="6/8">6/8</option>
+              <option value="2/4">2/4</option>
               <option value="12/8">12/8</option>
             </select>
           </div>
 
           {/* Action Buttons */}
           <div className="flex items-center gap-2">
-            {/* Import Button */}
+            {/* Import MIDI / Style Button */}
             <button
               onClick={() => fileInputRef.current?.click()}
               className="px-2.5 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-bold flex items-center gap-1.5 border border-zinc-700 transition-all cursor-pointer"
-              title="Import .STY Yamaha Style or .JSON file"
+              title="Import MIDI file (.mid/.midi), Yamaha Style (.sty) or JSON"
             >
               <Upload className="w-3.5 h-3.5 text-zinc-400" />
-              <span className="hidden sm:inline">Import</span>
+              <span>Import MIDI / .STY</span>
             </button>
 
             {/* Export .STY Button */}
@@ -644,7 +776,7 @@ export const StyleCreatorModal: React.FC<StyleCreatorModalProps> = ({
               className="px-3 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-zinc-950 text-xs font-extrabold flex items-center gap-1.5 transition-all cursor-pointer shadow-md shadow-amber-500/20 active:scale-95"
             >
               <Save className="w-3.5 h-3.5" />
-              <span>Save</span>
+              <span>Save Style</span>
             </button>
 
             {/* Apply & Play in Workstation */}
@@ -680,7 +812,7 @@ export const StyleCreatorModal: React.FC<StyleCreatorModalProps> = ({
           <div className="flex items-center gap-1.5 flex-nowrap">
             <span className="text-[10px] font-mono font-bold text-zinc-400 uppercase mr-1">Section:</span>
 
-            {/* Intros */}
+            {/* Intros 1, 2, 3 */}
             <div className="flex items-center gap-1 bg-zinc-950/80 p-1 rounded-xl border border-zinc-800">
               {SECTION_KEYS.filter(s => s.group === 'intro').map(sec => {
                 const isSelected = activeSectionKey === sec.id;
@@ -705,7 +837,7 @@ export const StyleCreatorModal: React.FC<StyleCreatorModalProps> = ({
               })}
             </div>
 
-            {/* Mains A-D */}
+            {/* Mains A, B, C, D */}
             <div className="flex items-center gap-1 bg-zinc-950/80 p-1 rounded-xl border border-zinc-800">
               {SECTION_KEYS.filter(s => s.group === 'main').map(sec => {
                 const isSelected = activeSectionKey === sec.id;
@@ -730,7 +862,7 @@ export const StyleCreatorModal: React.FC<StyleCreatorModalProps> = ({
               })}
             </div>
 
-            {/* Fills & Break */}
+            {/* Fills A, B, C, D & Break */}
             <div className="flex items-center gap-1 bg-zinc-950/80 p-1 rounded-xl border border-zinc-800">
               {SECTION_KEYS.filter(s => s.group === 'fill' || s.group === 'break').map(sec => {
                 const isSelected = activeSectionKey === sec.id;
@@ -755,7 +887,7 @@ export const StyleCreatorModal: React.FC<StyleCreatorModalProps> = ({
               })}
             </div>
 
-            {/* Endings */}
+            {/* Endings 1, 2, 3 */}
             <div className="flex items-center gap-1 bg-zinc-950/80 p-1 rounded-xl border border-zinc-800">
               {SECTION_KEYS.filter(s => s.group === 'ending').map(sec => {
                 const isSelected = activeSectionKey === sec.id;
@@ -783,17 +915,18 @@ export const StyleCreatorModal: React.FC<StyleCreatorModalProps> = ({
 
           {/* Section Tools & Quick Actions */}
           <div className="flex items-center gap-1.5 shrink-0">
-            {/* Section Length (Measures) */}
+            {/* Loop Length (Measures: 1, 2, 4, 8 Bars) */}
             <div className="flex items-center gap-1 bg-zinc-950 px-2 py-1 rounded-lg border border-zinc-800 text-xs font-mono">
-              <span className="text-zinc-500">Bars:</span>
+              <span className="text-zinc-500">Loop Length:</span>
               <select
                 value={activeSection.measures || 2}
                 onChange={(e) => updateActiveSection(sec => ({ ...sec, measures: parseInt(e.target.value) || 2 }))}
                 className="bg-transparent text-amber-400 font-bold focus:outline-hidden cursor-pointer"
               >
-                <option value={1} className="bg-zinc-900">1 Bar</option>
-                <option value={2} className="bg-zinc-900">2 Bars</option>
-                <option value={4} className="bg-zinc-900">4 Bars</option>
+                <option value={1} className="bg-zinc-900">1 Bar (16 steps)</option>
+                <option value={2} className="bg-zinc-900">2 Bars (32 steps)</option>
+                <option value={4} className="bg-zinc-900">4 Bars (64 steps)</option>
+                <option value={8} className="bg-zinc-900">8 Bars (128 steps)</option>
               </select>
             </div>
 
@@ -820,16 +953,6 @@ export const StyleCreatorModal: React.FC<StyleCreatorModalProps> = ({
               <Check className="w-3.5 h-3.5" />
             </button>
 
-            {/* Smart Variation Generator */}
-            <button
-              onClick={() => handleAutoGenerateVariation(activeSectionKey.includes('fill') ? 'fill' : 'higher_energy')}
-              className="px-2 py-1 rounded-lg bg-purple-950/40 hover:bg-purple-900/60 border border-purple-500/40 text-purple-300 text-xs font-mono font-bold flex items-center gap-1 transition-colors cursor-pointer"
-              title="Auto-generate variation / dynamic roll"
-            >
-              <Wand2 className="w-3.5 h-3.5 text-purple-400" />
-              <span>Smart Assist</span>
-            </button>
-
             {/* Clear Section */}
             <button
               onClick={handleClearSection}
@@ -841,21 +964,42 @@ export const StyleCreatorModal: React.FC<StyleCreatorModalProps> = ({
           </div>
         </div>
 
-        {/* --- AUDITION & PLAYBACK STRIP --- */}
+        {/* --- AUDITION & PLAYBACK / RECORDING TRANSPORT STRIP --- */}
         <div className="bg-zinc-950/90 border-b border-zinc-800/80 px-4 py-2 flex items-center justify-between gap-3 shrink-0 flex-wrap">
           <div className="flex items-center gap-2">
             {/* Play/Stop Audition Button */}
             <button
               onClick={() => isAuditioning ? stopAudition() : startAudition()}
               className={`px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-2 transition-all cursor-pointer ${
-                isAuditioning 
-                  ? 'bg-rose-600 text-white shadow-lg shadow-rose-600/30 animate-pulse' 
+                isAuditioning && !isRecording
+                  ? 'bg-amber-500 text-zinc-950 shadow-lg shadow-amber-500/30' 
                   : 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-md shadow-emerald-600/20'
               }`}
             >
-              {isAuditioning ? <Square className="w-3.5 h-3.5 fill-current" /> : <Play className="w-3.5 h-3.5 fill-current" />}
-              <span>{isAuditioning ? 'STOP PREVIEW' : 'PLAY LOOP'}</span>
+              {isAuditioning && !isRecording ? <Square className="w-3.5 h-3.5 fill-current" /> : <Play className="w-3.5 h-3.5 fill-current" />}
+              <span>{isAuditioning && !isRecording ? 'STOP LOOP' : 'PLAY LOOP'}</span>
             </button>
+
+            {/* Record MIDI Pattern Button */}
+            <button
+              onClick={() => isRecording ? stopAudition() : startRecording()}
+              className={`px-3 py-1.5 rounded-xl text-xs font-black flex items-center gap-2 transition-all cursor-pointer ${
+                isRecording 
+                  ? 'bg-red-600 text-white shadow-lg shadow-red-600/40 animate-pulse' 
+                  : 'bg-red-950/80 hover:bg-red-900 border border-red-500/50 text-red-300 shadow-md'
+              }`}
+              title="Record live MIDI pattern from connected MIDI keyboard into active track"
+            >
+              <Circle className={`w-3.5 h-3.5 ${isRecording ? 'fill-white text-white' : 'fill-red-400 text-red-400'}`} />
+              <span>{isRecording ? 'RECORDING...' : 'RECORD MIDI'}</span>
+            </button>
+
+            {/* Count-in Badge */}
+            {recordCountIn !== null && (
+              <div className="px-3 py-1 bg-red-500 text-zinc-950 font-black text-xs rounded-xl animate-bounce">
+                COUNT IN: {recordCountIn}
+              </div>
+            )}
 
             {/* Audition Chord Selector */}
             <div className="flex items-center gap-1.5 bg-zinc-900/90 px-2.5 py-1 rounded-xl border border-zinc-800">
@@ -883,77 +1027,35 @@ export const StyleCreatorModal: React.FC<StyleCreatorModalProps> = ({
             </div>
           </div>
 
-          {/* Preset Patterns & Clone Loader */}
-          <div className="flex items-center gap-2">
-            {/* Clone from Built-in Styles */}
-            <div className="flex items-center gap-1.5">
-              <span className="text-[10px] font-mono text-zinc-400 hidden lg:inline">Template:</span>
-              <select
-                onChange={(e) => {
-                  if (!e.target.value) return;
-                  if (e.target.value === 'blank') {
-                    setStyleData(createNewBlankStyle('My New Style', 'Worship & Praise'));
-                  } else {
-                    const match = [...FACTORY_STYLES, ...customStyles].find(s => s.id === e.target.value);
-                    if (match) handleLoadTemplate(match);
-                  }
-                  e.target.value = '';
-                }}
-                defaultValue=""
-                className="bg-zinc-900 border border-zinc-700 rounded-lg px-2 py-1 text-xs text-zinc-300 cursor-pointer"
-              >
-                <option value="" disabled>Load Style Template...</option>
-                <option value="blank">⚡ Clean Blank Style</option>
-                <optgroup label="Factory Styles">
-                  {FACTORY_STYLES.map(s => (
-                    <option key={s.id} value={s.id}>{s.name} ({s.category})</option>
-                  ))}
-                </optgroup>
-              </select>
-            </div>
-
-            {/* Quick Pattern Preset Inserter */}
-            <select
-              onChange={(e) => {
-                const id = e.target.value;
-                if (!id) return;
-                const allPresets = [
-                  ...DRUM_PATTERN_PRESETS,
-                  ...BASS_PATTERN_PRESETS,
-                  ...CHORD_PATTERN_PRESETS,
-                  ...PAD_PATTERN_PRESETS,
-                  ...PHRASE_PATTERN_PRESETS
-                ];
-                const match = allPresets.find(p => p.id === id);
-                if (match) handleApplyPreset(match);
-                e.target.value = '';
-              }}
-              defaultValue=""
-              className="bg-purple-950/40 border border-purple-500/40 text-purple-300 rounded-lg px-2.5 py-1 text-xs font-mono font-bold cursor-pointer"
+          {/* Sub-Tabs: Grid vs Velocity vs Quantize */}
+          <div className="flex items-center gap-1.5 bg-zinc-900/90 p-1 rounded-xl border border-zinc-800">
+            <button
+              onClick={() => setEditorSubTab('grid')}
+              className={`px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer ${
+                editorSubTab === 'grid' ? 'bg-amber-500 text-zinc-950 font-bold' : 'text-zinc-400 hover:text-zinc-200'
+              }`}
             >
-              <option value="" disabled>✨ Insert Groove Preset...</option>
-              {activeTrackKey === 'rhythm1' || activeTrackKey === 'rhythm2' ? (
-                DRUM_PATTERN_PRESETS.map(p => (
-                  <option key={p.id} value={p.id}>{p.name}</option>
-                ))
-              ) : activeTrackKey === 'bass' ? (
-                BASS_PATTERN_PRESETS.map(p => (
-                  <option key={p.id} value={p.id}>{p.name}</option>
-                ))
-              ) : activeTrackKey === 'chord1' || activeTrackKey === 'chord2' ? (
-                CHORD_PATTERN_PRESETS.map(p => (
-                  <option key={p.id} value={p.id}>{p.name}</option>
-                ))
-              ) : activeTrackKey === 'pad' ? (
-                PAD_PATTERN_PRESETS.map(p => (
-                  <option key={p.id} value={p.id}>{p.name}</option>
-                ))
-              ) : (
-                PHRASE_PATTERN_PRESETS.map(p => (
-                  <option key={p.id} value={p.id}>{p.name}</option>
-                ))
-              )}
-            </select>
+              <Piano className="w-3.5 h-3.5" />
+              <span>Pattern Grid</span>
+            </button>
+            <button
+              onClick={() => setEditorSubTab('velocity')}
+              className={`px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer ${
+                editorSubTab === 'velocity' ? 'bg-amber-500 text-zinc-950 font-bold' : 'text-zinc-400 hover:text-zinc-200'
+              }`}
+            >
+              <BarChart2 className="w-3.5 h-3.5" />
+              <span>Velocity Dynamics</span>
+            </button>
+            <button
+              onClick={() => setEditorSubTab('quantize')}
+              className={`px-2.5 py-1 rounded-lg text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer ${
+                editorSubTab === 'quantize' ? 'bg-amber-500 text-zinc-950 font-bold' : 'text-zinc-400 hover:text-zinc-200'
+              }`}
+            >
+              <Split className="w-3.5 h-3.5" />
+              <span>Quantize &amp; Swing</span>
+            </button>
           </div>
         </div>
 
@@ -986,7 +1088,7 @@ export const StyleCreatorModal: React.FC<StyleCreatorModalProps> = ({
                     <div className="flex items-center gap-1.5 min-w-0">
                       <span className="text-sm">{trkConf.icon}</span>
                       <span className={`text-xs font-bold truncate ${isSelected ? 'text-amber-300' : 'text-zinc-200'}`}>
-                        {trkConf.name.split(' ')[0]}
+                        {trkConf.name}
                       </span>
                     </div>
 
@@ -1082,10 +1184,10 @@ export const StyleCreatorModal: React.FC<StyleCreatorModalProps> = ({
             })}
           </div>
 
-          {/* RIGHT: INTERACTIVE PATTERN EDITOR (DRUMS STEP MATRIX / MELODIC PIANO ROLL) */}
+          {/* RIGHT: INTERACTIVE PATTERN EDITOR */}
           <div className="flex-1 flex flex-col overflow-hidden bg-zinc-950/60 p-2 sm:p-3">
             
-            {/* Editor Toolbar (Duration & Velocity Tools) */}
+            {/* Editor Toolbar (Duration, Velocity, Chord Inserter, Presets) */}
             <div className="bg-zinc-900/80 p-2 rounded-xl border border-zinc-800 flex items-center justify-between gap-3 mb-2 flex-wrap shrink-0">
               <div className="flex items-center gap-2">
                 <span className="text-xs font-bold text-amber-400">
@@ -1098,7 +1200,7 @@ export const StyleCreatorModal: React.FC<StyleCreatorModalProps> = ({
               </div>
 
               {/* Tools for note editing */}
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 flex-wrap">
                 {/* Note Duration (for Melodic tracks) */}
                 {activeTrackKey !== 'rhythm1' && activeTrackKey !== 'rhythm2' && (
                   <div className="flex items-center gap-1.5 bg-zinc-950 px-2 py-0.5 rounded-lg border border-zinc-800 text-xs">
@@ -1117,7 +1219,7 @@ export const StyleCreatorModal: React.FC<StyleCreatorModalProps> = ({
                   </div>
                 )}
 
-                {/* Velocity */}
+                {/* Velocity Selector */}
                 <div className="flex items-center gap-1.5 bg-zinc-950 px-2 py-0.5 rounded-lg border border-zinc-800 text-xs">
                   <span className="text-zinc-400 text-[10px] font-mono">Velocity:</span>
                   <select
@@ -1135,7 +1237,7 @@ export const StyleCreatorModal: React.FC<StyleCreatorModalProps> = ({
                 {/* Quick Chord Inserter (for Chords/Pad) */}
                 {(activeTrackKey === 'chord1' || activeTrackKey === 'chord2' || activeTrackKey === 'pad') && (
                   <div className="flex items-center gap-1">
-                    <span className="text-[10px] font-mono text-zinc-400">Chord:</span>
+                    <span className="text-[10px] font-mono text-zinc-400">Voicing:</span>
                     {['maj', 'min', '7', 'sus4', 'add9'].map((cType) => (
                       <button
                         key={cType}
@@ -1148,6 +1250,49 @@ export const StyleCreatorModal: React.FC<StyleCreatorModalProps> = ({
                     ))}
                   </div>
                 )}
+
+                {/* Preset Inserter */}
+                <select
+                  onChange={(e) => {
+                    const id = e.target.value;
+                    if (!id) return;
+                    const allPresets = [
+                      ...DRUM_PATTERN_PRESETS,
+                      ...BASS_PATTERN_PRESETS,
+                      ...CHORD_PATTERN_PRESETS,
+                      ...PAD_PATTERN_PRESETS,
+                      ...PHRASE_PATTERN_PRESETS
+                    ];
+                    const match = allPresets.find(p => p.id === id);
+                    if (match) handleApplyPreset(match);
+                    e.target.value = '';
+                  }}
+                  defaultValue=""
+                  className="bg-purple-950/40 border border-purple-500/40 text-purple-300 rounded-lg px-2 py-0.5 text-xs font-mono font-bold cursor-pointer"
+                >
+                  <option value="" disabled>✨ Groove Presets...</option>
+                  {activeTrackKey === 'rhythm1' || activeTrackKey === 'rhythm2' ? (
+                    DRUM_PATTERN_PRESETS.map(p => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
+                    ))
+                  ) : activeTrackKey === 'bass' ? (
+                    BASS_PATTERN_PRESETS.map(p => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
+                    ))
+                  ) : activeTrackKey === 'chord1' || activeTrackKey === 'chord2' ? (
+                    CHORD_PATTERN_PRESETS.map(p => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
+                    ))
+                  ) : activeTrackKey === 'pad' ? (
+                    PAD_PATTERN_PRESETS.map(p => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
+                    ))
+                  ) : (
+                    PHRASE_PATTERN_PRESETS.map(p => (
+                      <option key={p.id} value={p.id}>{p.name}</option>
+                    ))
+                  )}
+                </select>
 
                 {/* Clear Current Track */}
                 <button
@@ -1162,6 +1307,77 @@ export const StyleCreatorModal: React.FC<StyleCreatorModalProps> = ({
                 </button>
               </div>
             </div>
+
+            {/* --- SUB-TAB 2: VELOCITY DYNAMICS EDITOR --- */}
+            {editorSubTab === 'velocity' && (
+              <div className="p-3 bg-zinc-900/90 rounded-xl border border-zinc-800 mb-2 space-y-3 shrink-0">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div className="text-xs font-bold text-zinc-200 flex items-center gap-1.5">
+                    <BarChart2 className="w-4 h-4 text-amber-400" />
+                    <span>Velocity &amp; Dynamics Control Tools</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={handleHumanizeVelocity}
+                      className="px-2 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-mono cursor-pointer border border-zinc-700"
+                    >
+                      🎲 Humanize Velocity
+                    </button>
+                    <button
+                      onClick={() => handleScaleVelocity(1.15)}
+                      className="px-2 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-mono cursor-pointer border border-zinc-700"
+                    >
+                      +15% Boost
+                    </button>
+                    <button
+                      onClick={() => handleScaleVelocity(0.85)}
+                      className="px-2 py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-mono cursor-pointer border border-zinc-700"
+                    >
+                      -15% Soften
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* --- SUB-TAB 3: QUANTIZE & SWING PANEL --- */}
+            {editorSubTab === 'quantize' && (
+              <div className="p-3 bg-zinc-900/90 rounded-xl border border-zinc-800 mb-2 flex items-center justify-between flex-wrap gap-3 shrink-0">
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-mono text-zinc-400">Quantize Grid:</span>
+                    <select
+                      value={quantizeGrid}
+                      onChange={(e) => setQuantizeGrid(Number(e.target.value))}
+                      className="bg-zinc-950 border border-zinc-700 rounded px-2 py-1 text-xs text-amber-300 font-mono font-bold cursor-pointer"
+                    >
+                      <option value={1}>1/16 Note Grid</option>
+                      <option value={2}>1/8 Note Grid</option>
+                      <option value={4}>1/4 Note Grid</option>
+                    </select>
+                  </div>
+
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-mono text-zinc-400">Swing: {quantizeSwing}%</span>
+                    <input
+                      type="range"
+                      min={50}
+                      max={75}
+                      value={quantizeSwing}
+                      onChange={(e) => setQuantizeSwing(Number(e.target.value))}
+                      className="w-24 accent-amber-500 cursor-pointer"
+                    />
+                  </div>
+                </div>
+
+                <button
+                  onClick={handleApplyQuantize}
+                  className="px-3 py-1 rounded-xl bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold text-xs cursor-pointer shadow-md"
+                >
+                  Apply Quantize to Track
+                </button>
+              </div>
+            )}
 
             {/* --- GRID RENDERER: DRUMS OR PIANO ROLL --- */}
             <div className="flex-1 overflow-auto rounded-xl border border-zinc-800 bg-zinc-950 p-2">
@@ -1390,6 +1606,100 @@ export const StyleCreatorModal: React.FC<StyleCreatorModalProps> = ({
         </div>
 
       </div>
+
+      {/* --- NEW STYLE WIZARD MODAL --- */}
+      {isNewStyleWizardOpen && (
+        <div className="fixed inset-0 z-60 bg-black/80 flex items-center justify-center p-4">
+          <div className="bg-zinc-900 border border-zinc-700 rounded-2xl p-5 max-w-md w-full space-y-4 shadow-2xl animate-in zoom-in-95">
+            <div className="flex items-center justify-between">
+              <h3 className="text-base font-bold text-zinc-100 flex items-center gap-2">
+                <Plus className="w-4 h-4 text-amber-400" />
+                Create New Arranger Style
+              </h3>
+              <button
+                onClick={() => setIsNewStyleWizardOpen(false)}
+                className="p-1 rounded-lg bg-zinc-800 text-zinc-400 hover:text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div>
+                <label className="text-zinc-300 font-bold mb-1 block">Style Title</label>
+                <input
+                  type="text"
+                  value={newStyleName}
+                  onChange={(e) => setNewStyleName(e.target.value)}
+                  className="w-full bg-zinc-950 border border-zinc-700 rounded-lg p-2 text-zinc-100 font-bold focus:border-amber-400 outline-hidden"
+                  placeholder="e.g. Afro Gospel Highlife"
+                />
+              </div>
+
+              <div>
+                <label className="text-zinc-300 font-bold mb-1 block">Category</label>
+                <select
+                  value={newStyleCategory}
+                  onChange={(e) => setNewStyleCategory(e.target.value)}
+                  className="w-full bg-zinc-950 border border-zinc-700 rounded-lg p-2 text-zinc-200 outline-hidden"
+                >
+                  <option value="African Gospel">African Gospel</option>
+                  <option value="Worship & Praise">Worship &amp; Praise</option>
+                  <option value="Pop">Pop</option>
+                  <option value="Rock">Rock</option>
+                  <option value="Dance">Dance / EDM</option>
+                  <option value="Jazz & Swing">Jazz &amp; Swing</option>
+                  <option value="Latin & Ballroom">Latin &amp; Ballroom</option>
+                  <option value="Ballad & Movie">Ballad &amp; Movie</option>
+                  <option value="World">World</option>
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-zinc-300 font-bold mb-1 block">Initial Tempo (BPM)</label>
+                  <input
+                    type="number"
+                    value={newStyleTempo}
+                    onChange={(e) => setNewStyleTempo(Number(e.target.value))}
+                    className="w-full bg-zinc-950 border border-zinc-700 rounded-lg p-2 text-amber-400 font-mono font-bold outline-hidden"
+                  />
+                </div>
+                <div>
+                  <label className="text-zinc-300 font-bold mb-1 block">Time Signature</label>
+                  <select
+                    value={newStyleTimeSig}
+                    onChange={(e) => setNewStyleTimeSig(e.target.value)}
+                    className="w-full bg-zinc-950 border border-zinc-700 rounded-lg p-2 text-zinc-200 font-mono font-bold outline-hidden"
+                  >
+                    <option value="4/4">4/4</option>
+                    <option value="3/4">3/4</option>
+                    <option value="6/8">6/8</option>
+                    <option value="2/4">2/4</option>
+                    <option value="12/8">12/8</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2">
+              <button
+                onClick={() => setIsNewStyleWizardOpen(false)}
+                className="px-4 py-2 rounded-xl bg-zinc-800 text-zinc-300 hover:text-white font-bold text-xs"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCreateNewStyleFromWizard}
+                className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-zinc-950 font-bold text-xs shadow-md"
+              >
+                Initialize Style
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };

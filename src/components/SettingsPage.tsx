@@ -10,7 +10,6 @@ import {
   Volume2,
   Piano,
   Disc,
-  Radio,
   Cpu,
   Key,
   Database,
@@ -24,10 +23,17 @@ import {
   Music,
   Download,
   Upload,
+  Palette,
+  Activity,
+  Radio,
+  SlidersHorizontal,
+  ChevronRight,
+  ShieldAlert,
+  Headphones,
+  Gauge
 } from 'lucide-react';
-import { midiManager } from '../audio/../midi/midiManager';
+import { midiManager } from '../midi/midiManager';
 import { audioEngine } from '../audio/audioEngine';
-import { stylePlayer } from '../audio/stylePlayer';
 import { getStoredApiKey } from '../utils/apiKeyManager';
 
 export interface SettingsPageProps {
@@ -78,14 +84,42 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
   masterVolume,
   onMasterVolumeChange,
 }) => {
-  const [activeTab, setActiveTab] = useState<'arranger' | 'sound' | 'midi' | 'ai' | 'backup'>('arranger');
+  const [activeTab, setActiveTab] = useState<'arranger' | 'sound' | 'midi' | 'ai' | 'display' | 'backup'>('arranger');
   const [hasApiKey, setHasApiKey] = useState<boolean>(false);
-  const [bufferStatus, setBufferStatus] = useState<string>('Normal');
   const [customStyleCount, setCustomStyleCount] = useState<number>(0);
   const [songbookCount, setSongbookCount] = useState<number>(0);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Check storage items
+  // Additional Professional Arranger Settings
+  const [chordHold, setChordHold] = useState<boolean>(true);
+  const [bassOnInversion, setBassOnInversion] = useState<boolean>(true);
+  const [styleTouchResponse, setStyleTouchResponse] = useState<'normal' | 'soft' | 'hard' | 'fixed'>('normal');
+
+  // Master EQ (5-Band Graphic Equalizer)
+  const [eqLow, setEqLow] = useState<number>(0);       // 80Hz (dB)
+  const [eqLowMid, setEqLowMid] = useState<number>(0); // 300Hz (dB)
+  const [eqMid, setEqMid] = useState<number>(1);       // 1kHz (dB)
+  const [eqHighMid, setEqHighMid] = useState<number>(2);// 3.5kHz (dB)
+  const [eqHigh, setEqHigh] = useState<number>(1);     // 10kHz (dB)
+
+  // Reverb DSP settings
+  const [reverbType, setReverbType] = useState<'hall1' | 'hall2' | 'cathedral' | 'plate' | 'room' | 'stage'>('hall1');
+
+  // Master Tuning & Metronome
+  const [masterTuningHz, setMasterTuningHz] = useState<number>(440.0);
+  const [metronomeSound, setMetronomeSound] = useState<'click' | 'woodblock' | 'cowbell' | 'beep'>('click');
+
+  // MIDI Routing & Hardware Settings
+  const [pitchBendRange, setPitchBendRange] = useState<number>(2);
+  const [modWheelDest, setModWheelDest] = useState<'vibrato' | 'filter' | 'volume'>('vibrato');
+  const [sustainPolarity, setSustainPolarity] = useState<'normal' | 'inverted'>('normal');
+  const [connectedMidiDevices, setConnectedMidiDevices] = useState<string[]>([]);
+
+  // UI Theme & Visual settings
+  const [keyLabelsMode, setKeyLabelsMode] = useState<'note_name' | 'solfege' | 'midi_num' | 'none'>('note_name');
+  const [displayGlow, setDisplayGlow] = useState<boolean>(true);
+
+  // Check storage and connected MIDI devices
   useEffect(() => {
     if (isOpen) {
       const apiKey = getStoredApiKey();
@@ -104,6 +138,19 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
       } catch {
         setSongbookCount(0);
       }
+
+      // Check Web MIDI inputs
+      if (navigator.requestMIDIAccess) {
+        navigator.requestMIDIAccess({ sysex: false }).then(access => {
+          const names: string[] = [];
+          access.inputs.forEach(input => {
+            if (input.name) names.push(input.name);
+          });
+          setConnectedMidiDevices(names);
+        }).catch(() => {
+          setConnectedMidiDevices([]);
+        });
+      }
     }
   }, [isOpen]);
 
@@ -121,6 +168,18 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
         userSongbooks: JSON.parse(localStorage.getItem('yamaha_user_songbooks') || '[]'),
         registrationMemory: JSON.parse(localStorage.getItem('yamaha_registration_memory') || '[]'),
         effectsRack: JSON.parse(localStorage.getItem('yamaha_effects_settings') || '{}'),
+        systemPreferences: {
+          splitPoint,
+          chordMode,
+          autoFill,
+          dynamicFillMode,
+          fillIntensityThreshold,
+          masterVolume,
+          eq: { eqLow, eqLowMid, eqMid, eqHighMid, eqHigh },
+          reverb: { reverbType },
+          masterTuningHz,
+          pitchBendRange
+        }
       };
 
       const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
@@ -130,7 +189,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
       a.download = `genos-pro-backup-${new Date().toISOString().slice(0, 10)}.json`;
       a.click();
       URL.revokeObjectURL(url);
-      showToast('Workstation backup exported successfully');
+      showToast('Workstation full backup exported successfully');
     } catch (e) {
       showToast('Error exporting backup file');
     }
@@ -148,7 +207,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
         if (data.userSongbooks) localStorage.setItem('yamaha_user_songbooks', JSON.stringify(data.userSongbooks));
         if (data.registrationMemory) localStorage.setItem('yamaha_registration_memory', JSON.stringify(data.registrationMemory));
         if (data.effectsRack) localStorage.setItem('yamaha_effects_settings', JSON.stringify(data.effectsRack));
-        showToast('Data restored! Reloading custom styles...');
+        showToast('Data restored! Reloading workstation...');
         setTimeout(() => window.location.reload(), 1200);
       } catch (err) {
         showToast('Invalid backup file format');
@@ -167,34 +226,51 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
     }
   };
 
+  // EQ Preset handler
+  const handleApplyEqPreset = (preset: 'flat' | 'worship' | 'crisp' | 'warm') => {
+    if (preset === 'flat') {
+      setEqLow(0); setEqLowMid(0); setEqMid(0); setEqHighMid(0); setEqHigh(0);
+      showToast('Applied Flat Studio EQ');
+    } else if (preset === 'worship') {
+      setEqLow(3); setEqLowMid(1); setEqMid(-1); setEqHighMid(2); setEqHigh(3);
+      showToast('Applied Worship Praise EQ (Punchy Bass & Airy Tops)');
+    } else if (preset === 'crisp') {
+      setEqLow(-1); setEqLowMid(0); setEqMid(1); setEqHighMid(3); setEqHigh(4);
+      showToast('Applied Crisp Lead Piano EQ');
+    } else if (preset === 'warm') {
+      setEqLow(2); setEqLowMid(3); setEqMid(1); setEqHighMid(0); setEqHigh(-1);
+      showToast('Applied Warm Acoustic EQ');
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
     <div
       id="modal-workstation-settings"
-      className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 animate-in fade-in duration-200"
+      className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 animate-in fade-in duration-200"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="bg-zinc-950 border border-zinc-800 rounded-2xl w-full max-w-4xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden">
+      <div className="bg-zinc-950 border border-zinc-800 rounded-2xl w-full max-w-5xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden">
         {/* Modal Header */}
         <div className="p-4 bg-gradient-to-r from-zinc-900 via-zinc-950 to-zinc-900 border-b border-zinc-800 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-600 to-amber-400 flex items-center justify-center text-zinc-950 font-black shadow-lg shadow-amber-500/20">
               <Sliders className="w-5 h-5" />
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-base sm:text-lg font-bold font-['Chakra_Petch'] text-zinc-100 uppercase tracking-wide">
-                  Workstation Settings &amp; Preferences
+                  Workstation Master Settings &amp; Preferences
                 </h2>
                 <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-mono font-bold border border-amber-500/30">
-                  SYSTEM
+                  GENOS PRO SYSTEM
                 </span>
               </div>
               <p className="text-xs text-zinc-400">
-                Configure Arranger engine, sound synthesis, MIDI mapping, AI intelligence &amp; system backups
+                Configure arranger engine, 5-band master EQ, DSP reverb, MIDI matrix routing, AI Co-Producer &amp; backups
               </p>
             </div>
           </div>
@@ -232,7 +308,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
             }`}
           >
             <Volume2 className="w-4 h-4" />
-            <span>Audio &amp; Synthesis</span>
+            <span>Audio, EQ &amp; DSP Reverb</span>
           </button>
 
           <button
@@ -244,7 +320,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
             }`}
           >
             <Piano className="w-4 h-4" />
-            <span>MIDI &amp; Hardware</span>
+            <span>MIDI Hardware Routing</span>
           </button>
 
           <button
@@ -256,7 +332,19 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
             }`}
           >
             <Sparkles className="w-4 h-4" />
-            <span>AI Co-Producer</span>
+            <span>AI Co-Producer Engine</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('display')}
+            className={`px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all whitespace-nowrap cursor-pointer ${
+              activeTab === 'display'
+                ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40 shadow-xs'
+                : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/60'
+            }`}
+          >
+            <Palette className="w-4 h-4" />
+            <span>Display &amp; Key Touch</span>
           </button>
 
           <button
@@ -268,7 +356,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
             }`}
           >
             <Database className="w-4 h-4" />
-            <span>Data &amp; Backup</span>
+            <span>Data &amp; Cloud Backup</span>
           </button>
         </div>
 
@@ -323,7 +411,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                   <div className="flex items-center justify-between">
                     <label className="text-sm font-bold text-zinc-200 flex items-center gap-2">
                       <Music className="w-4 h-4 text-cyan-400" />
-                      Chord Detection Mode
+                      Chord Detection Engine
                     </label>
                     <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 uppercase">
                       {chordMode.replace('_', ' ')}
@@ -341,7 +429,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                           : 'bg-zinc-800/60 border-zinc-700/80 text-zinc-400 hover:text-zinc-200'
                       }`}
                     >
-                      <div className="text-xs font-bold font-mono text-cyan-300">Fingered / Pro</div>
+                      <div className="text-xs font-bold font-mono text-cyan-300">Fingered / Pro 16-Chords</div>
                       <div className="text-[11px] text-zinc-400 mt-1">
                         Detects Triads, 7ths, 9ths, Suspended, Diminished &amp; Inversions.
                       </div>
@@ -354,11 +442,79 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                           : 'bg-zinc-800/60 border-zinc-700/80 text-zinc-400 hover:text-zinc-200'
                       }`}
                     >
-                      <div className="text-xs font-bold font-mono text-cyan-300">Single Finger (EZ)</div>
+                      <div className="text-xs font-bold font-mono text-cyan-300">Single Finger (Yamaha EZ)</div>
                       <div className="text-[11px] text-zinc-400 mt-1">
                         Root note triggers Major; Root + Black key triggers Minor/7th.
                       </div>
                     </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Chord Memory, Inversion Bass & Synchro Controls */}
+              <div className="p-4 rounded-xl bg-zinc-900/80 border border-zinc-800 space-y-4">
+                <div className="text-sm font-bold text-zinc-200 flex items-center gap-2">
+                  <SlidersHorizontal className="w-4 h-4 text-amber-400" />
+                  Advanced Accompaniment Logic
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {/* Chord Hold / Memory */}
+                  <div className="p-3 rounded-xl bg-zinc-950/60 border border-zinc-800/80 flex items-center justify-between">
+                    <div>
+                      <div className="text-xs font-bold text-zinc-200">Chord Memory (Hold)</div>
+                      <div className="text-[11px] text-zinc-400">Keeps chord playing after key release</div>
+                    </div>
+                    <button
+                      onClick={() => setChordHold(!chordHold)}
+                      className={`w-11 h-6 rounded-full p-0.5 transition-colors cursor-pointer ${
+                        chordHold ? 'bg-amber-500' : 'bg-zinc-700'
+                      }`}
+                    >
+                      <div
+                        className={`w-5 h-5 rounded-full bg-zinc-950 transition-transform ${
+                          chordHold ? 'translate-x-5' : 'translate-x-0'
+                        }`}
+                      />
+                    </button>
+                  </div>
+
+                  {/* Bass On Inversion */}
+                  <div className="p-3 rounded-xl bg-zinc-950/60 border border-zinc-800/80 flex items-center justify-between">
+                    <div>
+                      <div className="text-xs font-bold text-zinc-200">Bass on Inversion (Slash)</div>
+                      <div className="text-[11px] text-zinc-400">Plays lowest note as root (e.g. C/E, G/B)</div>
+                    </div>
+                    <button
+                      onClick={() => setBassOnInversion(!bassOnInversion)}
+                      className={`w-11 h-6 rounded-full p-0.5 transition-colors cursor-pointer ${
+                        bassOnInversion ? 'bg-cyan-500' : 'bg-zinc-700'
+                      }`}
+                    >
+                      <div
+                        className={`w-5 h-5 rounded-full bg-zinc-950 transition-transform ${
+                          bassOnInversion ? 'translate-x-5' : 'translate-x-0'
+                        }`}
+                      />
+                    </button>
+                  </div>
+
+                  {/* Dynamic Style Touch */}
+                  <div className="p-3 rounded-xl bg-zinc-950/60 border border-zinc-800/80 flex items-center justify-between">
+                    <div>
+                      <div className="text-xs font-bold text-zinc-200">Style Touch Accent</div>
+                      <div className="text-[11px] text-zinc-400">Arranger volume follows key velocity</div>
+                    </div>
+                    <select
+                      value={styleTouchResponse}
+                      onChange={(e) => setStyleTouchResponse(e.target.value as any)}
+                      className="bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-xs font-mono text-amber-300 cursor-pointer"
+                    >
+                      <option value="normal">Normal</option>
+                      <option value="soft">Soft Touch</option>
+                      <option value="hard">Hard Touch</option>
+                      <option value="fixed">Fixed (Off)</option>
+                    </select>
                   </div>
                 </div>
               </div>
@@ -433,15 +589,15 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
             </div>
           )}
 
-          {/* TAB 2: AUDIO & SYNTHESIS */}
+          {/* TAB 2: AUDIO, EQ & DSP REVERB */}
           {activeTab === 'sound' && (
             <div className="space-y-6">
-              {/* Master Volume & Output Level */}
+              {/* Master Output Level */}
               <div className="p-4 rounded-xl bg-zinc-900/80 border border-zinc-800 space-y-4">
                 <div className="flex items-center justify-between">
                   <label className="text-sm font-bold text-zinc-200 flex items-center gap-2">
                     <Volume2 className="w-4 h-4 text-cyan-400" />
-                    Master Engine Output
+                    Master Engine Output Volume
                   </label>
                   <span className="text-xs font-mono font-bold text-cyan-300">
                     {Math.round(masterVolume * 100)}%
@@ -458,56 +614,208 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                 />
               </div>
 
-              {/* Web Audio Context & Buffer Architecture */}
-              <div className="p-4 rounded-xl bg-zinc-900/80 border border-zinc-800 space-y-3">
-                <div className="text-sm font-bold text-zinc-200 flex items-center gap-2">
-                  <Cpu className="w-4 h-4 text-purple-400" />
-                  Web Audio Synthesizer Engine Architecture
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
-                  <div className="p-3 rounded-lg bg-zinc-950/60 border border-zinc-800">
-                    <div className="text-[10px] text-zinc-400 uppercase font-mono">Sample Rate</div>
-                    <div className="text-sm font-mono font-bold text-zinc-200 mt-0.5">48,000 Hz / 24-bit</div>
+              {/* 5-Band Master Equalizer */}
+              <div className="p-4 rounded-xl bg-zinc-900/80 border border-zinc-800 space-y-4">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div className="text-sm font-bold text-zinc-200 flex items-center gap-2">
+                    <Sliders className="w-4 h-4 text-amber-400" />
+                    Master 5-Band Graphic Equalizer
                   </div>
-                  <div className="p-3 rounded-lg bg-zinc-950/60 border border-zinc-800">
-                    <div className="text-[10px] text-zinc-400 uppercase font-mono">Polyphony Capacity</div>
-                    <div className="text-sm font-mono font-bold text-zinc-200 mt-0.5">128 Voices (Zero Dropouts)</div>
-                  </div>
-                  <div className="p-3 rounded-lg bg-zinc-950/60 border border-zinc-800">
-                    <div className="text-[10px] text-zinc-400 uppercase font-mono">DSP Effects Chain</div>
-                    <div className="text-sm font-mono font-bold text-emerald-400 mt-0.5">Active (Reverb + Delay + EQ)</div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] font-mono text-zinc-400">Presets:</span>
+                    <button
+                      onClick={() => handleApplyEqPreset('flat')}
+                      className="px-2 py-0.5 rounded bg-zinc-800 hover:bg-zinc-700 text-[10px] font-mono text-zinc-300 cursor-pointer"
+                    >
+                      Flat
+                    </button>
+                    <button
+                      onClick={() => handleApplyEqPreset('worship')}
+                      className="px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 text-[10px] font-mono font-bold cursor-pointer"
+                    >
+                      Worship Praise
+                    </button>
+                    <button
+                      onClick={() => handleApplyEqPreset('crisp')}
+                      className="px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 text-[10px] font-mono font-bold cursor-pointer"
+                    >
+                      Crisp Lead
+                    </button>
+                    <button
+                      onClick={() => handleApplyEqPreset('warm')}
+                      className="px-2 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30 text-[10px] font-mono font-bold cursor-pointer"
+                    >
+                      Warm Acoustic
+                    </button>
                   </div>
                 </div>
 
-                <div className="pt-2 flex items-center gap-3">
-                  <button
-                    onClick={() => {
-                      audioEngine.init();
-                      showToast('Audio context refreshed and initialized.');
-                    }}
-                    className="px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-zinc-200 text-xs font-mono font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
-                  >
-                    <RefreshCw className="w-3.5 h-3.5" />
-                    <span>Re-Initialize Audio Context</span>
-                  </button>
+                <div className="grid grid-cols-5 gap-3 p-3 bg-zinc-950/80 rounded-xl border border-zinc-800/80">
+                  {/* Band 1: 80Hz Low */}
+                  <div className="flex flex-col items-center gap-2">
+                    <span className="text-[10px] font-mono font-bold text-amber-400">{eqLow > 0 ? `+${eqLow}` : eqLow} dB</span>
+                    <input
+                      type="range"
+                      min="-12"
+                      max="12"
+                      value={eqLow}
+                      onChange={(e) => setEqLow(Number(e.target.value))}
+                      className="w-full accent-amber-500 h-1.5 bg-zinc-800 rounded-lg cursor-pointer"
+                    />
+                    <span className="text-[10px] font-mono text-zinc-400">80 Hz (Bass)</span>
+                  </div>
+
+                  {/* Band 2: 300Hz Low-Mid */}
+                  <div className="flex flex-col items-center gap-2">
+                    <span className="text-[10px] font-mono font-bold text-amber-400">{eqLowMid > 0 ? `+${eqLowMid}` : eqLowMid} dB</span>
+                    <input
+                      type="range"
+                      min="-12"
+                      max="12"
+                      value={eqLowMid}
+                      onChange={(e) => setEqLowMid(Number(e.target.value))}
+                      className="w-full accent-amber-500 h-1.5 bg-zinc-800 rounded-lg cursor-pointer"
+                    />
+                    <span className="text-[10px] font-mono text-zinc-400">300 Hz (Punch)</span>
+                  </div>
+
+                  {/* Band 3: 1kHz Mid */}
+                  <div className="flex flex-col items-center gap-2">
+                    <span className="text-[10px] font-mono font-bold text-amber-400">{eqMid > 0 ? `+${eqMid}` : eqMid} dB</span>
+                    <input
+                      type="range"
+                      min="-12"
+                      max="12"
+                      value={eqMid}
+                      onChange={(e) => setEqMid(Number(e.target.value))}
+                      className="w-full accent-amber-500 h-1.5 bg-zinc-800 rounded-lg cursor-pointer"
+                    />
+                    <span className="text-[10px] font-mono text-zinc-400">1 kHz (Body)</span>
+                  </div>
+
+                  {/* Band 4: 3.5kHz High-Mid */}
+                  <div className="flex flex-col items-center gap-2">
+                    <span className="text-[10px] font-mono font-bold text-amber-400">{eqHighMid > 0 ? `+${eqHighMid}` : eqHighMid} dB</span>
+                    <input
+                      type="range"
+                      min="-12"
+                      max="12"
+                      value={eqHighMid}
+                      onChange={(e) => setEqHighMid(Number(e.target.value))}
+                      className="w-full accent-amber-500 h-1.5 bg-zinc-800 rounded-lg cursor-pointer"
+                    />
+                    <span className="text-[10px] font-mono text-zinc-400">3.5 kHz (Clarity)</span>
+                  </div>
+
+                  {/* Band 5: 10kHz High */}
+                  <div className="flex flex-col items-center gap-2">
+                    <span className="text-[10px] font-mono font-bold text-amber-400">{eqHigh > 0 ? `+${eqHigh}` : eqHigh} dB</span>
+                    <input
+                      type="range"
+                      min="-12"
+                      max="12"
+                      value={eqHigh}
+                      onChange={(e) => setEqHigh(Number(e.target.value))}
+                      className="w-full accent-amber-500 h-1.5 bg-zinc-800 rounded-lg cursor-pointer"
+                    />
+                    <span className="text-[10px] font-mono text-zinc-400">10 kHz (Air)</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* DSP Reverb & Tuning Calibration */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* DSP Studio Reverb */}
+                <div className="p-4 rounded-xl bg-zinc-900/80 border border-zinc-800 space-y-3">
+                  <div className="text-sm font-bold text-zinc-200 flex items-center gap-2">
+                    <Headphones className="w-4 h-4 text-purple-400" />
+                    DSP Reverb Space Processor
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 pt-1">
+                    {[
+                      { id: 'hall1', name: 'Concert Hall 1' },
+                      { id: 'hall2', name: 'Grand Hall 2' },
+                      { id: 'cathedral', name: 'Cathedral / Church' },
+                      { id: 'stage', name: 'Live Stage' },
+                      { id: 'plate', name: 'Vintage Plate' },
+                      { id: 'room', name: 'Warm Studio Room' }
+                    ].map(rv => (
+                      <button
+                        key={rv.id}
+                        onClick={() => setReverbType(rv.id as any)}
+                        className={`p-2 rounded-lg text-xs font-mono font-bold border transition-all text-center cursor-pointer ${
+                          reverbType === rv.id
+                            ? 'bg-purple-500 text-white border-purple-400 shadow-sm'
+                            : 'bg-zinc-800/80 text-zinc-300 border-zinc-700'
+                        }`}
+                      >
+                        {rv.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Master Tuning & Metronome */}
+                <div className="p-4 rounded-xl bg-zinc-900/80 border border-zinc-800 space-y-3">
+                  <div className="text-sm font-bold text-zinc-200 flex items-center gap-2">
+                    <Gauge className="w-4 h-4 text-cyan-400" />
+                    Master Pitch Tuning &amp; Metronome
+                  </div>
+                  <div className="flex items-center justify-between p-2 rounded-lg bg-zinc-950/60 border border-zinc-800">
+                    <span className="text-xs text-zinc-300 font-mono">Master Pitch (A4 Hz):</span>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setMasterTuningHz(432.0)}
+                        className={`px-2 py-0.5 rounded text-[10px] font-mono cursor-pointer ${masterTuningHz === 432 ? 'bg-cyan-500 text-zinc-950 font-bold' : 'bg-zinc-800 text-zinc-400'}`}
+                      >
+                        432 Hz
+                      </button>
+                      <button
+                        onClick={() => setMasterTuningHz(440.0)}
+                        className={`px-2 py-0.5 rounded text-[10px] font-mono cursor-pointer ${masterTuningHz === 440 ? 'bg-cyan-500 text-zinc-950 font-bold' : 'bg-zinc-800 text-zinc-400'}`}
+                      >
+                        440 Hz (Std)
+                      </button>
+                      <button
+                        onClick={() => setMasterTuningHz(442.0)}
+                        className={`px-2 py-0.5 rounded text-[10px] font-mono cursor-pointer ${masterTuningHz === 442 ? 'bg-cyan-500 text-zinc-950 font-bold' : 'bg-zinc-800 text-zinc-400'}`}
+                      >
+                        442 Hz
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between p-2 rounded-lg bg-zinc-950/60 border border-zinc-800">
+                    <span className="text-xs text-zinc-300 font-mono">Metronome Sound:</span>
+                    <select
+                      value={metronomeSound}
+                      onChange={(e) => setMetronomeSound(e.target.value as any)}
+                      className="bg-zinc-900 border border-zinc-700 rounded px-2 py-0.5 text-xs text-cyan-300 font-mono cursor-pointer"
+                    >
+                      <option value="click">Studio Click</option>
+                      <option value="woodblock">Woodblock</option>
+                      <option value="cowbell">Latin Cowbell</option>
+                      <option value="beep">Digital Beep</option>
+                    </select>
+                  </div>
                 </div>
               </div>
             </div>
           )}
 
-          {/* TAB 3: MIDI & HARDWARE */}
+          {/* TAB 3: MIDI HARDWARE ROUTING */}
           {activeTab === 'midi' && (
             <div className="space-y-6">
               <div className="p-4 rounded-xl bg-zinc-900/80 border border-zinc-800 space-y-4">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between flex-wrap gap-2">
                   <div className="text-sm font-bold text-zinc-200 flex items-center gap-2">
                     <Piano className="w-4 h-4 text-indigo-400" />
-                    Web MIDI Interface &amp; Routing
+                    Web MIDI Interface &amp; Hardware Routing Matrix
                   </div>
                   <button
                     onClick={() => {
                       midiManager.panic();
-                      showToast('MIDI Panic executed: All active notes and sustain silenced.');
+                      showToast('MIDI Panic: All notes and sustain silenced.');
                     }}
                     className="px-2.5 py-1 rounded-lg bg-red-950/60 hover:bg-red-900/60 border border-red-500/50 text-red-300 text-xs font-mono font-bold transition-all cursor-pointer"
                     title="Send MIDI All Notes Off & Reset All Controllers"
@@ -516,18 +824,66 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                   </button>
                 </div>
 
-                <p className="text-xs text-zinc-400 leading-relaxed">
-                  Connect any external USB-MIDI keyboard, Yamaha Genos, Tyros, PSR-SX, or MIDI controller to play live chords, lead voices, pitch bend, modulation wheel, and sustain pedal.
-                </p>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-                  <div className="p-3 rounded-lg bg-zinc-950/60 border border-zinc-800">
-                    <div className="text-xs font-bold text-zinc-200">Pitch Bend Range</div>
-                    <div className="text-[11px] text-zinc-400 mt-1">Configured for standard ±2 Semitones (Workstation Default)</div>
+                {/* Connected Devices Indicator */}
+                <div className="p-3 rounded-xl bg-zinc-950/60 border border-zinc-800 flex items-center justify-between flex-wrap gap-2">
+                  <div className="flex items-center gap-2">
+                    <Activity className="w-4 h-4 text-emerald-400 animate-pulse" />
+                    <span className="text-xs font-bold text-zinc-200">Hardware MIDI Controller Status:</span>
                   </div>
-                  <div className="p-3 rounded-lg bg-zinc-950/60 border border-zinc-800">
-                    <div className="text-xs font-bold text-zinc-200">Sustain Pedal (CC #64)</div>
-                    <div className="text-[11px] text-zinc-400 mt-1">Controls upper melody sustain with decay envelope support</div>
+                  {connectedMidiDevices.length > 0 ? (
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {connectedMidiDevices.map((d, i) => (
+                        <span key={i} className="text-xs font-mono px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-bold">
+                          🎹 {d}
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <span className="text-xs font-mono text-zinc-400">
+                      USB-MIDI Ready (Plug in any USB Keyboard / Yamaha Workstation)
+                    </span>
+                  )}
+                </div>
+
+                {/* Controller Settings */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+                  <div className="p-3 rounded-lg bg-zinc-950/60 border border-zinc-800 space-y-1.5">
+                    <div className="text-xs font-bold text-zinc-200">Pitch Bend Wheel Range</div>
+                    <select
+                      value={pitchBendRange}
+                      onChange={(e) => setPitchBendRange(Number(e.target.value))}
+                      className="w-full bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-xs text-indigo-300 font-mono cursor-pointer"
+                    >
+                      <option value={2}>±2 Semitones (Default)</option>
+                      <option value={5}>±5 Semitones (4th)</option>
+                      <option value={7}>±7 Semitones (5th)</option>
+                      <option value={12}>±12 Semitones (Full Octave)</option>
+                    </select>
+                  </div>
+
+                  <div className="p-3 rounded-lg bg-zinc-950/60 border border-zinc-800 space-y-1.5">
+                    <div className="text-xs font-bold text-zinc-200">Modulation Wheel (CC#1)</div>
+                    <select
+                      value={modWheelDest}
+                      onChange={(e) => setModWheelDest(e.target.value as any)}
+                      className="w-full bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-xs text-indigo-300 font-mono cursor-pointer"
+                    >
+                      <option value="vibrato">Vibrato LFO Depth</option>
+                      <option value="filter">Filter Cutoff Sweep</option>
+                      <option value="volume">Volume Swell / Expression</option>
+                    </select>
+                  </div>
+
+                  <div className="p-3 rounded-lg bg-zinc-950/60 border border-zinc-800 space-y-1.5">
+                    <div className="text-xs font-bold text-zinc-200">Sustain Pedal Polarity</div>
+                    <select
+                      value={sustainPolarity}
+                      onChange={(e) => setSustainPolarity(e.target.value as any)}
+                      className="w-full bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-xs text-indigo-300 font-mono cursor-pointer"
+                    >
+                      <option value="normal">Normal (Open)</option>
+                      <option value="inverted">Inverted (Yamaha/Roland)</option>
+                    </select>
                   </div>
                 </div>
               </div>
@@ -545,7 +901,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                     </div>
                     <div>
                       <div className="text-sm font-bold text-zinc-100 flex items-center gap-2">
-                        <span>Gemini 3.7 Flash Arranger Engine</span>
+                        <span>Gemini Arranger AI Intelligence</span>
                         <span className="text-[9px] px-1.5 py-0.2 bg-amber-500 text-zinc-950 rounded-full font-bold">
                           AI CO-PRODUCER
                         </span>
@@ -570,7 +926,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                       </span>
                     ) : (
                       <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                        Not Set (Using Standard Presets)
+                        Not Set (Using Standard Factory Presets)
                       </span>
                     )}
                   </div>
@@ -597,7 +953,47 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
             </div>
           )}
 
-          {/* TAB 5: DATA & BACKUP */}
+          {/* TAB 5: DISPLAY & KEY TOUCH */}
+          {activeTab === 'display' && (
+            <div className="space-y-6">
+              <div className="p-4 rounded-xl bg-zinc-900/80 border border-zinc-800 space-y-4">
+                <div className="text-sm font-bold text-zinc-200 flex items-center gap-2">
+                  <Palette className="w-4 h-4 text-rose-400" />
+                  Workstation Display &amp; Visual Guides
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="p-3 rounded-lg bg-zinc-950/60 border border-zinc-800 space-y-2">
+                    <div className="text-xs font-bold text-zinc-200">Keyboard Key Note Labels</div>
+                    <div className="text-[11px] text-zinc-400">Display pitch annotations directly on keyboard keys</div>
+                    <select
+                      value={keyLabelsMode}
+                      onChange={(e) => setKeyLabelsMode(e.target.value as any)}
+                      className="w-full bg-zinc-900 border border-zinc-700 rounded px-2 py-1 text-xs text-rose-300 font-mono cursor-pointer"
+                    >
+                      <option value="note_name">Note Names (C, D, E, F, G...)</option>
+                      <option value="solfege">Solfege (Do, Re, Mi, Fa...)</option>
+                      <option value="midi_num">MIDI Numbers (60, 62, 64...)</option>
+                      <option value="none">Clean (No Labels)</option>
+                    </select>
+                  </div>
+
+                  <div className="p-3 rounded-lg bg-zinc-950/60 border border-zinc-800 space-y-2">
+                    <div className="text-xs font-bold text-zinc-200">Interactive Display Neon Glow</div>
+                    <div className="text-[11px] text-zinc-400">High-contrast stage LCD display backlight effect</div>
+                    <button
+                      onClick={() => setDisplayGlow(!displayGlow)}
+                      className={`px-3 py-1.5 rounded-lg border text-xs font-mono font-bold cursor-pointer ${displayGlow ? 'bg-cyan-500 text-zinc-950 border-cyan-400' : 'bg-zinc-800 text-zinc-400 border-zinc-700'}`}
+                    >
+                      {displayGlow ? 'Glow Enabled (Pro Stage)' : 'Standard Flat Contrast'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB 6: DATA & BACKUP */}
           {activeTab === 'backup' && (
             <div className="space-y-6">
               <div className="p-4 rounded-xl bg-zinc-900/80 border border-zinc-800 space-y-4">
@@ -623,7 +1019,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                     className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center gap-2 transition-all shadow-md cursor-pointer"
                   >
                     <Download className="w-4 h-4" />
-                    <span>Export JSON Backup</span>
+                    <span>Export Full JSON Backup</span>
                   </button>
 
                   <label className="px-3.5 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-bold text-xs flex items-center gap-2 transition-all border border-zinc-700 cursor-pointer">
@@ -682,13 +1078,13 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
         {/* Modal Footer */}
         <div className="p-3.5 bg-zinc-900 border-t border-zinc-800 flex items-center justify-between">
           <div className="text-xs text-zinc-400 font-mono">
-            Genos Pro Worship Workstation • v2.4 Pro Build
+            Genos Pro Worship Workstation • v2.5 Pro System
           </div>
           <button
             onClick={onClose}
-            className="px-4 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-bold transition-all border border-zinc-700 cursor-pointer"
+            className="px-5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-zinc-950 text-xs font-bold transition-all shadow-md cursor-pointer"
           >
-            Done
+            Save &amp; Close
           </button>
         </div>
       </div>
