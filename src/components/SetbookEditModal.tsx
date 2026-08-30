@@ -36,8 +36,10 @@ export const SetbookEditModal: React.FC<SetbookEditModalProps> = ({
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
   useEffect(() => {
+    if (!isOpen) return;
+
     if (setbookToEdit) {
-      setName(setbookToEdit.name);
+      setName(setbookToEdit.name || '');
       setDescription(setbookToEdit.description || '');
       setServiceDate(setbookToEdit.serviceDate || '');
       setColor(setbookToEdit.color || 'amber');
@@ -50,7 +52,7 @@ export const SetbookEditModal: React.FC<SetbookEditModalProps> = ({
       setSelectedSongIds([]);
     }
     setShowDeleteConfirm(false);
-  }, [setbookToEdit, isOpen]);
+  }, [isOpen, setbookToEdit?.id]);
 
   if (!isOpen) return null;
 

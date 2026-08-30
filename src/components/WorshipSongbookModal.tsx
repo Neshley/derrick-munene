@@ -67,8 +67,10 @@ export const WorshipSongbookModal: React.FC<WorshipSongbookModalProps> = ({
   // File import ref
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
-  // Combined styles list (Factory + User custom styles)
-  const allAvailableStyles = [...FACTORY_STYLES, ...customStyles.filter((cs) => !FACTORY_STYLES.some((fs) => fs.id === cs.id))];
+  // Combined styles list (Factory + User custom styles) memoized to prevent spurious re-renders
+  const allAvailableStyles = React.useMemo(() => {
+    return [...FACTORY_STYLES, ...customStyles.filter((cs) => !FACTORY_STYLES.some((fs) => fs.id === cs.id))];
+  }, [customStyles]);
 
   // Refresh data on modal open
   useEffect(() => {

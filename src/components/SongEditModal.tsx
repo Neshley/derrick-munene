@@ -57,15 +57,17 @@ export const SongEditModal: React.FC<SongEditModalProps> = ({
   ]);
 
   useEffect(() => {
+    if (!isOpen) return;
+
     if (songToEdit) {
-      setTitle(songToEdit.title);
-      setArtist(songToEdit.artist);
-      setKey(songToEdit.key);
-      setTempo(songToEdit.tempo);
-      setTimeSignature(songToEdit.timeSignature);
-      setCategory(songToEdit.category);
+      setTitle(songToEdit.title || '');
+      setArtist(songToEdit.artist || '');
+      setKey(songToEdit.key || 'C');
+      setTempo(songToEdit.tempo || 72);
+      setTimeSignature(songToEdit.timeSignature || '4/4');
+      setCategory(songToEdit.category || 'Contemporary Worship');
       setRecommendedStyleId(songToEdit.recommendedStyleId || availableStyles[0]?.id || 'style_intense_worship');
-      setProgressionInput(songToEdit.progression.join(', '));
+      setProgressionInput(Array.isArray(songToEdit.progression) ? songToEdit.progression.join(', ') : '');
       setNotes(songToEdit.notes || '');
       setSections(
         songToEdit.sections && songToEdit.sections.length > 0
@@ -74,7 +76,7 @@ export const SongEditModal: React.FC<SongEditModalProps> = ({
               {
                 id: 'sec_1',
                 name: 'Main Section',
-                chords: songToEdit.progression,
+                chords: songToEdit.progression || ['C', 'G', 'Am', 'F'],
                 lyrics: '',
                 suggestedArrangerSection: 'main_a',
               },
@@ -108,7 +110,7 @@ export const SongEditModal: React.FC<SongEditModalProps> = ({
         },
       ]);
     }
-  }, [songToEdit, availableStyles, isOpen]);
+  }, [isOpen, songToEdit?.id]);
 
   if (!isOpen) return null;
 
@@ -202,12 +204,14 @@ export const SongEditModal: React.FC<SongEditModalProps> = ({
           {/* Title & Artist */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-mono font-bold text-zinc-300 uppercase mb-1">
+              <label htmlFor="input-song-title" className="block text-xs font-mono font-bold text-zinc-300 uppercase mb-1">
                 Song Title *
               </label>
               <input
+                id="input-song-title"
                 type="text"
                 required
+                autoFocus
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="e.g., Way Maker, Goodness of God"
@@ -215,10 +219,11 @@ export const SongEditModal: React.FC<SongEditModalProps> = ({
               />
             </div>
             <div>
-              <label className="block text-xs font-mono font-bold text-zinc-300 uppercase mb-1">
+              <label htmlFor="input-song-artist" className="block text-xs font-mono font-bold text-zinc-300 uppercase mb-1">
                 Artist / Ministry
               </label>
               <input
+                id="input-song-artist"
                 type="text"
                 value={artist}
                 onChange={(e) => setArtist(e.target.value)}

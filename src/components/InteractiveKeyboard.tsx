@@ -143,8 +143,16 @@ export const InteractiveKeyboard: React.FC<InteractiveKeyboardProps> = ({
     const pressedComputerKeys = new Set<string>();
 
     const onKeyDown = (e: KeyboardEvent) => {
-      // Don't trigger if user is typing in an input or textarea
-      if (['INPUT', 'TEXTAREA', 'SELECT'].includes((e.target as HTMLElement)?.tagName)) {
+      // Don't trigger if user is typing in an input, textarea, select, or editable element
+      const target = e.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.tagName === 'SELECT' ||
+          target.isContentEditable ||
+          target.closest('input, textarea, select, [contenteditable="true"]'))
+      ) {
         return;
       }
       if (e.metaKey || e.ctrlKey || e.altKey) {
