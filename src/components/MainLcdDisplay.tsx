@@ -40,6 +40,8 @@ interface MainLcdDisplayProps {
   chordMode: 'fingered' | 'single_finger';
   onOpenStyleBrowser: () => void;
   onOpenVoiceSelect: (part: 'r1' | 'r2' | 'left') => void;
+  syncStart?: boolean;
+  onToggleSyncStart?: () => void;
 }
 
 export const MainLcdDisplay: React.FC<MainLcdDisplayProps> = ({
@@ -62,6 +64,8 @@ export const MainLcdDisplay: React.FC<MainLcdDisplayProps> = ({
   chordMode,
   onOpenStyleBrowser,
   onOpenVoiceSelect,
+  syncStart = false,
+  onToggleSyncStart,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [tempoInput, setTempoInput] = useState<string>(String(tempo));
@@ -623,13 +627,47 @@ export const MainLcdDisplay: React.FC<MainLcdDisplayProps> = ({
           <div className="flex items-center justify-between gap-3 bg-zinc-950/80 rounded-lg p-2 border border-zinc-800/60">
             {/* Chord Badge */}
             <div className="flex-1 flex flex-col justify-center">
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1.5 flex-wrap">
                 <span className="text-[10px] font-bold uppercase tracking-widest text-cyan-400">
                   CURRENT CHORD
                 </span>
                 <span className="text-[9px] font-mono px-1 py-0.2 rounded bg-cyan-950 text-cyan-300 border border-cyan-800">
                   {acmpEnabled ? 'ACMP ON' : 'ACMP OFF'}
                 </span>
+                {onToggleSyncStart && (
+                  <button
+                    id="lcd-btn-sync-start"
+                    onClick={onToggleSyncStart}
+                    className={`text-[9px] font-mono px-1.5 py-0.2 rounded border transition-all flex items-center gap-1 cursor-pointer ${
+                      syncStart
+                        ? isPlaying
+                          ? 'bg-cyan-500 text-zinc-950 border-cyan-300 font-bold'
+                          : 'bg-cyan-950 text-cyan-300 border-cyan-400 font-bold animate-pulse shadow-[0_0_8px_rgba(34,211,238,0.4)]'
+                        : 'bg-zinc-900 text-zinc-500 border-zinc-800 hover:text-zinc-300'
+                    }`}
+                    title={
+                      syncStart
+                        ? 'Sync Start ARMED: Starts playing when chord is hit'
+                        : 'Click to Arm Sync Start'
+                    }
+                  >
+                    <span
+                      className={`w-1.5 h-1.5 rounded-full ${
+                        syncStart
+                          ? isPlaying
+                            ? 'bg-zinc-950'
+                            : 'bg-cyan-400 shadow-[0_0_4px_rgba(34,211,238,1)] animate-pulse'
+                          : 'bg-zinc-700'
+                      }`}
+                    />
+                    <span>SYNC ST.</span>
+                    {syncStart && !isPlaying && (
+                      <span className="text-[8px] text-cyan-300 font-sans font-black">
+                        [ARMED]
+                      </span>
+                    )}
+                  </button>
+                )}
               </div>
               <div className="flex items-baseline gap-2 mt-0.5">
                 <span className="text-2xl sm:text-3xl font-black font-['Chakra_Petch'] text-cyan-300 tracking-wide drop-shadow-[0_0_8px_rgba(34,211,238,0.4)]">

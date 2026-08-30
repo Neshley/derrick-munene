@@ -27,6 +27,8 @@ interface InteractiveKeyboardProps {
   activeNotes: Set<number>;
   onNoteOn: (note: number, velocity: number) => void;
   onNoteOff: (note: number) => void;
+  syncStart?: boolean;
+  onToggleSyncStart?: () => void;
 }
 
 export const InteractiveKeyboard: React.FC<InteractiveKeyboardProps> = ({
@@ -43,6 +45,8 @@ export const InteractiveKeyboard: React.FC<InteractiveKeyboardProps> = ({
   activeNotes,
   onNoteOn,
   onNoteOff,
+  syncStart = false,
+  onToggleSyncStart,
 }) => {
   const [octaveShift, setOctaveShift] = useState(0); // -2 to +2
   const [transpose, setTranspose] = useState(0); // -12 to +12
@@ -155,6 +159,14 @@ export const InteractiveKeyboard: React.FC<InteractiveKeyboardProps> = ({
       ) {
         return;
       }
+
+      // Quick hotkey: Shift+S toggles Sync Start
+      if (e.shiftKey && (e.key === 'S' || e.key === 's') && onToggleSyncStart) {
+        e.preventDefault();
+        onToggleSyncStart();
+        return;
+      }
+
       if (e.metaKey || e.ctrlKey || e.altKey) {
         return;
       }
@@ -323,8 +335,36 @@ export const InteractiveKeyboard: React.FC<InteractiveKeyboardProps> = ({
           </div>
         </div>
 
-        {/* Center: Split Point status & Assignment */}
-        <div className="flex items-center gap-2">
+        {/* Center: Split Point & Sync Start status */}
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Direct Sync Start Toggle Button */}
+          {onToggleSyncStart && (
+            <button
+              id="btn-keyboard-sync-start"
+              onClick={onToggleSyncStart}
+              className={`px-2.5 py-1 rounded-lg text-xs font-mono font-bold border flex items-center gap-1.5 transition-all cursor-pointer ${
+                syncStart
+                  ? 'bg-cyan-500/20 text-cyan-300 border-cyan-400 shadow-sm shadow-cyan-500/20'
+                  : 'bg-zinc-900 text-zinc-400 border-zinc-800 hover:text-zinc-200 hover:bg-zinc-850'
+              }`}
+              title="Sync Start (Shift+S): Accompaniment triggers on first chord key"
+            >
+              <div
+                className={`w-2 h-2 rounded-full ${
+                  syncStart
+                    ? 'bg-cyan-400 shadow-[0_0_6px_rgba(34,211,238,0.9)] animate-pulse'
+                    : 'bg-zinc-600'
+                }`}
+              />
+              <span className="uppercase text-[10px] tracking-wide">SYNC START</span>
+              {syncStart && (
+                <span className="text-[9px] px-1 py-0.2 rounded bg-cyan-400 text-zinc-950 font-sans font-black animate-pulse">
+                  ARMED
+                </span>
+              )}
+            </button>
+          )}
+
           <div className={`flex items-center gap-2 px-3 py-1 rounded-lg border text-xs font-mono transition-all ${
             isSettingSplit 
               ? 'bg-amber-500/20 text-amber-300 border-amber-400 animate-pulse' 

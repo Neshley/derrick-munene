@@ -341,6 +341,27 @@ export const WorkstationSidebar: React.FC<WorkstationSidebarProps> = ({
                 <span className="text-[8px] font-mono uppercase leading-none">ACMP</span>
               </button>
 
+              {/* Sync Start Quick Toggle in Rail */}
+              <button
+                id="btn-sidebar-rail-sync-start"
+                onClick={onToggleSyncStart}
+                className={`w-10 h-10 rounded-xl border flex flex-col items-center justify-center gap-0.5 transition-all cursor-pointer ${
+                  syncStart
+                    ? 'bg-cyan-500 text-zinc-950 border-cyan-400 font-bold shadow-md shadow-cyan-500/30'
+                    : 'bg-zinc-900/90 text-zinc-500 hover:text-cyan-300 border-zinc-800'
+                }`}
+                title={`Sync Start (Shift+S): ${syncStart ? 'ARMED' : 'OFF'}`}
+              >
+                <div
+                  className={`w-2 h-2 rounded-full ${
+                    syncStart
+                      ? 'bg-zinc-950 animate-pulse'
+                      : 'bg-zinc-600'
+                  }`}
+                />
+                <span className="text-[8px] font-mono uppercase leading-none font-bold">SYNC</span>
+              </button>
+
               {/* AI Co-Producer Studio Quick Launcher */}
               {onOpenAiStudio && (
                 <button
@@ -720,6 +741,70 @@ export const WorkstationSidebar: React.FC<WorkstationSidebarProps> = ({
               {/* TAB 3: WORKSTATION TOOLS & UTILITIES */}
               {activeTab === 'controls' && (
                 <div className="space-y-3.5">
+                  {/* Accompaniment & Sync Start Quick Controls */}
+                  <div className="p-2.5 rounded-xl bg-zinc-900/80 border border-zinc-800 space-y-2">
+                    <div className="text-[10px] font-mono font-bold uppercase tracking-wider text-zinc-400">
+                      Arranger Accompaniment &amp; Sync
+                    </div>
+                    <div className="grid grid-cols-2 gap-1.5 font-mono">
+                      <button
+                        onClick={onToggleAcmp}
+                        className={`p-2 rounded-lg border text-xs font-bold transition-all flex items-center justify-between cursor-pointer ${
+                          acmpEnabled
+                            ? 'bg-amber-500 text-zinc-950 border-amber-400 shadow-sm shadow-amber-500/20'
+                            : 'bg-zinc-800 text-zinc-400 border-zinc-700 hover:text-zinc-200'
+                        }`}
+                      >
+                        <span>ACMP</span>
+                        <span className="text-[10px] uppercase">{acmpEnabled ? 'ON' : 'OFF'}</span>
+                      </button>
+
+                      <button
+                        onClick={onToggleSyncStart}
+                        className={`p-2 rounded-lg border text-xs font-bold transition-all flex items-center justify-between cursor-pointer ${
+                          syncStart
+                            ? 'bg-cyan-500 text-zinc-950 border-cyan-400 shadow-sm shadow-cyan-500/20'
+                            : 'bg-zinc-800 text-zinc-400 border-zinc-700 hover:text-zinc-200'
+                        }`}
+                        title="Sync Start: accompaniment triggers on first key (Shift+S)"
+                      >
+                        <span className="flex items-center gap-1">
+                          <span
+                            className={`w-1.5 h-1.5 rounded-full ${
+                              syncStart ? 'bg-zinc-950 animate-pulse' : 'bg-zinc-600'
+                            }`}
+                          />
+                          SYNC ST.
+                        </span>
+                        <span className="text-[10px] uppercase">{syncStart ? 'ARMED' : 'OFF'}</span>
+                      </button>
+
+                      <button
+                        onClick={onToggleSyncStop}
+                        className={`p-2 rounded-lg border text-xs font-bold transition-all flex items-center justify-between cursor-pointer ${
+                          syncStop
+                            ? 'bg-cyan-500 text-zinc-950 border-cyan-400 shadow-sm shadow-cyan-500/20'
+                            : 'bg-zinc-800 text-zinc-400 border-zinc-700 hover:text-zinc-200'
+                        }`}
+                      >
+                        <span>SYNC SP.</span>
+                        <span className="text-[10px] uppercase">{syncStop ? 'ON' : 'OFF'}</span>
+                      </button>
+
+                      <button
+                        onClick={onToggleAutoFill}
+                        className={`p-2 rounded-lg border text-xs font-bold transition-all flex items-center justify-between cursor-pointer ${
+                          autoFill
+                            ? 'bg-purple-500 text-zinc-950 border-purple-400 shadow-sm shadow-purple-500/20'
+                            : 'bg-zinc-800 text-zinc-400 border-zinc-700 hover:text-zinc-200'
+                        }`}
+                      >
+                        <span>AUTO FILL</span>
+                        <span className="text-[10px] uppercase">{autoFill ? 'ON' : 'OFF'}</span>
+                      </button>
+                    </div>
+                  </div>
+
                   {/* Master Volume Slider */}
                   <div className="p-2.5 rounded-xl bg-zinc-900/80 border border-zinc-800 space-y-1.5">
                     <div className="flex items-center justify-between text-xs">

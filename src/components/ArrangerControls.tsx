@@ -159,26 +159,43 @@ export const ArrangerControls: React.FC<ArrangerControlsProps> = ({
           <button
             id="btn-toggle-sync-start"
             onClick={onToggleSyncStart}
-            className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all border ${
+            className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all border flex items-center gap-1.5 cursor-pointer ${
               syncStart
-                ? 'bg-cyan-500 text-zinc-950 border-cyan-400 font-bold shadow-sm shadow-cyan-500/20'
+                ? isPlaying
+                  ? 'bg-cyan-500 text-zinc-950 border-cyan-400 font-bold shadow-sm shadow-cyan-500/20'
+                  : 'bg-cyan-950/60 text-cyan-300 border-cyan-400 font-bold shadow-md shadow-cyan-500/20'
                 : 'bg-zinc-800 text-zinc-400 border-zinc-700 hover:bg-zinc-750'
             }`}
+            title="Sync Start: Accompaniment starts automatically when you press lower chord keys (Shift+S)"
           >
-            SYNC START
+            <div className={`w-2 h-2 rounded-full ${
+              syncStart 
+                ? isPlaying 
+                  ? 'bg-zinc-950' 
+                  : 'bg-cyan-400 shadow-[0_0_6px_rgba(34,211,238,0.9)] animate-pulse' 
+                : 'bg-zinc-600'
+            }`} />
+            <span>SYNC START</span>
+            {syncStart && !isPlaying && (
+              <span className="text-[9px] px-1 py-0.2 rounded bg-cyan-400 text-zinc-950 font-mono font-black animate-pulse">
+                STANDBY
+              </span>
+            )}
           </button>
 
           {/* SYNC STOP */}
           <button
             id="btn-toggle-sync-stop"
             onClick={onToggleSyncStop}
-            className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all border ${
+            className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all border flex items-center gap-1.5 cursor-pointer ${
               syncStop
                 ? 'bg-cyan-500 text-zinc-950 border-cyan-400 font-bold shadow-sm shadow-cyan-500/20'
                 : 'bg-zinc-800 text-zinc-400 border-zinc-700 hover:bg-zinc-750'
             }`}
+            title="Sync Stop: Releasing chord keys automatically stops the accompaniment"
           >
-            SYNC STOP
+            <div className={`w-2 h-2 rounded-full ${syncStop ? 'bg-zinc-950' : 'bg-zinc-600'}`} />
+            <span>SYNC STOP</span>
           </button>
 
           {/* AUTO FILL */}
@@ -498,16 +515,16 @@ export const ArrangerControls: React.FC<ArrangerControlsProps> = ({
       {/* Main Section Buttons Matrix */}
       <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-8 lg:grid-cols-12 gap-2 items-center">
         
-        {/* BIG START / STOP BUTTON */}
-        <div className="col-span-2 sm:col-span-2 md:col-span-2 lg:col-span-2">
+        {/* BIG START / STOP & SYNC TRANSPORT BLOCK */}
+        <div className="col-span-2 sm:col-span-2 md:col-span-2 lg:col-span-2 flex flex-col gap-1.5">
           <button
             id="btn-start-stop"
             onClick={onTogglePlay}
-            className={`w-full py-3.5 px-4 rounded-xl font-bold text-sm tracking-wider uppercase transition-all flex items-center justify-center gap-2 shadow-lg ${
+            className={`w-full py-2.5 px-3 rounded-xl font-bold text-xs sm:text-sm tracking-wider uppercase transition-all flex items-center justify-center gap-1.5 shadow-lg ${
               isPlaying
                 ? 'bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white shadow-rose-900/40 border border-rose-400/50'
                 : 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white shadow-emerald-900/40 border border-emerald-400/50'
-            } active:scale-95`}
+            } active:scale-95 cursor-pointer`}
           >
             {isPlaying ? (
               <>
@@ -521,6 +538,69 @@ export const ArrangerControls: React.FC<ArrangerControlsProps> = ({
               </>
             )}
           </button>
+
+          {/* SYNC START & SYNC STOP DUAL BUTTONS */}
+          <div className="grid grid-cols-2 gap-1 font-mono">
+            <button
+              id="btn-main-sync-start"
+              onClick={onToggleSyncStart}
+              className={`py-1.5 px-1 rounded-lg text-[10px] font-bold border transition-all flex flex-col items-center justify-center gap-0.5 relative cursor-pointer ${
+                syncStart
+                  ? isPlaying
+                    ? 'bg-cyan-500 text-zinc-950 border-cyan-300 shadow-sm shadow-cyan-500/30'
+                    : 'bg-cyan-950/70 text-cyan-300 border-cyan-400 shadow-md shadow-cyan-500/20'
+                  : 'bg-zinc-800 hover:bg-zinc-750 text-zinc-400 border-zinc-700 hover:text-zinc-200'
+              }`}
+              title={
+                syncStart
+                  ? 'Sync Start ARMED: Play lower chord keys to start style in sync (Shift+S)'
+                  : 'Sync Start OFF: Click to arm sync start'
+              }
+            >
+              <div className="flex items-center gap-1">
+                <span
+                  className={`w-2 h-2 rounded-full ${
+                    syncStart
+                      ? isPlaying
+                        ? 'bg-zinc-950'
+                        : 'bg-cyan-400 shadow-[0_0_6px_rgba(34,211,238,0.9)] animate-pulse'
+                      : 'bg-zinc-600'
+                  }`}
+                />
+                <span className="leading-tight font-extrabold">SYNC ST.</span>
+              </div>
+              <span className={`text-[8px] font-normal leading-none uppercase ${
+                syncStart ? (isPlaying ? 'text-zinc-950 font-bold' : 'text-cyan-300 font-bold') : 'text-zinc-500'
+              }`}>
+                {syncStart ? (isPlaying ? 'RUN' : 'ARMED') : 'OFF'}
+              </span>
+            </button>
+
+            <button
+              id="btn-main-sync-stop"
+              onClick={onToggleSyncStop}
+              className={`py-1.5 px-1 rounded-lg text-[10px] font-bold border transition-all flex flex-col items-center justify-center gap-0.5 relative cursor-pointer ${
+                syncStop
+                  ? 'bg-cyan-500 text-zinc-950 border-cyan-300 shadow-sm shadow-cyan-500/30'
+                  : 'bg-zinc-800 hover:bg-zinc-750 text-zinc-400 border-zinc-700 hover:text-zinc-200'
+              }`}
+              title="Sync Stop: Releasing chord keys automatically stops accompaniment"
+            >
+              <div className="flex items-center gap-1">
+                <span
+                  className={`w-2 h-2 rounded-full ${
+                    syncStop ? 'bg-zinc-950' : 'bg-zinc-600'
+                  }`}
+                />
+                <span className="leading-tight font-extrabold">SYNC SP.</span>
+              </div>
+              <span className={`text-[8px] font-normal leading-none uppercase ${
+                syncStop ? 'text-zinc-950 font-bold' : 'text-zinc-500'
+              }`}>
+                {syncStop ? 'ON' : 'OFF'}
+              </span>
+            </button>
+          </div>
         </div>
 
         {/* INTRO A / B / C */}

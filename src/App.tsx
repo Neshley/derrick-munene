@@ -553,6 +553,8 @@ export default function App() {
               chordMode={chordMode}
               onOpenStyleBrowser={() => setIsStyleModalOpen(true)}
               onOpenVoiceSelect={handleOpenVoiceSelect}
+              syncStart={syncStart}
+              onToggleSyncStart={handleToggleSyncStart}
             />
 
             {/* Style & Fill Capability Notification Banner */}
@@ -642,6 +644,8 @@ export default function App() {
               activeNotes={activeMidiNotes}
               onNoteOn={handleLiveNoteOn}
               onNoteOff={handleLiveNoteOff}
+              syncStart={syncStart}
+              onToggleSyncStart={handleToggleSyncStart}
             />
 
             {/* Multi-Track Mixer Console */}
