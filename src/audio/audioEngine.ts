@@ -86,6 +86,15 @@ export class AudioEngine {
   private trackPanners: Map<string, StereoPannerNode> = new Map();
   private trackRevSends: Map<string, GainNode> = new Map();
   private trackChorusSends: Map<string, GainNode> = new Map();
+  private trackAnalysers: Map<string, AnalyserNode> = new Map();
+  private masterVuAnalyser: AnalyserNode | null = null;
+  private compressorEnabled: boolean = true;
+  private compressorSettings = {
+    threshold: -14,
+    ratio: 4,
+    attack: 0.005,
+    release: 0.15,
+  };
 
   constructor() {
     // Lazy initialize on first user gesture
@@ -215,11 +224,18 @@ export class AudioEngine {
       // Ignored if not supported
     }
 
-    // Initialize track gain & pan nodes for 8 style channels + 3 live voice channels
+    // Initialize track gain, pan, effects sends, and per-track VU analyser nodes
     const trackNames = ['rhythm1', 'rhythm2', 'bass', 'chord1', 'chord2', 'pad', 'phrase1', 'phrase2', 'r1', 'r2', 'left', 'multipad'];
     trackNames.forEach(name => {
       const g = this.ctx!.createGain();
       g.gain.value = 0.8;
+
+      // Per-track VU Analyser
+      const trackAnalyser = this.ctx!.createAnalyser();
+      trackAnalyser.fftSize = 64;
+      trackAnalyser.smoothingTimeConstant = 0.6;
+      g.connect(trackAnalyser);
+      this.trackAnalysers.set(name, trackAnalyser);
 
       let panner: StereoPannerNode | null = null;
       if (this.ctx!.createStereoPanner) {
@@ -606,6 +622,100 @@ export class AudioEngine {
       const clamped = Math.max(-1, Math.min(1, pan / 50));
       panner.pan.setTargetAtTime(clamped, this.ctx.currentTime, 0.02);
     }
+  }
+
+  public setTrackReverbSend(track: string, sendLevel: number) {
+    if (!this.ctx) return;
+    const send = this.trackRevSends.get(track);
+    if (send) {
+      const clamped = Math.max(0, Math.min(1.0, (sendLevel / 100) * 0.7));
+      send.gain.setTargetAtTime(clamped, this.ctx.currentTime, 0.02);
+    }
+  }
+
+  public setTrackChorusSend(track: string, sendLevel: number) {
+    if (!this.ctx) return;
+    const send = this.trackChorusSends.get(track);
+    if (send) {
+      const clamped = Math.max(0, Math.min(1.0, (sendLevel / 100) * 0.5));
+      send.gain.setTargetAtTime(clamped, this.ctx.currentTime, 0.02);
+    }
+  }
+
+  // --- DYNAMICS COMPRESSOR CONTROLS ---
+  public setCompressorEnabled(enabled: boolean) {
+    this.compressorEnabled = enabled;
+    if (!this.ctx || !this.compressor) return;
+    if (enabled) {
+      this.compressor.threshold.setTargetAtTime(this.compressorSettings.threshold, this.ctx.currentTime, 0.03);
+      this.compressor.ratio.setTargetAtTime(this.compressorSettings.ratio, this.ctx.currentTime, 0.03);
+    } else {
+      this.compressor.threshold.setTargetAtTime(0, this.ctx.currentTime, 0.03);
+      this.compressor.ratio.setTargetAtTime(1, this.ctx.currentTime, 0.03);
+    }
+  }
+
+  public setCompressorSettings(settings: Partial<{ threshold: number; ratio: number; attack: number; release: number }>) {
+    this.compressorSettings = { ...this.compressorSettings, ...settings };
+    if (!this.ctx || !this.compressor || !this.compressorEnabled) return;
+    if (settings.threshold !== undefined) {
+      this.compressor.threshold.setTargetAtTime(settings.threshold, this.ctx.currentTime, 0.03);
+    }
+    if (settings.ratio !== undefined) {
+      this.compressor.ratio.setTargetAtTime(settings.ratio, this.ctx.currentTime, 0.03);
+    }
+    if (settings.attack !== undefined) {
+      this.compressor.attack.setTargetAtTime(settings.attack, this.ctx.currentTime, 0.03);
+    }
+    if (settings.release !== undefined) {
+      this.compressor.release.setTargetAtTime(settings.release, this.ctx.currentTime, 0.03);
+    }
+  }
+
+  public getCompressorSettings() {
+    return {
+      enabled: this.compressorEnabled,
+      ...this.compressorSettings,
+      reductionDb: this.compressor ? this.compressor.reduction : 0,
+    };
+  }
+
+  // --- REAL-TIME VU LEVEL COMPUTATION ---
+  public getTrackVuLevel(track: string): number {
+    const analyser = this.trackAnalysers.get(track);
+    if (!analyser) return 0;
+    const data = new Uint8Array(analyser.frequencyBinCount);
+    analyser.getByteTimeDomainData(data);
+    let sum = 0;
+    for (let i = 0; i < data.length; i++) {
+      const val = (data[i] - 128) / 128;
+      sum += val * val;
+    }
+    const rms = Math.sqrt(sum / data.length);
+    return Math.min(1.0, rms * 3.5); // normalized 0.0 to 1.0
+  }
+
+  public getMasterVuLevels(): { left: number; right: number; peak: number } {
+    if (!this.analyser) return { left: 0, right: 0, peak: 0 };
+    const data = new Uint8Array(this.analyser.frequencyBinCount);
+    this.analyser.getByteTimeDomainData(data);
+    let sumL = 0;
+    let sumR = 0;
+    let peak = 0;
+    const half = Math.floor(data.length / 2);
+    for (let i = 0; i < data.length; i++) {
+      const val = Math.abs((data[i] - 128) / 128);
+      if (val > peak) peak = val;
+      if (i < half) sumL += val * val;
+      else sumR += val * val;
+    }
+    const rmsL = Math.sqrt(sumL / (half || 1));
+    const rmsR = Math.sqrt(sumR / (half || 1));
+    return {
+      left: Math.min(1.0, rmsL * 3.0),
+      right: Math.min(1.0, rmsR * 3.0),
+      peak: Math.min(1.0, peak * 1.8),
+    };
   }
 
   // --- RECORDING CAPABILITIES ---

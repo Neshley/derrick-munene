@@ -142,7 +142,7 @@ export default function App() {
   const [lVolume, setLVolume] = useState<number>(80);
 
   // Multi-track Mixer
-  const [trackSettings, setTrackSettings] = useState<Record<TrackType, { volume: number; muted: boolean; solo: boolean }>>(
+  const [trackSettings, setTrackSettings] = useState<Record<TrackType, { volume: number; pan: number; reverb: number; chorus: number; muted: boolean; solo: boolean }>>(
     stylePlayer.trackSettings
   );
 
@@ -421,11 +421,11 @@ export default function App() {
   // Mixer settings changes
   const handleTrackSettingChange = (
     track: TrackType,
-    key: 'volume' | 'muted' | 'solo',
+    key: 'volume' | 'pan' | 'reverb' | 'chorus' | 'muted' | 'solo',
     value: number | boolean
   ) => {
     setTrackSettings(prev => {
-      const current = prev[track] || { volume: 80, muted: false, solo: false };
+      const current = prev[track] || { volume: 80, pan: 0, reverb: 25, chorus: 15, muted: false, solo: false };
       const updated = {
         ...prev,
         [track]: {
@@ -438,6 +438,12 @@ export default function App() {
         audioEngine.setTrackVolume(track, (value as number) / 100, current.muted);
       } else if (key === 'muted') {
         audioEngine.setTrackVolume(track, current.volume / 100, value as boolean);
+      } else if (key === 'pan') {
+        audioEngine.setTrackPan(track, value as number);
+      } else if (key === 'reverb') {
+        audioEngine.setTrackReverbSend(track, value as number);
+      } else if (key === 'chorus') {
+        audioEngine.setTrackChorusSend(track, value as number);
       }
       return updated;
     });
@@ -637,6 +643,11 @@ export default function App() {
               r1Volume={r1Volume}
               r2Volume={r2Volume}
               lVolume={lVolume}
+              masterVolume={masterVolume}
+              onMasterVolumeChange={(vol) => {
+                setMasterVolume(vol);
+                audioEngine.setMasterVolume(vol);
+              }}
               onLiveVoiceVolumeChange={(part, vol) => {
                 if (part === 'r1') {
                   setR1Volume(vol);

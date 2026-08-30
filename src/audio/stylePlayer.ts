@@ -45,16 +45,16 @@ export class StylePlayer {
   private listeners: Set<StylePlayerListener> = new Set();
   private tapTempoTimes: number[] = [];
 
-  // Track settings (volume 0-100, mute, solo)
-  public trackSettings: Record<TrackType, { volume: number; muted: boolean; solo: boolean }> = {
-    rhythm1: { volume: 85, muted: false, solo: false },
-    rhythm2: { volume: 75, muted: false, solo: false },
-    bass: { volume: 88, muted: false, solo: false },
-    chord1: { volume: 78, muted: false, solo: false },
-    chord2: { volume: 72, muted: false, solo: false },
-    pad: { volume: 70, muted: false, solo: false },
-    phrase1: { volume: 80, muted: false, solo: false },
-    phrase2: { volume: 75, muted: false, solo: false },
+  // Track settings (volume 0-100, pan -50 to +50, reverb 0-100, chorus 0-100, mute, solo)
+  public trackSettings: Record<TrackType, { volume: number; pan: number; reverb: number; chorus: number; muted: boolean; solo: boolean }> = {
+    rhythm1: { volume: 85, pan: 0, reverb: 25, chorus: 0, muted: false, solo: false },
+    rhythm2: { volume: 75, pan: 15, reverb: 30, chorus: 10, muted: false, solo: false },
+    bass: { volume: 88, pan: 0, reverb: 10, chorus: 15, muted: false, solo: false },
+    chord1: { volume: 78, pan: -25, reverb: 35, chorus: 25, muted: false, solo: false },
+    chord2: { volume: 72, pan: 25, reverb: 35, chorus: 25, muted: false, solo: false },
+    pad: { volume: 70, pan: 0, reverb: 55, chorus: 45, muted: false, solo: false },
+    phrase1: { volume: 80, pan: -20, reverb: 40, chorus: 30, muted: false, solo: false },
+    phrase2: { volume: 75, pan: 20, reverb: 40, chorus: 30, muted: false, solo: false },
   };
 
   constructor() {
