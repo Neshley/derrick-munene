@@ -31,6 +31,7 @@ interface StyleBrowserModalProps {
   onAddCustomStyle: (style: ArrangerStyle) => void;
   onAddCustomStyles?: (styles: ArrangerStyle[]) => void;
   onDeleteCustomStyle?: (id: string) => void;
+  onOpenStyleCreator?: (styleToEdit?: ArrangerStyle) => void;
 }
 
 export const StyleBrowserModal: React.FC<StyleBrowserModalProps> = ({
@@ -42,6 +43,7 @@ export const StyleBrowserModal: React.FC<StyleBrowserModalProps> = ({
   onAddCustomStyle,
   onAddCustomStyles,
   onDeleteCustomStyle,
+  onOpenStyleCreator,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
@@ -252,13 +254,28 @@ export const StyleBrowserModal: React.FC<StyleBrowserModalProps> = ({
               </p>
             </div>
           </div>
-          <button
-            id="btn-close-style-modal"
-            onClick={onClose}
-            className="p-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-zinc-200 transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            {onOpenStyleCreator && (
+              <button
+                id="btn-browser-open-style-creator"
+                onClick={() => {
+                  onClose();
+                  onOpenStyleCreator();
+                }}
+                className="px-3 py-1.5 rounded-lg bg-gradient-to-r from-amber-500 to-amber-400 hover:from-amber-400 hover:to-amber-300 text-zinc-950 text-xs font-bold flex items-center gap-1.5 shadow-md shadow-amber-500/20 transition-all cursor-pointer"
+              >
+                <span>🎵</span>
+                <span>Create New Style</span>
+              </button>
+            )}
+            <button
+              id="btn-close-style-modal"
+              onClick={onClose}
+              className="p-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-zinc-200 transition-colors"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
         </div>
 
         {/* --- ZIP EXTRACTED STYLES REVIEW VIEW (If user uploaded a multi-style zip) --- */}
@@ -509,6 +526,20 @@ export const StyleBrowserModal: React.FC<StyleBrowserModalProps> = ({
                           <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-zinc-800 text-zinc-400 border border-zinc-700">
                             {s.category}
                           </span>
+                          {onOpenStyleCreator && (
+                            <button
+                              id={`btn-edit-in-creator-${s.id}`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onClose();
+                                onOpenStyleCreator(s);
+                              }}
+                              className="p-1 px-1.5 rounded bg-zinc-800 hover:bg-amber-950/70 text-zinc-400 hover:text-amber-300 transition-colors border border-zinc-700 hover:border-amber-500/40 text-[10px] font-mono flex items-center gap-1"
+                              title="Edit / Customize pattern in Style Creator"
+                            >
+                              <span>✏️ Edit</span>
+                            </button>
+                          )}
                           {isCustom && onDeleteCustomStyle && (
                             <button
                               id={`btn-delete-custom-style-${s.id}`}

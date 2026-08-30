@@ -34,6 +34,7 @@ import { MidiAutomationModal } from './components/MidiAutomationModal';
 import { AiStudioModal } from './components/AiStudioModal';
 import { ApiKeyModal } from './components/ApiKeyModal';
 import { SettingsPage } from './components/SettingsPage';
+import { StyleCreatorModal } from './components/StyleCreatorModal';
 import { addMultiPadBank } from './audio/multiPads';
 
 export default function App() {
@@ -155,6 +156,8 @@ export default function App() {
 
   // Modals state
   const [isStyleModalOpen, setIsStyleModalOpen] = useState(false);
+  const [isStyleCreatorModalOpen, setIsStyleCreatorModalOpen] = useState(false);
+  const [styleToEditInCreator, setStyleToEditInCreator] = useState<ArrangerStyle | undefined>(undefined);
   const [isVoiceModalOpen, setIsVoiceModalOpen] = useState(false);
   const [voiceModalPart, setVoiceModalPart] = useState<'r1' | 'r2' | 'left'>('r1');
   const [isChordSeqModalOpen, setIsChordSeqModalOpen] = useState(false);
@@ -457,6 +460,10 @@ export default function App() {
         midiDeviceName={midiDeviceName}
         onToggleSidebar={() => setIsSidebarCollapsed(prev => !prev)}
         isSidebarCollapsed={isSidebarCollapsed}
+        onOpenStyleCreator={() => {
+          setStyleToEditInCreator(undefined);
+          setIsStyleCreatorModalOpen(true);
+        }}
         onOpenUserGuide={() => setIsUserGuideModalOpen(true)}
         onOpenCreatorMessage={() => setIsCreatorModalOpen(true)}
         onOpenPrayerAtmosphere={() => setIsPrayerModalOpen(true)}
@@ -480,6 +487,10 @@ export default function App() {
           onSelectStyle={handleSelectStyle}
           customStyles={customStyles}
           onOpenStyleBrowser={() => setIsStyleModalOpen(true)}
+          onOpenStyleCreator={() => {
+            setStyleToEditInCreator(undefined);
+            setIsStyleCreatorModalOpen(true);
+          }}
           onOpenVoiceSelect={handleOpenVoiceSelect}
           onOpenChordSequencer={() => setIsChordSeqModalOpen(true)}
           onOpenMidiHelp={() => setIsMidiHelpModalOpen(true)}
@@ -678,6 +689,10 @@ export default function App() {
         currentStyleId={currentStyle.id}
         onSelectStyle={handleSelectStyle}
         customStyles={customStyles}
+        onOpenStyleCreator={(styleToEdit) => {
+          setStyleToEditInCreator(styleToEdit);
+          setIsStyleCreatorModalOpen(true);
+        }}
         onAddCustomStyle={(st) => setCustomStyles(prev => [st, ...prev.filter(p => p.id !== st.id)])}
         onAddCustomStyles={(newStyles) => {
           setCustomStyles(prev => {
@@ -690,6 +705,24 @@ export default function App() {
           if (currentStyle.id === id) {
             handleSelectStyle(FACTORY_STYLES[0]);
           }
+        }}
+      />
+
+      {/* Style Creator / Editor Modal */}
+      <StyleCreatorModal
+        isOpen={isStyleCreatorModalOpen}
+        onClose={() => setIsStyleCreatorModalOpen(false)}
+        initialStyle={styleToEditInCreator}
+        customStyles={customStyles}
+        onSaveStyle={(newStyle) => {
+          setCustomStyles(prev => [newStyle, ...prev.filter(s => s.id !== newStyle.id)]);
+        }}
+        onApplyAndPlayStyle={(newStyle) => {
+          setCustomStyles(prev => [newStyle, ...prev.filter(s => s.id !== newStyle.id)]);
+          handleSelectStyle(newStyle);
+          setTimeout(() => {
+            stylePlayer.start();
+          }, 100);
         }}
       />
 

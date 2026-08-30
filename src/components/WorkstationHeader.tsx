@@ -25,6 +25,7 @@ interface WorkstationHeaderProps {
   midiDeviceName: string;
   onToggleSidebar?: () => void;
   isSidebarCollapsed?: boolean;
+  onOpenStyleCreator?: () => void;
   onOpenUserGuide?: () => void;
   onOpenCreatorMessage?: () => void;
   onOpenPrayerAtmosphere?: () => void;
@@ -43,6 +44,7 @@ export const WorkstationHeader: React.FC<WorkstationHeaderProps> = ({
   midiDeviceName,
   onToggleSidebar,
   isSidebarCollapsed,
+  onOpenStyleCreator,
   onOpenUserGuide,
   onOpenCreatorMessage,
   onOpenPrayerAtmosphere,
@@ -111,10 +113,22 @@ export const WorkstationHeader: React.FC<WorkstationHeaderProps> = ({
 
       {/* Middle Studio Quick-Action Toolbar */}
       <div className="hidden lg:flex items-center gap-1.5 bg-zinc-950/80 p-1 rounded-xl border border-zinc-800/80">
+        {onOpenStyleCreator && (
+          <button
+            id="btn-header-style-creator"
+            onClick={onOpenStyleCreator}
+            className="px-2.5 py-1 rounded-lg text-xs font-mono font-bold text-amber-300 bg-gradient-to-r from-amber-950/60 to-amber-900/40 hover:from-amber-900/80 hover:to-amber-800/60 border border-amber-500/50 flex items-center gap-1.5 transition-all shadow-xs cursor-pointer active:scale-95"
+            title="Open Style Creator (Compose Intros, Mains A-D, Fills, Break & Endings)"
+          >
+            <span className="text-amber-400">🎵</span>
+            <span>Style Creator</span>
+          </button>
+        )}
+
         {onOpenPrayerAtmosphere && (
           <button
             onClick={onOpenPrayerAtmosphere}
-            className="px-2.5 py-1 rounded-lg text-xs font-mono font-bold text-amber-300 bg-amber-950/40 hover:bg-amber-900/60 border border-amber-500/40 flex items-center gap-1.5 transition-all"
+            className="px-2.5 py-1 rounded-lg text-xs font-mono font-bold text-amber-300 bg-amber-950/40 hover:bg-amber-900/60 border border-amber-500/40 flex items-center gap-1.5 transition-all cursor-pointer"
             title="Open Continuous Prayer &amp; Worship Pad Drone"
           >
             <Sparkles className="w-3.5 h-3.5 text-amber-400" />

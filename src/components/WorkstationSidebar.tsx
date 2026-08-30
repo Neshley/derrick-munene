@@ -52,6 +52,7 @@ interface WorkstationSidebarProps {
   onSelectStyle: (style: ArrangerStyle) => void;
   customStyles: ArrangerStyle[];
   onOpenStyleBrowser: () => void;
+  onOpenStyleCreator?: () => void;
   onOpenVoiceSelect: (part: 'r1' | 'r2' | 'left') => void;
   onOpenChordSequencer: () => void;
   onOpenMidiHelp: () => void;
@@ -96,6 +97,7 @@ export const WorkstationSidebar: React.FC<WorkstationSidebarProps> = ({
   onSelectStyle,
   customStyles,
   onOpenStyleBrowser,
+  onOpenStyleCreator,
   onOpenVoiceSelect,
   onOpenChordSequencer,
   onOpenMidiHelp,
@@ -289,6 +291,19 @@ export const WorkstationSidebar: React.FC<WorkstationSidebarProps> = ({
                 >
                   <Sparkles className="w-4 h-4 text-amber-400 animate-pulse" />
                   <span className="text-[8px] font-mono font-bold leading-none text-amber-300">AI</span>
+                </button>
+              )}
+
+              {/* Quick Style Creator Button */}
+              {onOpenStyleCreator && (
+                <button
+                  id="btn-sidebar-rail-style-creator"
+                  onClick={onOpenStyleCreator}
+                  className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500/20 to-amber-600/30 hover:from-amber-500/30 hover:to-amber-600/40 text-amber-300 border border-amber-500/40 flex flex-col items-center justify-center gap-0.5 transition-all shadow-xs group cursor-pointer"
+                  title="Open Style Creator (Author Yamaha .STY styles)"
+                >
+                  <span className="text-xs">🎵</span>
+                  <span className="text-[7px] font-mono font-bold leading-none uppercase">CREATE</span>
                 </button>
               )}
 
@@ -530,15 +545,28 @@ export const WorkstationSidebar: React.FC<WorkstationSidebarProps> = ({
                     </div>
                   </div>
 
-                  {/* Open Full Style Browser / .STY button */}
-                  <button
-                    id="btn-sidebar-open-styles"
-                    onClick={onOpenStyleBrowser}
-                    className="w-full py-2 px-3 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-amber-300 border border-amber-500/30 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors shadow-xs"
-                  >
-                    <Upload className="w-3.5 h-3.5 text-amber-400" />
-                    <span>Upload &amp; Manage .STY / .ZIP</span>
-                  </button>
+                  {/* Style Creator & Style Browser Buttons */}
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {onOpenStyleCreator && (
+                      <button
+                        id="btn-sidebar-open-style-creator"
+                        onClick={onOpenStyleCreator}
+                        className="py-2 px-2.5 rounded-lg bg-gradient-to-r from-amber-950/80 to-amber-900/60 hover:from-amber-900 hover:to-amber-800 text-amber-300 border border-amber-500/40 text-xs font-bold flex items-center justify-center gap-1.5 transition-all shadow-xs cursor-pointer active:scale-95"
+                        title="Create your own styles from scratch or template"
+                      >
+                        <span>🎵</span>
+                        <span>Style Creator</span>
+                      </button>
+                    )}
+                    <button
+                      id="btn-sidebar-open-styles"
+                      onClick={onOpenStyleBrowser}
+                      className={`py-2 px-2.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-amber-300 border border-amber-500/30 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors shadow-xs ${!onOpenStyleCreator ? 'col-span-2' : ''}`}
+                    >
+                      <Upload className="w-3.5 h-3.5 text-amber-400" />
+                      <span>.STY Files</span>
+                    </button>
+                  </div>
 
                   {/* Category Filter Pills */}
                   <div>
