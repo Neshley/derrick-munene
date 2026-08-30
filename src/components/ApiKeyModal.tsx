@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Key, Eye, EyeOff, ShieldCheck, Check, AlertCircle, Trash2, ExternalLink, Sparkles, X, CheckCircle2 } from 'lucide-react';
-import { getStoredApiKey, setStoredApiKey, clearStoredApiKey, getAiFetchHeaders } from '../utils/apiKeyManager';
+import { getStoredApiKey, setStoredApiKey, clearStoredApiKey } from '../utils/apiKeyManager';
+import { validateGeminiKey } from '../utils/aiClient';
 
 interface ApiKeyModalProps {
   isOpen: boolean;
@@ -34,25 +35,16 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose }) => 
     }
 
     setStatus('testing');
-    setStatusMessage('Testing connection to Gemini 3.7 Flash...');
+    setStatusMessage('Testing connection to Gemini AI...');
 
     try {
-      const res = await fetch('/api/ai/validate-key', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-gemini-api-key': apiKey.trim(),
-        },
-        body: JSON.stringify({ apiKey: apiKey.trim() }),
-      });
-
-      const data = await res.json();
-      if (data.success) {
+      const result = await validateGeminiKey(apiKey.trim());
+      if (result.success) {
         setStatus('valid');
-        setStatusMessage('Connection verified! Key is active with Gemini 3.7 Flash.');
+        setStatusMessage(result.message || 'Connection verified! Key is active with Gemini AI.');
       } else {
         setStatus('error');
-        setStatusMessage(data.error || 'Invalid API Key or unauthorized.');
+        setStatusMessage(result.message || 'Invalid API Key or unauthorized.');
       }
     } catch (e: any) {
       setStatus('error');

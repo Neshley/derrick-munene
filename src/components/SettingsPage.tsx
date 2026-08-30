@@ -28,6 +28,7 @@ import {
 import { midiManager } from '../audio/../midi/midiManager';
 import { audioEngine } from '../audio/audioEngine';
 import { stylePlayer } from '../audio/stylePlayer';
+import { getStoredApiKey } from '../utils/apiKeyManager';
 
 export interface SettingsPageProps {
   isOpen: boolean;
@@ -87,7 +88,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
   // Check storage items
   useEffect(() => {
     if (isOpen) {
-      const apiKey = localStorage.getItem('gemini_api_key') || localStorage.getItem('google_genai_api_key');
+      const apiKey = getStoredApiKey();
       setHasApiKey(Boolean(apiKey && apiKey.trim().length > 0));
 
       try {

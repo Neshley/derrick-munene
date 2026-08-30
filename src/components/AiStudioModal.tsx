@@ -32,7 +32,15 @@ import {
   X,
   Zap,
 } from 'lucide-react';
-import { getAiFetchHeaders, getStoredApiKey } from '../utils/apiKeyManager';
+import { getStoredApiKey } from '../utils/apiKeyManager';
+import {
+  generateAiStyle,
+  generateAiChords,
+  generateAiSong,
+  generateAiVoice,
+  generateAiMix,
+  generateAiMultiPads,
+} from '../utils/aiClient';
 import { ApiKeyModal } from './ApiKeyModal';
 
 interface AiStudioModalProps {
@@ -198,17 +206,12 @@ export const AiStudioModal: React.FC<AiStudioModalProps> = ({
     setIsLoading(true);
     setStatusMessage('Consulting Gemini AI Arranger Programmer...');
     try {
-      const res = await fetch('/api/ai/generate-style', {
-        method: 'POST',
-        headers: getAiFetchHeaders(),
-        body: JSON.stringify({
-          prompt: stylePrompt,
-          category: styleCategory,
-          currentTempo: styleTempo,
-        }),
+      const data = await generateAiStyle({
+        prompt: stylePrompt,
+        category: styleCategory,
+        currentTempo: styleTempo,
       });
-      const data = await res.json();
-      if (data.success) {
+      if (data && data.success && data.style) {
         setGeneratedStyle(data.style);
         showToast(`Arranger style "${data.style.name}" generated!`);
       } else {
@@ -227,17 +230,12 @@ export const AiStudioModal: React.FC<AiStudioModalProps> = ({
     setIsLoading(true);
     setStatusMessage('Analyzing harmonic voice leading with Gemini...');
     try {
-      const res = await fetch('/api/ai/generate-chords', {
-        method: 'POST',
-        headers: getAiFetchHeaders(),
-        body: JSON.stringify({
-          rootKey: chordKey,
-          chordStyle,
-          mood: chordMood,
-        }),
+      const data = await generateAiChords({
+        rootKey: chordKey,
+        chordStyle,
+        mood: chordMood,
       });
-      const data = await res.json();
-      if (data.success) {
+      if (data && data.success) {
         setGeneratedProgression(data);
         showToast(`Harmonic progression generated in key ${chordKey}!`);
       }
@@ -254,17 +252,12 @@ export const AiStudioModal: React.FC<AiStudioModalProps> = ({
     setIsLoading(true);
     setStatusMessage('Formatting worship chart & arranger registration...');
     try {
-      const res = await fetch('/api/ai/generate-song', {
-        method: 'POST',
-        headers: getAiFetchHeaders(),
-        body: JSON.stringify({
-          songQuery,
-          key: songKey,
-          category: songCategory,
-        }),
+      const data = await generateAiSong({
+        songQuery,
+        key: songKey,
+        category: songCategory,
       });
-      const data = await res.json();
-      if (data.success && data.song) {
+      if (data && data.success && data.song) {
         setGeneratedSong(data.song);
         showToast(`Chart for "${data.song.title}" created!`);
       }
@@ -281,16 +274,11 @@ export const AiStudioModal: React.FC<AiStudioModalProps> = ({
     setIsLoading(true);
     setStatusMessage('Synthesizing sound design parameters with Gemini...');
     try {
-      const res = await fetch('/api/ai/generate-voice', {
-        method: 'POST',
-        headers: getAiFetchHeaders(),
-        body: JSON.stringify({
-          prompt: voicePrompt,
-          targetPart: voiceTargetPart,
-        }),
+      const data = await generateAiVoice({
+        prompt: voicePrompt,
+        targetPart: voiceTargetPart,
       });
-      const data = await res.json();
-      if (data.success && data.voice) {
+      if (data && data.success && data.voice) {
         setGeneratedVoice(data.voice);
         showToast(`Synthesized preset "${data.voice.name}" ready!`);
       }
@@ -307,16 +295,11 @@ export const AiStudioModal: React.FC<AiStudioModalProps> = ({
     setIsLoading(true);
     setStatusMessage('Balancing 8-track accompaniment mix & DSP master bus...');
     try {
-      const res = await fetch('/api/ai/generate-mix', {
-        method: 'POST',
-        headers: getAiFetchHeaders(),
-        body: JSON.stringify({
-          presetTarget: mixPresetTarget,
-          currentStyle: currentStyle.name,
-        }),
+      const data = await generateAiMix({
+        presetTarget: mixPresetTarget,
+        currentStyle: currentStyle.name,
       });
-      const data = await res.json();
-      if (data.success && data.mix) {
+      if (data && data.success && data.mix) {
         setGeneratedMix(data.mix);
         showToast(`Auto-mix profile generated!`);
       }
@@ -333,16 +316,11 @@ export const AiStudioModal: React.FC<AiStudioModalProps> = ({
     setIsLoading(true);
     setStatusMessage('Generating synchronized Multi-Pad phrases & riffs...');
     try {
-      const res = await fetch('/api/ai/generate-multipads', {
-        method: 'POST',
-        headers: getAiFetchHeaders(),
-        body: JSON.stringify({
-          theme: multipadsTheme,
-          key: multipadsKey,
-        }),
+      const data = await generateAiMultiPads({
+        theme: multipadsTheme,
+        key: multipadsKey,
       });
-      const data = await res.json();
-      if (data.success && data.pads) {
+      if (data && data.success && data.pads) {
         setGeneratedMultiPads(data);
         showToast(`Multi-Pad bank "${data.bankName}" generated!`);
       }
