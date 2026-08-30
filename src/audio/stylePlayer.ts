@@ -232,7 +232,7 @@ export class StylePlayer {
   }
 
   // --- SECTION SELECTION & TRANSITIONS ---
-  public async triggerSection(targetSection: StyleSection, autoStartIfStopped: boolean = true) {
+  public async triggerSection(targetSection: StyleSection, autoStartIfStopped: boolean = false) {
     audioEngine.init();
     const ctx = audioEngine.getContext();
     if (ctx && ctx.state === 'suspended') {
@@ -245,6 +245,7 @@ export class StylePlayer {
 
     if (!this.isPlaying) {
       this.currentSection = targetSection;
+      this.nextQueuedSection = targetSection;
       this.notifySectionChanged(targetSection);
       if (autoStartIfStopped) {
         await this.start();
@@ -315,9 +316,6 @@ export class StylePlayer {
         this.currentSection = 'break';
         this.nextQueuedSection = 'main_a';
         this.notifySectionChanged(this.currentSection);
-        await this.start();
-      } else {
-        await this.start();
       }
       return;
     }
@@ -377,7 +375,6 @@ export class StylePlayer {
       this.currentSection = targetSection;
       this.nextQueuedSection = returnSection;
       this.notifySectionChanged(targetSection);
-      await this.start();
       return { decision, targetSection, intensity };
     }
 
