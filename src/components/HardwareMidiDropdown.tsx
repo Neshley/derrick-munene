@@ -16,6 +16,9 @@ import {
   Volume2,
   Waves,
   Zap,
+  RotateCcw,
+  CheckCircle2,
+  Cable,
 } from 'lucide-react';
 
 interface HardwareMidiDropdownProps {
@@ -37,6 +40,7 @@ export const HardwareMidiDropdown: React.FC<HardwareMidiDropdownProps> = ({
   const [midiState, setMidiState] = useState<MidiState>(midiManager.getState());
   const [activityFlash, setActivityFlash] = useState<boolean>(false);
   const [isChannelMapOpen, setIsChannelMapOpen] = useState<boolean>(false);
+  const [isRescanning, setIsRescanning] = useState<boolean>(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const flashTimeoutRef = useRef<any>(null);
 
@@ -98,7 +102,9 @@ export const HardwareMidiDropdown: React.FC<HardwareMidiDropdownProps> = ({
 
   const handleRescan = (e: React.MouseEvent) => {
     e.stopPropagation();
+    setIsRescanning(true);
     midiManager.init();
+    setTimeout(() => setIsRescanning(false), 600);
   };
 
   const handlePanic = (e: React.MouseEvent) => {
@@ -155,42 +161,44 @@ export const HardwareMidiDropdown: React.FC<HardwareMidiDropdownProps> = ({
         id="dropdown-hardware-midi-btn"
         type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-mono font-bold transition-all shadow-xs border cursor-pointer select-none ${
+        className={`group flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-mono font-medium transition-all duration-200 border cursor-pointer select-none shadow-md ${
           midiState.isConnected
-            ? 'bg-emerald-950/40 hover:bg-emerald-900/60 text-emerald-300 border-emerald-500/40 shadow-emerald-950/30'
-            : 'bg-zinc-900/90 hover:bg-zinc-800/90 text-zinc-300 border-zinc-700/80 hover:border-amber-500/50'
-        } ${isOpen ? 'ring-2 ring-amber-400/50 border-amber-400' : ''}`}
-        title="Hardware MIDI Interface: Switch MIDI inputs, inspect ports, toggle clock sync, sliders &amp; channel matrix"
+            ? 'bg-gradient-to-b from-zinc-900/95 to-zinc-950/95 text-emerald-300 border-emerald-500/40 hover:border-emerald-400 shadow-emerald-950/40 hover:shadow-emerald-900/20'
+            : 'bg-gradient-to-b from-zinc-900/95 to-zinc-950/95 text-zinc-300 border-zinc-700/80 hover:border-amber-500/60 shadow-black/50'
+        } ${isOpen ? 'ring-2 ring-amber-500/50 border-amber-400 shadow-amber-950/50' : ''}`}
+        title="Hardware MIDI Interface: Switch MIDI inputs, inspect ports, toggle clock sync, sliders & channel matrix"
       >
-        <div className="relative flex items-center justify-center">
-          <Cpu className={`w-3.5 h-3.5 ${midiState.isConnected ? 'text-emerald-400' : 'text-zinc-400'}`} />
+        {/* Hardware Icon & LED */}
+        <div className="relative flex items-center justify-center p-1 rounded-lg bg-zinc-800/80 border border-zinc-700/60 group-hover:border-zinc-600 transition-colors">
+          <Cpu className={`w-3.5 h-3.5 transition-colors ${midiState.isConnected ? 'text-emerald-400' : 'text-zinc-400 group-hover:text-amber-400'}`} />
           {activityFlash && (
-            <span className="absolute -top-1 -right-1 w-2 h-2 rounded-full bg-amber-400 animate-ping" />
+            <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-amber-400 shadow-[0_0_8px_#f59e0b] animate-ping" />
           )}
         </div>
 
-        <div className="flex flex-col text-left leading-none">
-          <div className="flex items-center gap-1">
-            <span className="text-[11px] uppercase tracking-wide font-bold">
-              {variant === 'header' ? 'Hardware MIDI' : 'Hardware MIDI'}
+        {/* Labels & State */}
+        <div className="flex flex-col text-left leading-none gap-0.5">
+          <div className="flex items-center gap-1.5">
+            <span className="text-[11px] uppercase tracking-wider font-bold text-zinc-200 group-hover:text-zinc-100 font-['Chakra_Petch']">
+              MIDI IN
             </span>
             <span
-              className={`w-1.5 h-1.5 rounded-full ${
+              className={`w-2 h-2 rounded-full transition-all duration-150 ${
                 midiState.isConnected
                   ? activityFlash
-                    ? 'bg-amber-400 animate-pulse'
-                    : 'bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)]'
+                    ? 'bg-amber-400 shadow-[0_0_8px_#fbbf24] scale-125'
+                    : 'bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.9)]'
                   : 'bg-zinc-600'
               }`}
             />
           </div>
-          <span className="text-[9px] text-zinc-400 font-normal truncate max-w-[110px] sm:max-w-[140px]">
+          <span className="text-[10px] text-zinc-400 font-normal truncate max-w-[100px] sm:max-w-[130px] font-mono">
             {selectedLabel}
           </span>
         </div>
 
         <ChevronDown
-          className={`w-3.5 h-3.5 text-zinc-400 transition-transform duration-200 ml-0.5 ${
+          className={`w-3.5 h-3.5 text-zinc-400 transition-transform duration-200 ml-0.5 group-hover:text-amber-400 ${
             isOpen ? 'rotate-180 text-amber-400' : ''
           }`}
         />
@@ -200,33 +208,36 @@ export const HardwareMidiDropdown: React.FC<HardwareMidiDropdownProps> = ({
       {isOpen && (
         <div
           id="dropdown-hardware-midi-menu"
-          className="absolute right-0 mt-2 w-[92vw] sm:w-[560px] md:w-[680px] lg:w-[760px] max-w-[96vw] max-h-[85vh] overflow-y-auto custom-scrollbar rounded-2xl bg-zinc-950/98 backdrop-blur-xl border-2 border-zinc-700 text-zinc-100 shadow-2xl shadow-black/90 z-50 p-4 sm:p-5 animate-in fade-in zoom-in-95 duration-150 flex flex-col gap-4 font-sans"
+          className="absolute right-0 mt-2 w-[94vw] sm:w-[580px] md:w-[700px] lg:w-[780px] max-w-[96vw] max-h-[85vh] overflow-y-auto custom-scrollbar rounded-2xl bg-zinc-950/98 backdrop-blur-2xl border-2 border-zinc-700/90 text-zinc-100 shadow-[0_20px_60px_rgba(0,0,0,0.9)] z-50 p-4 sm:p-5 animate-in fade-in zoom-in-95 duration-150 flex flex-col gap-4 font-sans"
         >
+          {/* Subtle Top Accent Glow Bar */}
+          <div className="absolute top-0 left-6 right-6 h-[2px] bg-gradient-to-r from-transparent via-amber-500/80 to-transparent rounded-full pointer-events-none" />
+
           {/* Header Bar */}
-          <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-zinc-800">
+          <div className="flex flex-wrap items-center justify-between gap-3 pb-3.5 border-b border-zinc-800/90">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400">
-                <Cpu className="w-5 h-5" />
+              <div className="p-2.5 rounded-xl bg-gradient-to-br from-amber-500/20 to-amber-600/5 border border-amber-500/30 text-amber-400 shadow-inner">
+                <Cable className="w-5 h-5" />
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <h3 className="text-sm sm:text-base font-bold tracking-wider text-zinc-100 font-mono uppercase">
+                  <h3 className="text-sm sm:text-base font-bold tracking-wider text-zinc-100 font-['Chakra_Petch'] uppercase">
                     Hardware MIDI Interface
                   </h3>
                   {midiState.isConnected ? (
-                    <span className="flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 font-mono font-semibold">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    <span className="flex items-center gap-1.5 text-[10px] px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/40 font-mono font-bold shadow-[0_0_10px_rgba(16,185,129,0.15)]">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_#34d399] animate-pulse" />
                       CONNECTED
                     </span>
                   ) : (
-                    <span className="flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-400 border border-zinc-700 font-mono font-semibold">
-                      <span className="w-1.5 h-1.5 rounded-full bg-zinc-500" />
+                    <span className="flex items-center gap-1.5 text-[10px] px-2.5 py-0.5 rounded-full bg-zinc-900 text-zinc-400 border border-zinc-800 font-mono font-medium">
+                      <span className="w-1.5 h-1.5 rounded-full bg-zinc-600" />
                       STANDBY
                     </span>
                   )}
                 </div>
-                <p className="text-xs text-zinc-400">
-                  Low-latency Web MIDI routing for Genos arranger keys, pitch bend, modulation &amp; 24P clock sync
+                <p className="text-xs text-zinc-400 mt-0.5">
+                  Ultra low-latency Web MIDI routing for Yamaha Genos arranger keys, pitch bend, CC &amp; 24 PPQN sync
                 </p>
               </div>
             </div>
@@ -234,12 +245,14 @@ export const HardwareMidiDropdown: React.FC<HardwareMidiDropdownProps> = ({
             {/* Quick Action Buttons */}
             <div className="flex items-center gap-2">
               <button
+                type="button"
                 onClick={handleRescan}
-                className="px-2.5 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 hover:border-amber-500/50 text-amber-300 text-xs font-mono font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-xs active:scale-95"
+                disabled={isRescanning}
+                className="px-3 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800/90 border border-zinc-700/80 hover:border-amber-500/60 text-amber-300 text-xs font-mono font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm active:scale-95 disabled:opacity-50"
                 title="Rescan connected USB and Bluetooth MIDI devices"
               >
-                <RefreshCw className="w-3.5 h-3.5" />
-                <span>Rescan Ports</span>
+                <RefreshCw className={`w-3.5 h-3.5 text-amber-400 ${isRescanning ? 'animate-spin' : ''}`} />
+                <span>Rescan</span>
               </button>
 
               {onOpenMidiAutomation && (
@@ -249,7 +262,7 @@ export const HardwareMidiDropdown: React.FC<HardwareMidiDropdownProps> = ({
                     setIsOpen(false);
                     onOpenMidiAutomation();
                   }}
-                  className="px-2.5 py-1.5 rounded-xl bg-indigo-950/70 hover:bg-indigo-900 border border-indigo-700/60 text-indigo-300 text-xs font-mono font-bold flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
+                  className="px-3 py-1.5 rounded-xl bg-indigo-950/70 hover:bg-indigo-900/90 border border-indigo-600/50 hover:border-indigo-500 text-indigo-200 text-xs font-mono font-semibold flex items-center gap-1.5 transition-all shadow-sm cursor-pointer active:scale-95"
                   title="Open MIDI CC Automation Studio"
                 >
                   <Sliders className="w-3.5 h-3.5 text-indigo-400" />
@@ -260,7 +273,7 @@ export const HardwareMidiDropdown: React.FC<HardwareMidiDropdownProps> = ({
               <button
                 type="button"
                 onClick={handlePanic}
-                className="px-2.5 py-1.5 rounded-xl bg-red-950/80 hover:bg-red-900 border border-red-800/80 text-red-300 hover:text-red-100 text-xs font-mono font-bold flex items-center gap-1.5 transition-all shadow-xs cursor-pointer active:scale-95"
+                className="px-3 py-1.5 rounded-xl bg-red-950/80 hover:bg-red-900 border border-red-700/70 hover:border-red-500 text-red-200 hover:text-white text-xs font-mono font-bold flex items-center gap-1.5 transition-all shadow-sm cursor-pointer active:scale-95"
                 title="Emergency reset: immediately cuts all active voices, controllers, and sustained notes"
               >
                 <AlertOctagon className="w-3.5 h-3.5 text-red-400" />
@@ -270,43 +283,45 @@ export const HardwareMidiDropdown: React.FC<HardwareMidiDropdownProps> = ({
           </div>
 
           {/* Section 1: Detected Hardware MIDI Input Ports */}
-          <div className="flex flex-col gap-2 p-3 bg-zinc-900/90 border border-zinc-800/90 rounded-xl">
+          <div className="flex flex-col gap-2.5 p-3.5 bg-zinc-900/80 border border-zinc-800/80 rounded-xl">
             <div className="flex items-center justify-between text-xs font-bold text-zinc-300 uppercase tracking-wider font-mono">
-              <span className="flex items-center gap-1.5 text-amber-400">
+              <span className="flex items-center gap-2 text-amber-400">
                 <Radio className="w-4 h-4" />
-                Select Active MIDI Input Port
+                Active MIDI Input Ports
               </span>
-              <span className="text-zinc-400 font-normal text-[11px]">
+              <span className="text-zinc-400 font-normal text-[11px] px-2 py-0.5 rounded-md bg-zinc-950 border border-zinc-800">
                 {midiState.devices.length} Port{midiState.devices.length === 1 ? '' : 's'} Detected
               </span>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto custom-scrollbar pr-0.5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-48 overflow-y-auto custom-scrollbar pr-0.5">
               {/* Omni / All Devices Option */}
               <button
                 type="button"
                 onClick={() => handleSelectDevice(null)}
-                className={`w-full text-left p-2.5 rounded-xl border transition-all flex items-center justify-between text-xs font-mono cursor-pointer ${
+                className={`w-full text-left p-3 rounded-xl border transition-all flex items-center justify-between text-xs font-mono cursor-pointer ${
                   midiState.selectedDeviceId === null
-                    ? 'bg-amber-950/50 border-amber-500/70 text-amber-200 font-bold shadow-xs'
-                    : 'bg-zinc-950/80 border-zinc-800/90 text-zinc-300 hover:bg-zinc-850 hover:border-zinc-700'
+                    ? 'bg-gradient-to-r from-amber-950/60 to-amber-900/30 border-amber-500/70 text-amber-200 font-bold shadow-md shadow-amber-950/30'
+                    : 'bg-zinc-950/80 border-zinc-800/90 text-zinc-300 hover:bg-zinc-900 hover:border-zinc-700'
                 }`}
               >
-                <div className="flex items-center gap-2">
-                  <div className={`p-1.5 rounded-lg ${midiState.selectedDeviceId === null ? 'bg-amber-500/20 text-amber-400' : 'bg-zinc-800 text-zinc-400'}`}>
+                <div className="flex items-center gap-2.5">
+                  <div className={`p-2 rounded-lg ${midiState.selectedDeviceId === null ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : 'bg-zinc-900 text-zinc-400 border border-zinc-800'}`}>
                     <Zap className="w-4 h-4" />
                   </div>
                   <div>
                     <div className="flex items-center gap-1.5">
-                      <span className="font-semibold text-xs">⚡ Omni (All Devices)</span>
+                      <span className="font-bold text-xs text-zinc-100">⚡ Omni (All Inputs)</span>
                     </div>
-                    <p className="text-[10px] text-zinc-400 font-sans font-normal">
-                      Routes all plugged USB &amp; Bluetooth controllers
+                    <p className="text-[10px] text-zinc-400 font-sans font-normal mt-0.5">
+                      Routes all connected USB &amp; Bluetooth controllers simultaneously
                     </p>
                   </div>
                 </div>
                 {midiState.selectedDeviceId === null && (
-                  <Check className="w-4 h-4 text-amber-400 shrink-0 ml-1" />
+                  <div className="w-5 h-5 rounded-full bg-amber-500/20 border border-amber-500/50 flex items-center justify-center shrink-0 ml-1">
+                    <Check className="w-3.5 h-3.5 text-amber-400" />
+                  </div>
                 )}
               </button>
 
@@ -318,63 +333,75 @@ export const HardwareMidiDropdown: React.FC<HardwareMidiDropdownProps> = ({
                     key={device.id}
                     type="button"
                     onClick={() => handleSelectDevice(device.id)}
-                    className={`w-full text-left p-2.5 rounded-xl border transition-all flex items-center justify-between text-xs font-mono cursor-pointer ${
+                    className={`w-full text-left p-3 rounded-xl border transition-all flex items-center justify-between text-xs font-mono cursor-pointer ${
                       isSelected
-                        ? 'bg-amber-950/50 border-amber-500/70 text-amber-200 font-bold shadow-xs'
-                        : 'bg-zinc-950/80 border-zinc-800/90 text-zinc-300 hover:bg-zinc-850 hover:border-zinc-700'
+                        ? 'bg-gradient-to-r from-amber-950/60 to-amber-900/30 border-amber-500/70 text-amber-200 font-bold shadow-md shadow-amber-950/30'
+                        : 'bg-zinc-950/80 border-zinc-800/90 text-zinc-300 hover:bg-zinc-900 hover:border-zinc-700'
                     }`}
                   >
-                    <div className="flex items-center gap-2 min-w-0">
-                      <div className={`p-1.5 rounded-lg shrink-0 ${isSelected ? 'bg-amber-500/20 text-amber-400' : 'bg-zinc-800 text-zinc-400'}`}>
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className={`p-2 rounded-lg shrink-0 ${isSelected ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30' : 'bg-zinc-900 text-zinc-400 border border-zinc-800'}`}>
                         <Radio className="w-4 h-4" />
                       </div>
                       <div className="truncate">
                         <div className="flex items-center gap-1.5 truncate">
-                          <span className="font-semibold text-xs truncate">🎹 {device.name}</span>
-                          <span className="text-[9px] px-1.5 py-0.2 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
-                            {device.state || 'connected'}
+                          <span className="font-bold text-xs truncate text-zinc-100">🎹 {device.name}</span>
+                          <span className="text-[9px] px-1.5 py-0.2 rounded bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 shrink-0">
+                            {device.state || 'active'}
                           </span>
                         </div>
-                        <p className="text-[10px] text-zinc-400 font-sans font-normal truncate">
-                          {device.manufacturer ? `Vendor: ${device.manufacturer}` : 'Hardware Port'}
+                        <p className="text-[10px] text-zinc-400 font-sans font-normal truncate mt-0.5">
+                          {device.manufacturer ? `Vendor: ${device.manufacturer}` : 'USB MIDI Port'}
                         </p>
                       </div>
                     </div>
                     {isSelected && (
-                      <Check className="w-4 h-4 text-amber-400 shrink-0 ml-1" />
+                      <div className="w-5 h-5 rounded-full bg-amber-500/20 border border-amber-500/50 flex items-center justify-center shrink-0 ml-1">
+                        <Check className="w-3.5 h-3.5 text-amber-400" />
+                      </div>
                     )}
                   </button>
                 );
               })}
 
               {midiState.devices.length === 0 && (
-                <div className="col-span-full p-3.5 rounded-xl bg-zinc-950/60 border border-dashed border-zinc-800 text-center flex flex-col items-center gap-1.5">
-                  <Radio className="w-5 h-5 text-zinc-500" />
-                  <p className="text-xs text-zinc-300 font-medium">No Hardware MIDI Interface Detected</p>
-                  <p className="text-[11px] text-zinc-400 max-w-sm">
-                    Connect any USB or Bluetooth MIDI controller (Yamaha, Roland, Korg, Casio, etc.) and click <strong>Rescan Ports</strong>.
-                  </p>
+                <div className="col-span-full p-4 rounded-xl bg-zinc-950/60 border border-dashed border-zinc-800 text-center flex flex-col items-center gap-2">
+                  <div className="p-2.5 rounded-full bg-zinc-900 border border-zinc-800 text-zinc-500">
+                    <Radio className="w-5 h-5" />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-xs text-zinc-200 font-semibold">No Hardware MIDI Interface Detected</p>
+                    <p className="text-[11px] text-zinc-400 max-w-sm">
+                      Connect any USB/Bluetooth MIDI keyboard (Yamaha, Roland, Korg, Casio, Nord) and click <strong className="text-amber-400">Rescan</strong>.
+                    </p>
+                  </div>
                 </div>
               )}
             </div>
           </div>
 
-          {/* Section 2: Real-time Controls Grid (Clock Sync, Pitch Bend, Mod Wheel, Activity) */}
+          {/* Section 2: Real-time Controls Grid (Clock Sync, Pitch Bend, Mod Wheel, Live Activity) */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             {/* Col 1: Arranger Clock Sync */}
-            <div className="flex flex-col justify-between gap-2 p-3 bg-zinc-900/90 border border-zinc-800/80 rounded-xl">
-              <label className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-1 font-mono">
-                <Clock className="w-3.5 h-3.5 text-cyan-400" />
-                Arranger Clock
-              </label>
+            <div className="flex flex-col justify-between gap-2.5 p-3.5 bg-zinc-900/80 border border-zinc-800/80 rounded-xl">
+              <div className="flex items-center justify-between">
+                <label className="text-[11px] font-bold text-zinc-300 uppercase tracking-wider flex items-center gap-1.5 font-mono">
+                  <Clock className="w-3.5 h-3.5 text-cyan-400" />
+                  Arranger Clock
+                </label>
+                <span className="text-[9px] px-1.5 py-0.5 rounded bg-cyan-950 text-cyan-300 border border-cyan-800/60 font-mono">
+                  24 PPQN
+                </span>
+              </div>
+
               <div className="grid grid-cols-2 gap-1.5 text-xs font-mono">
                 <button
                   type="button"
                   onClick={() => handleClockToggle('internal')}
-                  className={`py-1.5 px-2 rounded-lg border text-center font-bold transition-all cursor-pointer ${
+                  className={`py-2 px-2 rounded-lg border text-center font-bold transition-all cursor-pointer ${
                     midiState.clockSource === 'internal'
-                      ? 'bg-amber-500 text-zinc-950 border-amber-400 shadow-xs'
-                      : 'bg-zinc-950 text-zinc-400 border-zinc-800 hover:bg-zinc-800'
+                      ? 'bg-amber-500 text-zinc-950 border-amber-400 shadow-md shadow-amber-500/20'
+                      : 'bg-zinc-950 text-zinc-400 border-zinc-800 hover:bg-zinc-900 hover:text-zinc-200'
                   }`}
                 >
                   INTERNAL
@@ -382,32 +409,33 @@ export const HardwareMidiDropdown: React.FC<HardwareMidiDropdownProps> = ({
                 <button
                   type="button"
                   onClick={() => handleClockToggle('midi')}
-                  className={`py-1.5 px-2 rounded-lg border text-center font-bold transition-all cursor-pointer ${
+                  className={`py-2 px-2 rounded-lg border text-center font-bold transition-all cursor-pointer ${
                     midiState.clockSource === 'midi'
-                      ? 'bg-cyan-500 text-zinc-950 border-cyan-400 shadow-xs'
-                      : 'bg-zinc-950 text-zinc-400 border-zinc-800 hover:bg-zinc-800'
+                      ? 'bg-cyan-500 text-zinc-950 border-cyan-400 shadow-md shadow-cyan-500/20'
+                      : 'bg-zinc-950 text-zinc-400 border-zinc-800 hover:bg-zinc-900 hover:text-zinc-200'
                   }`}
-                  title="Synchronize arranger tempo with external 24 PPQN MIDI Clock &amp; Start/Stop messages"
+                  title="Synchronize arranger tempo with external 24 PPQN MIDI Clock & Start/Stop messages"
                 >
-                  MIDI IN (24P)
+                  MIDI IN
                 </button>
               </div>
-              <span className="text-[10px] text-zinc-500 font-mono">
-                Source: {midiState.clockSource === 'internal' ? 'Arranger Internal BPM' : 'External 24 PPQN Clock'}
+
+              <span className="text-[10px] text-zinc-400 font-mono truncate">
+                Mode: {midiState.clockSource === 'internal' ? 'Arranger Internal BPM' : 'External Master Clock'}
               </span>
             </div>
 
             {/* Col 2: Pitch Bend Wheel & Range */}
-            <div className="flex flex-col justify-between gap-2 p-3 bg-zinc-900/90 border border-zinc-800/80 rounded-xl">
+            <div className="flex flex-col justify-between gap-2.5 p-3.5 bg-zinc-900/80 border border-zinc-800/80 rounded-xl">
               <div className="flex items-center justify-between">
-                <label className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-1 font-mono">
+                <label className="text-[11px] font-bold text-zinc-300 uppercase tracking-wider flex items-center gap-1.5 font-mono">
                   <Activity className="w-3.5 h-3.5 text-sky-400" />
                   Pitch Bend
                 </label>
                 <select
                   value={midiState.pitchBendRange}
                   onChange={(e) => handlePitchBendRange(parseInt(e.target.value, 10))}
-                  className="bg-zinc-950 border border-zinc-700 text-sky-300 rounded px-1.5 py-0.5 text-[10px] font-bold font-mono cursor-pointer"
+                  className="bg-zinc-950 border border-zinc-700/80 text-sky-300 rounded-md px-1.5 py-0.5 text-[10px] font-bold font-mono cursor-pointer hover:border-sky-500 focus:outline-none"
                 >
                   <option value={2}>±2 st</option>
                   <option value={5}>±5 st</option>
@@ -417,27 +445,30 @@ export const HardwareMidiDropdown: React.FC<HardwareMidiDropdownProps> = ({
                 </select>
               </div>
 
-              <input
-                type="range"
-                min="-1"
-                max="1"
-                step="0.01"
-                value={midiState.pitchBendNormalized}
-                onChange={handlePitchBendChange}
-                onMouseUp={handlePitchBendReset}
-                onTouchEnd={handlePitchBendReset}
-                className="w-full accent-sky-400 cursor-pointer"
-              />
+              <div className="relative flex items-center py-1">
+                <input
+                  type="range"
+                  min="-1"
+                  max="1"
+                  step="0.01"
+                  value={midiState.pitchBendNormalized}
+                  onChange={handlePitchBendChange}
+                  onMouseUp={handlePitchBendReset}
+                  onTouchEnd={handlePitchBendReset}
+                  className="w-full accent-sky-400 cursor-pointer h-1.5 bg-zinc-950 rounded-lg appearance-none"
+                />
+              </div>
 
               <div className="flex items-center justify-between text-xs font-mono">
                 <button
                   type="button"
                   onClick={handlePitchBendReset}
-                  className="text-[10px] text-zinc-400 hover:text-sky-300 underline cursor-pointer"
+                  className="text-[10px] text-zinc-400 hover:text-sky-300 flex items-center gap-1 cursor-pointer transition-colors"
                 >
-                  Reset Center
+                  <RotateCcw className="w-3 h-3" />
+                  <span>Center</span>
                 </button>
-                <span className="font-bold text-sky-400 text-xs">
+                <span className="font-bold text-sky-400 text-xs bg-sky-950/60 px-1.5 py-0.5 rounded border border-sky-800/50">
                   {midiState.pitchBendSemitones >= 0 ? '+' : ''}
                   {midiState.pitchBendSemitones.toFixed(2)} ST
                 </span>
@@ -445,38 +476,40 @@ export const HardwareMidiDropdown: React.FC<HardwareMidiDropdownProps> = ({
             </div>
 
             {/* Col 3: Modulation Wheel (CC1) & Sustain (CC64) */}
-            <div className="flex flex-col justify-between gap-2 p-3 bg-zinc-900/90 border border-zinc-800/80 rounded-xl">
+            <div className="flex flex-col justify-between gap-2.5 p-3.5 bg-zinc-900/80 border border-zinc-800/80 rounded-xl">
               <div className="flex items-center justify-between">
-                <label className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-1 font-mono">
+                <label className="text-[11px] font-bold text-zinc-300 uppercase tracking-wider flex items-center gap-1.5 font-mono">
                   <Sliders className="w-3.5 h-3.5 text-purple-400" />
                   Modulation (CC1)
                 </label>
-                <span className="text-xs font-mono font-bold text-purple-400">
+                <span className="text-xs font-mono font-bold text-purple-400 bg-purple-950/60 px-1.5 py-0.5 rounded border border-purple-800/50">
                   {Math.round(midiState.modulationNormalized * 100)}%
                 </span>
               </div>
 
-              <input
-                type="range"
-                min="0"
-                max="1"
-                step="0.01"
-                value={midiState.modulationNormalized}
-                onChange={handleModulationChange}
-                className="w-full accent-purple-400 cursor-pointer"
-              />
+              <div className="relative flex items-center py-1">
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  value={midiState.modulationNormalized}
+                  onChange={handleModulationChange}
+                  className="w-full accent-purple-400 cursor-pointer h-1.5 bg-zinc-950 rounded-lg appearance-none"
+                />
+              </div>
 
-              <div className="flex items-center justify-between pt-1 border-t border-zinc-800">
+              <div className="flex items-center justify-between pt-1 border-t border-zinc-800/80">
                 <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider font-mono">
                   Sustain (CC64)
                 </span>
                 <button
                   type="button"
                   onClick={handleSustainToggle}
-                  className={`px-2 py-0.5 rounded text-[10px] font-mono font-bold border transition-all cursor-pointer ${
+                  className={`px-2.5 py-1 rounded-md text-[10px] font-mono font-bold border transition-all cursor-pointer ${
                     midiState.sustain
-                      ? 'bg-amber-500 text-zinc-950 border-amber-400 shadow-xs'
-                      : 'bg-zinc-950 text-zinc-400 border-zinc-800 hover:bg-zinc-800'
+                      ? 'bg-amber-500 text-zinc-950 border-amber-400 shadow-sm shadow-amber-500/20 font-extrabold'
+                      : 'bg-zinc-950 text-zinc-400 border-zinc-800 hover:bg-zinc-900 hover:text-zinc-200'
                   }`}
                 >
                   {midiState.sustain ? 'HOLD ON' : 'RELEASED'}
@@ -484,23 +517,24 @@ export const HardwareMidiDropdown: React.FC<HardwareMidiDropdownProps> = ({
               </div>
             </div>
 
-            {/* Col 4: Live MIDI Stream Telemetry */}
-            <div className="flex flex-col justify-between gap-2 p-3 bg-zinc-900/90 border border-zinc-800/80 rounded-xl">
-              <div className="flex items-center justify-between mb-0.5">
-                <span className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-1 font-mono">
+            {/* Col 4: Live MIDI Stream Telemetry & Split Control */}
+            <div className="flex flex-col justify-between gap-2.5 p-3.5 bg-zinc-900/80 border border-zinc-800/80 rounded-xl">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-zinc-300 uppercase tracking-wider flex items-center gap-1.5 font-mono">
                   <Zap className="w-3.5 h-3.5 text-emerald-400" />
                   Live Stream
                 </span>
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-300 font-mono">
-                  {midiState.activeNotesCount} Voices Active
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-950/80 text-emerald-300 border border-emerald-700/50 font-mono font-bold">
+                  {midiState.activeNotesCount} Voices
                 </span>
               </div>
 
-              <div className="bg-zinc-950 border border-zinc-800 rounded-lg p-1.5 font-mono text-[10px] text-emerald-400 truncate shadow-inner">
-                {midiState.lastMessageSummary || 'Awaiting MIDI input...'}
+              <div className="bg-zinc-950 border border-zinc-800 rounded-lg px-2 py-1.5 font-mono text-[10px] text-emerald-400 truncate shadow-inner flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+                <span className="truncate">{midiState.lastMessageSummary || 'Awaiting MIDI input...'}</span>
               </div>
 
-              <div className="flex items-center justify-between text-[10px] font-mono text-zinc-400 pt-1 border-t border-zinc-800">
+              <div className="flex items-center justify-between text-[10px] font-mono text-zinc-400 pt-1 border-t border-zinc-800/80">
                 <div className="flex items-center gap-1">
                   <span>Split:</span>
                   {onSplitPointChange ? (
@@ -508,16 +542,16 @@ export const HardwareMidiDropdown: React.FC<HardwareMidiDropdownProps> = ({
                       <button
                         type="button"
                         onClick={() => onSplitPointChange(Math.max(21, splitPoint - 1))}
-                        className="px-1 py-0.2 rounded bg-zinc-800 hover:bg-zinc-700 text-amber-300 font-bold cursor-pointer"
+                        className="px-1.5 py-0.5 rounded bg-zinc-800 hover:bg-zinc-700 text-amber-300 font-bold cursor-pointer transition-colors"
                         title="Lower split point 1 semitone"
                       >
                         -
                       </button>
-                      <span className="font-bold text-amber-400">{getNoteName(splitPoint)}</span>
+                      <span className="font-bold text-amber-400 px-1">{getNoteName(splitPoint)}</span>
                       <button
                         type="button"
                         onClick={() => onSplitPointChange(Math.min(108, splitPoint + 1))}
-                        className="px-1 py-0.2 rounded bg-zinc-800 hover:bg-zinc-700 text-amber-300 font-bold cursor-pointer"
+                        className="px-1.5 py-0.5 rounded bg-zinc-800 hover:bg-zinc-700 text-amber-300 font-bold cursor-pointer transition-colors"
                         title="Raise split point 1 semitone"
                       >
                         +
@@ -530,10 +564,10 @@ export const HardwareMidiDropdown: React.FC<HardwareMidiDropdownProps> = ({
                 <button
                   type="button"
                   onClick={() => setIsChannelMapOpen(!isChannelMapOpen)}
-                  className="text-amber-400 hover:underline flex items-center gap-0.5 cursor-pointer font-bold"
+                  className="text-amber-400 hover:text-amber-300 flex items-center gap-1 cursor-pointer font-bold transition-colors"
                 >
                   <Layers className="w-3 h-3" />
-                  Matrix {isChannelMapOpen ? '▲' : '▼'}
+                  <span>Matrix {isChannelMapOpen ? '▲' : '▼'}</span>
                 </button>
               </div>
             </div>
@@ -541,35 +575,40 @@ export const HardwareMidiDropdown: React.FC<HardwareMidiDropdownProps> = ({
 
           {/* Section 3: Expandable Genos Arranger MIDI Channel Mapping Matrix */}
           {isChannelMapOpen && (
-            <div className="p-3 bg-zinc-900/90 border border-zinc-800 rounded-xl flex flex-col gap-2 animate-in fade-in duration-150">
+            <div className="p-3.5 bg-zinc-900/90 border border-zinc-800 rounded-xl flex flex-col gap-2.5 animate-in fade-in duration-150">
               <div className="flex items-center justify-between text-xs font-bold text-zinc-300 uppercase tracking-wider font-mono">
-                <span>Yamaha Genos Standard Arranger Channel Routing</span>
-                <span className="text-[10px] font-normal text-zinc-400">GM2 / XG Spec</span>
+                <span className="flex items-center gap-1.5 text-zinc-200">
+                  <Layers className="w-3.5 h-3.5 text-amber-400" />
+                  Yamaha Genos Standard Arranger Channel Routing
+                </span>
+                <span className="text-[10px] font-normal text-zinc-400 px-2 py-0.5 rounded bg-zinc-950 border border-zinc-800">
+                  GM2 / XG Spec
+                </span>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 text-xs font-mono">
-                <div className="p-2 bg-zinc-950 border border-zinc-800 rounded-lg flex flex-col items-center">
-                  <span className="text-[10px] text-zinc-400">Right 1 (Lead)</span>
-                  <span className="text-sm font-bold text-sky-400">CH 1</span>
+                <div className="p-2.5 bg-zinc-950/90 border border-zinc-800/90 rounded-lg flex flex-col items-center hover:border-sky-500/40 transition-colors">
+                  <span className="text-[10px] text-zinc-400 font-sans font-medium">Right 1 (Lead)</span>
+                  <span className="text-sm font-bold text-sky-400 mt-0.5">CH 1</span>
                 </div>
-                <div className="p-2 bg-zinc-950 border border-zinc-800 rounded-lg flex flex-col items-center">
-                  <span className="text-[10px] text-zinc-400">Right 2 (Layer)</span>
-                  <span className="text-sm font-bold text-sky-400">CH 2</span>
+                <div className="p-2.5 bg-zinc-950/90 border border-zinc-800/90 rounded-lg flex flex-col items-center hover:border-sky-500/40 transition-colors">
+                  <span className="text-[10px] text-zinc-400 font-sans font-medium">Right 2 (Layer)</span>
+                  <span className="text-sm font-bold text-sky-400 mt-0.5">CH 2</span>
                 </div>
-                <div className="p-2 bg-zinc-950 border border-zinc-800 rounded-lg flex flex-col items-center">
-                  <span className="text-[10px] text-zinc-400">Left (Lower)</span>
-                  <span className="text-sm font-bold text-amber-400">CH 3</span>
+                <div className="p-2.5 bg-zinc-950/90 border border-zinc-800/90 rounded-lg flex flex-col items-center hover:border-amber-500/40 transition-colors">
+                  <span className="text-[10px] text-zinc-400 font-sans font-medium">Left (Lower)</span>
+                  <span className="text-sm font-bold text-amber-400 mt-0.5">CH 3</span>
                 </div>
-                <div className="p-2 bg-zinc-950 border border-zinc-800 rounded-lg flex flex-col items-center">
-                  <span className="text-[10px] text-zinc-400">Manual Bass</span>
-                  <span className="text-sm font-bold text-amber-400">CH 4</span>
+                <div className="p-2.5 bg-zinc-950/90 border border-zinc-800/90 rounded-lg flex flex-col items-center hover:border-amber-500/40 transition-colors">
+                  <span className="text-[10px] text-zinc-400 font-sans font-medium">Manual Bass</span>
+                  <span className="text-sm font-bold text-amber-400 mt-0.5">CH 4</span>
                 </div>
-                <div className="p-2 bg-zinc-950 border border-zinc-800 rounded-lg flex flex-col items-center">
-                  <span className="text-[10px] text-zinc-400">Arranger Drums</span>
-                  <span className="text-sm font-bold text-emerald-400">CH 10</span>
+                <div className="p-2.5 bg-zinc-950/90 border border-zinc-800/90 rounded-lg flex flex-col items-center hover:border-emerald-500/40 transition-colors">
+                  <span className="text-[10px] text-zinc-400 font-sans font-medium">Arranger Drums</span>
+                  <span className="text-sm font-bold text-emerald-400 mt-0.5">CH 10</span>
                 </div>
-                <div className="p-2 bg-zinc-950 border border-zinc-800 rounded-lg flex flex-col items-center">
-                  <span className="text-[10px] text-zinc-400">Master / Reg</span>
-                  <span className="text-sm font-bold text-purple-400">CH 16</span>
+                <div className="p-2.5 bg-zinc-950/90 border border-zinc-800/90 rounded-lg flex flex-col items-center hover:border-purple-500/40 transition-colors">
+                  <span className="text-[10px] text-zinc-400 font-sans font-medium">Master / Reg</span>
+                  <span className="text-sm font-bold text-purple-400 mt-0.5">CH 16</span>
                 </div>
               </div>
             </div>
