@@ -473,6 +473,9 @@ export default function App() {
         onOpenAudioRecording={() => setIsAudioRecordModalOpen(true)}
         onOpenMidiAutomation={() => setIsMidiAutomationOpen(true)}
         onOpenSettings={() => setIsSettingsModalOpen(true)}
+        onOpenAiStudio={() => setIsAiStudioModalOpen(true)}
+        onOpenChordSequencer={() => setIsChordSeqModalOpen(true)}
+        onOpenApiKeyModal={() => setIsApiKeyModalOpen(true)}
         splitPoint={splitPoint}
         onSplitPointChange={(newSplit) => setSplitPoint(newSplit)}
       />
