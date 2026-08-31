@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { midiManager } from '../midi/midiManager';
 import { MidiDeviceInfo, MidiState } from '../midi/midiTypes';
 import {
@@ -200,16 +201,16 @@ export const HardwareMidiDropdown: React.FC<HardwareMidiDropdownProps> = ({
         />
       </button>
 
-      {/* FULL Hardware MIDI Interface Modal Window - Centered on all screen sizes */}
-      {isOpen && (
+      {/* FULL Hardware MIDI Interface Modal Window - Centered on all screen sizes via React Portal */}
+      {isOpen && typeof document !== 'undefined' && createPortal(
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 md:p-6 bg-black/80 backdrop-blur-md animate-in fade-in duration-150 select-none"
+          className="fixed inset-0 z-[9999] flex items-center justify-center p-2.5 sm:p-4 md:p-6 bg-black/80 backdrop-blur-md animate-in fade-in duration-150 select-none"
           onClick={() => setIsOpen(false)}
         >
           {/* Centered Modal Card */}
           <div
             id="dropdown-hardware-midi-menu"
-            className="relative w-full max-w-2xl sm:max-w-3xl md:max-w-4xl max-h-[90vh] rounded-2xl bg-zinc-950/98 backdrop-blur-2xl border-2 border-zinc-700/90 text-zinc-100 shadow-[0_25px_60px_rgba(0,0,0,0.95)] overflow-hidden flex flex-col font-sans animate-in zoom-in-95 duration-150"
+            className="relative w-full max-w-[95vw] sm:max-w-2xl md:max-w-3xl lg:max-w-4xl max-h-[92vh] rounded-2xl bg-zinc-950/98 backdrop-blur-2xl border-2 border-zinc-700/90 text-zinc-100 shadow-[0_25px_60px_rgba(0,0,0,0.95)] overflow-hidden flex flex-col font-sans animate-in zoom-in-95 duration-150 my-auto"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Subtle Top Accent Glow Bar */}
@@ -630,7 +631,8 @@ export const HardwareMidiDropdown: React.FC<HardwareMidiDropdownProps> = ({
           )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   )}
 </div>
 );
