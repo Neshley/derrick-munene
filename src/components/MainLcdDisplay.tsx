@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { ArrangerStyle, DetectedChord, StyleSection } from '../types/arranger';
 import { audioEngine } from '../audio/audioEngine';
 import { VOICE_MAP } from '../audio/voiceBank';
@@ -80,17 +81,22 @@ export const MainLcdDisplay: React.FC<MainLcdDisplayProps> = ({
     }
   }, [tempo, isEditingBpm]);
 
-  // Close keypad on click outside
+  // Keyboard listener when Direct BPM modal is active
   useEffect(() => {
     if (!showKeypad) return;
-    const handleClickOutside = (e: MouseEvent) => {
-      if (keypadRef.current && !keypadRef.current.contains(e.target as Node)) {
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setShowKeypad(false);
+      } else if (e.key === 'Enter') {
+        commitBpmValue(tempoInput);
         setShowKeypad(false);
       }
     };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [showKeypad]);
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showKeypad, tempoInput]);
 
   const commitBpmValue = (valStr: string) => {
     const parsed = parseInt(valStr, 10);
@@ -470,155 +476,295 @@ export const MainLcdDisplay: React.FC<MainLcdDisplayProps> = ({
                 TAP
               </button>
 
-              {/* Floating Direct Numeric Keypad Popover */}
-              {showKeypad && (
+              {/* Centered Direct BPM Insert Modal Window via Portal */}
+              {showKeypad && typeof document !== 'undefined' && createPortal(
                 <div
-                  ref={keypadRef}
-                  className="absolute right-0 top-full mt-2 z-50 w-64 bg-zinc-950 border-2 border-amber-500/50 rounded-2xl p-3 shadow-2xl text-zinc-100 backdrop-blur-md animate-scale-in font-sans"
+                  className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-4 md:p-6 bg-black/80 backdrop-blur-md animate-in fade-in duration-150 select-none"
+                  onClick={() => setShowKeypad(false)}
                 >
-                  <div className="flex items-center justify-between pb-2 border-b border-zinc-800">
-                    <div className="flex items-center gap-1.5">
-                      <Calculator className="w-3.5 h-3.5 text-amber-400" />
-                      <span className="text-xs font-bold font-['Chakra_Petch'] text-amber-300">
-                        DIRECT BPM INSERT
-                      </span>
-                    </div>
-                    <button
-                      onClick={() => setShowKeypad(false)}
-                      className="p-1 text-zinc-400 hover:text-zinc-200 rounded-lg hover:bg-zinc-800"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
+                  <div
+                    ref={keypadRef}
+                    id="modal-direct-bpm-keypad"
+                    className="relative w-full max-w-sm sm:max-w-md rounded-2xl bg-zinc-950/98 backdrop-blur-2xl border-2 border-amber-500/70 text-zinc-100 shadow-[0_25px_60px_rgba(0,0,0,0.95)] overflow-hidden flex flex-col font-sans animate-in zoom-in-95 duration-150 my-auto"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {/* Top Amber Accent Glow Bar */}
+                    <div className="absolute top-0 left-6 right-6 h-[2px] bg-gradient-to-r from-transparent via-amber-400 to-transparent rounded-full pointer-events-none" />
 
-                  {/* Current Active / Buffer Display */}
-                  <div className="mt-2.5 mb-2 bg-zinc-900/90 rounded-xl p-2 border border-zinc-800 flex items-center justify-between">
-                    <span className="text-[10px] uppercase font-mono text-zinc-400">Target Tempo:</span>
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-xl font-mono font-black text-amber-400">
-                        {tempoInput || '---'}
-                      </span>
-                      <span className="text-[10px] font-mono text-zinc-500">BPM</span>
-                    </div>
-                  </div>
+                    {/* Header Bar */}
+                    <div className="p-3.5 sm:p-4 bg-zinc-900/95 border-b border-zinc-800/90 flex items-center justify-between gap-3 shrink-0">
+                      <div className="flex items-center gap-2.5">
+                        <div className="p-2 rounded-xl bg-gradient-to-br from-amber-500/20 to-amber-600/5 border border-amber-500/40 text-amber-400 shadow-inner">
+                          <Calculator className="w-5 h-5" />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h3 className="text-sm sm:text-base font-bold font-['Chakra_Petch'] text-amber-300 uppercase tracking-wider">
+                              Direct BPM Insert
+                            </h3>
+                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30 font-mono font-bold">
+                              {tempo} BPM
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-zinc-400">
+                            Arranger Tempo Engine (40 – 260 BPM)
+                          </p>
+                        </div>
+                      </div>
 
-                  {/* Quick Delta Jumps */}
-                  <div className="grid grid-cols-4 gap-1 mb-2">
-                    {[-10, -5, +5, +10].map((delta) => (
                       <button
-                        key={delta}
                         type="button"
-                        onClick={() => {
-                          const next = Math.max(40, Math.min(260, tempo + delta));
-                          onTempoChange(next);
-                          setTempoInput(String(next));
-                        }}
-                        className="py-1 rounded-lg text-[10px] font-mono font-bold bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border border-zinc-800 transition-colors"
+                        onClick={() => setShowKeypad(false)}
+                        className="p-1.5 sm:p-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-100 border border-zinc-800 hover:border-zinc-700 transition-colors cursor-pointer"
+                        title="Close BPM Keypad (Esc)"
                       >
-                        {delta > 0 ? `+${delta}` : delta}
+                        <X className="w-4 h-4" />
                       </button>
-                    ))}
-                  </div>
-
-                  {/* 10-Key Numeric Pad */}
-                  <div className="grid grid-cols-3 gap-1.5 mb-2">
-                    {['7', '8', '9', '4', '5', '6', '1', '2', '3'].map((d) => (
-                      <button
-                        key={d}
-                        type="button"
-                        onClick={() => handleKeypadDigit(d)}
-                        className="py-2 rounded-xl text-sm font-mono font-bold bg-zinc-900/90 hover:bg-amber-500/20 hover:text-amber-300 hover:border-amber-500/40 text-zinc-200 border border-zinc-800 active:scale-95 transition-all shadow-xs"
-                      >
-                        {d}
-                      </button>
-                    ))}
-                    <button
-                      type="button"
-                      onClick={handleKeypadClear}
-                      className="py-2 rounded-xl text-xs font-mono font-bold bg-zinc-900 hover:bg-rose-950/60 hover:text-rose-300 text-zinc-400 border border-zinc-800 active:scale-95 transition-all"
-                    >
-                      CLR
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleKeypadDigit('0')}
-                      className="py-2 rounded-xl text-sm font-mono font-bold bg-zinc-900/90 hover:bg-amber-500/20 hover:text-amber-300 hover:border-amber-500/40 text-zinc-200 border border-zinc-800 active:scale-95 transition-all shadow-xs"
-                    >
-                      0
-                    </button>
-                    <button
-                      type="button"
-                      onClick={handleKeypadBackspace}
-                      className="py-2 rounded-xl text-xs font-mono font-bold bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border border-zinc-800 active:scale-95 transition-all"
-                      title="Backspace"
-                    >
-                      ⌫
-                    </button>
-                  </div>
-
-                  {/* Quick Genre Presets */}
-                  <div className="border-t border-zinc-800/80 pt-2 mb-2">
-                    <div className="text-[9px] font-mono text-zinc-500 uppercase tracking-wider mb-1 flex items-center justify-between">
-                      <span>Worship &amp; Praise Presets:</span>
                     </div>
-                    <div className="grid grid-cols-4 gap-1">
-                      {[
-                        { label: '68 Wshp', bpm: 68 },
-                        { label: '76 Bld', bpm: 76 },
-                        { label: '98 Afro', bpm: 98 },
-                        { label: '118 High', bpm: 118 },
-                        { label: '125 Prs', bpm: 125 },
-                        { label: '135 Dance', bpm: 135 },
-                        { label: '140 Seben', bpm: 140 },
-                        { label: '160 Shout', bpm: 160 },
-                      ].map((item) => (
+
+                    {/* Body Content */}
+                    <div className="p-3.5 sm:p-5 flex flex-col gap-3 sm:gap-3.5 overflow-y-auto custom-scrollbar max-h-[82vh]">
+                      {/* Target BPM Display & Step Control Deck */}
+                      <div className="bg-gradient-to-br from-zinc-900 via-zinc-900/90 to-zinc-950 p-3 sm:p-4 rounded-xl border border-zinc-800 flex flex-col gap-2.5 shadow-inner">
+                        <div className="flex items-center justify-between text-xs font-mono text-zinc-400 font-bold uppercase">
+                          <span>Target Tempo</span>
+                          <span className="text-[10px] text-amber-400/80">Range: 40 - 260</span>
+                        </div>
+
+                        <div className="flex items-center justify-between gap-2 sm:gap-3">
+                          {/* Step down buttons */}
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const curr = parseInt(tempoInput, 10) || tempo;
+                                const next = Math.max(40, curr - 5);
+                                setTempoInput(String(next));
+                                onTempoChange(next);
+                                setIsEditingBpm(true);
+                              }}
+                              className="px-2.5 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 active:scale-95 text-zinc-200 text-xs font-mono font-bold border border-zinc-700 transition-all cursor-pointer"
+                              title="-5 BPM"
+                            >
+                              -5
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const curr = parseInt(tempoInput, 10) || tempo;
+                                const next = Math.max(40, curr - 1);
+                                setTempoInput(String(next));
+                                onTempoChange(next);
+                                setIsEditingBpm(true);
+                              }}
+                              className="px-2.5 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 active:scale-95 text-zinc-200 text-xs font-mono font-bold border border-zinc-700 transition-all cursor-pointer"
+                              title="-1 BPM"
+                            >
+                              -1
+                            </button>
+                          </div>
+
+                          {/* Glowing Big Digital Number Display */}
+                          <div className="flex-1 flex items-baseline justify-center gap-1.5 px-3 py-1 bg-zinc-950 rounded-xl border border-amber-500/50 shadow-[0_0_15px_rgba(245,158,11,0.2)]">
+                            <input
+                              id="modal-direct-bpm-input"
+                              type="text"
+                              inputMode="numeric"
+                              pattern="[0-9]*"
+                              value={tempoInput}
+                              onChange={(e) => {
+                                const cleaned = e.target.value.replace(/[^0-9]/g, '').slice(0, 3);
+                                setTempoInput(cleaned);
+                                setIsEditingBpm(true);
+                                if (cleaned.length > 0) {
+                                  const parsed = parseInt(cleaned, 10);
+                                  if (parsed >= 40 && parsed <= 260) {
+                                    onTempoChange(parsed);
+                                  }
+                                }
+                              }}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  commitBpmValue(tempoInput);
+                                  setShowKeypad(false);
+                                }
+                              }}
+                              className="w-24 text-center text-3xl sm:text-4xl font-mono font-black text-amber-400 bg-transparent outline-none tracking-tight"
+                              placeholder="---"
+                              autoFocus
+                            />
+                            <span className="text-xs sm:text-sm font-mono font-bold text-amber-500/80">BPM</span>
+                          </div>
+
+                          {/* Step up buttons */}
+                          <div className="flex items-center gap-1">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const curr = parseInt(tempoInput, 10) || tempo;
+                                const next = Math.min(260, curr + 1);
+                                setTempoInput(String(next));
+                                onTempoChange(next);
+                                setIsEditingBpm(true);
+                              }}
+                              className="px-2.5 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 active:scale-95 text-zinc-200 text-xs font-mono font-bold border border-zinc-700 transition-all cursor-pointer"
+                              title="+1 BPM"
+                            >
+                              +1
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const curr = parseInt(tempoInput, 10) || tempo;
+                                const next = Math.min(260, curr + 5);
+                                setTempoInput(String(next));
+                                onTempoChange(next);
+                                setIsEditingBpm(true);
+                              }}
+                              className="px-2.5 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 active:scale-95 text-zinc-200 text-xs font-mono font-bold border border-zinc-700 transition-all cursor-pointer"
+                              title="+5 BPM"
+                            >
+                              +5
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Continuous BPM Slider */}
+                        <div className="flex items-center gap-2 pt-1">
+                          <span className="text-[10px] font-mono text-zinc-500">40</span>
+                          <input
+                            type="range"
+                            min={40}
+                            max={260}
+                            value={parseInt(tempoInput, 10) || tempo}
+                            onChange={(e) => {
+                              const val = parseInt(e.target.value, 10);
+                              setTempoInput(String(val));
+                              onTempoChange(val);
+                              setIsEditingBpm(true);
+                            }}
+                            className="flex-1 accent-amber-500 h-1.5 bg-zinc-800 rounded-lg cursor-pointer"
+                          />
+                          <span className="text-[10px] font-mono text-zinc-500">260</span>
+                        </div>
+                      </div>
+
+                      {/* 10-Key Numeric Pad */}
+                      <div className="grid grid-cols-3 gap-1.5 sm:gap-2">
+                        {['7', '8', '9', '4', '5', '6', '1', '2', '3'].map((d) => (
+                          <button
+                            key={d}
+                            type="button"
+                            onClick={() => handleKeypadDigit(d)}
+                            className="py-2.5 sm:py-3 rounded-xl text-base sm:text-xl font-mono font-bold bg-zinc-900 hover:bg-amber-500/20 hover:text-amber-300 hover:border-amber-500/50 text-zinc-100 border border-zinc-800 active:scale-95 active:bg-amber-500/30 transition-all shadow-sm cursor-pointer"
+                          >
+                            {d}
+                          </button>
+                        ))}
                         <button
-                          key={item.bpm}
+                          type="button"
+                          onClick={handleKeypadClear}
+                          className="py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-mono font-bold bg-zinc-900/90 hover:bg-rose-950/70 hover:text-rose-300 text-zinc-400 border border-zinc-800 active:scale-95 transition-all cursor-pointer"
+                        >
+                          CLEAR
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleKeypadDigit('0')}
+                          className="py-2.5 sm:py-3 rounded-xl text-base sm:text-xl font-mono font-bold bg-zinc-900 hover:bg-amber-500/20 hover:text-amber-300 hover:border-amber-500/50 text-zinc-100 border border-zinc-800 active:scale-95 active:bg-amber-500/30 transition-all shadow-sm cursor-pointer"
+                        >
+                          0
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleKeypadBackspace}
+                          className="py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-mono font-bold bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border border-zinc-800 active:scale-95 transition-all cursor-pointer flex items-center justify-center gap-1"
+                          title="Backspace"
+                        >
+                          <span>⌫</span>
+                        </button>
+                      </div>
+
+                      {/* Worship & Praise Tempo Presets */}
+                      <div className="p-2.5 sm:p-3 bg-zinc-900/60 rounded-xl border border-zinc-800/80 flex flex-col gap-1.5 sm:gap-2">
+                        <div className="text-[10px] font-mono text-zinc-400 font-bold uppercase tracking-wider flex items-center justify-between">
+                          <span>Worship &amp; Praise Presets</span>
+                          <span className="text-amber-400/80">Quick Set</span>
+                        </div>
+                        <div className="grid grid-cols-4 gap-1 sm:gap-1.5">
+                          {[
+                            { label: '68 Wshp', bpm: 68, desc: 'Slow Worship' },
+                            { label: '76 Bld', bpm: 76, desc: 'Power Ballad' },
+                            { label: '98 Afro', bpm: 98, desc: 'Highlife / Rumba' },
+                            { label: '118 High', bpm: 118, desc: 'Mid Praise' },
+                            { label: '125 Prs', bpm: 125, desc: 'Celebration' },
+                            { label: '135 Dnc', bpm: 135, desc: 'African Dance' },
+                            { label: '140 Seben', bpm: 140, desc: 'Seben Fast' },
+                            { label: '160 Shout', bpm: 160, desc: 'Shout Praise' },
+                          ].map((item) => (
+                            <button
+                              key={item.bpm}
+                              type="button"
+                              onClick={() => {
+                                onTempoChange(item.bpm);
+                                setTempoInput(String(item.bpm));
+                                setIsEditingBpm(true);
+                              }}
+                              className={`py-1.5 px-1.5 sm:px-2 rounded-lg text-xs font-mono font-medium border flex flex-col items-center justify-center transition-all cursor-pointer ${
+                                (parseInt(tempoInput, 10) || tempo) === item.bpm
+                                  ? 'bg-amber-400 text-zinc-950 border-amber-300 font-bold shadow-md shadow-amber-500/20'
+                                  : 'bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border-zinc-800 hover:border-zinc-700'
+                              }`}
+                              title={`${item.desc} (${item.bpm} BPM)`}
+                            >
+                              <span className="font-bold">{item.bpm}</span>
+                              <span className="text-[9px] opacity-80 truncate">{item.label}</span>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Footer Actions */}
+                      <div className="flex items-center gap-2 pt-1">
+                        <button
+                          type="button"
+                          onClick={onTapTempo}
+                          className="px-3 py-2.5 rounded-xl text-xs font-mono font-bold bg-zinc-800 hover:bg-zinc-700 active:bg-amber-600 active:text-white text-zinc-200 border border-zinc-700 flex items-center justify-center gap-1.5 transition-all shadow-xs cursor-pointer active:scale-95"
+                          title="Tap along with rhythm to calculate BPM"
+                        >
+                          <span>TAP</span>
+                        </button>
+
+                        <button
                           type="button"
                           onClick={() => {
-                            onTempoChange(item.bpm);
-                            setTempoInput(String(item.bpm));
+                            onTempoChange(style.tempo);
+                            setTempoInput(String(style.tempo));
+                            setIsEditingBpm(false);
                           }}
-                          className={`py-0.5 px-1 rounded text-[9px] font-mono font-medium border truncate transition-all ${
-                            tempo === item.bpm
-                              ? 'bg-amber-400 text-zinc-950 border-amber-300 font-bold shadow-xs'
-                              : 'bg-zinc-900/70 hover:bg-zinc-800 text-zinc-300 border-zinc-800'
-                          }`}
-                          title={`Set to ${item.bpm} BPM`}
+                          className="flex-1 py-2.5 rounded-xl text-xs font-mono font-semibold bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 border border-zinc-800 flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                          title={`Reset to original style tempo (${style.tempo} BPM)`}
                         >
-                          {item.label}
+                          <RotateCcw className="w-3.5 h-3.5" />
+                          <span>Reset ({style.tempo})</span>
                         </button>
-                      ))}
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            commitBpmValue(tempoInput);
+                            setShowKeypad(false);
+                          }}
+                          className="flex-1 py-2.5 rounded-xl text-xs font-bold font-mono bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-zinc-950 flex items-center justify-center gap-1.5 shadow-lg shadow-amber-500/25 transition-all cursor-pointer active:scale-95"
+                        >
+                          <Check className="w-4 h-4 stroke-[3]" />
+                          <span>Apply ({parseInt(tempoInput, 10) || tempo})</span>
+                        </button>
+                      </div>
                     </div>
                   </div>
-
-                  {/* Bottom Actions: Reset to Style Default & Apply */}
-                  <div className="flex items-center gap-1.5 pt-2 border-t border-zinc-800/80">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        onTempoChange(style.tempo);
-                        setTempoInput(String(style.tempo));
-                      }}
-                      className="flex-1 py-1.5 rounded-xl text-[10px] font-mono font-semibold bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 border border-zinc-800 flex items-center justify-center gap-1 transition-colors"
-                      title={`Reset to original style tempo (${style.tempo} BPM)`}
-                    >
-                      <RotateCcw className="w-3 h-3" />
-                      <span>Style ({style.tempo})</span>
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        commitBpmValue(tempoInput);
-                        setShowKeypad(false);
-                      }}
-                      className="flex-1 py-1.5 rounded-xl text-xs font-bold bg-gradient-to-r from-amber-500 to-amber-600 text-zinc-950 hover:from-amber-400 hover:to-amber-500 flex items-center justify-center gap-1 shadow-md shadow-amber-500/20 transition-all cursor-pointer"
-                    >
-                      <Check className="w-3.5 h-3.5" />
-                      <span>Apply</span>
-                    </button>
-                  </div>
-                </div>
+                </div>,
+                document.body
               )}
             </div>
           </div>
