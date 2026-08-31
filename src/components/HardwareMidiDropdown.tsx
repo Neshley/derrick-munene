@@ -19,6 +19,7 @@ import {
   RotateCcw,
   CheckCircle2,
   Cable,
+  X,
 } from 'lucide-react';
 
 interface HardwareMidiDropdownProps {
@@ -80,20 +81,15 @@ export const HardwareMidiDropdown: React.FC<HardwareMidiDropdownProps> = ({
     };
   }, []);
 
-  // Handle outside click to close dropdown
+  // Handle keyboard shortcuts (Esc to close)
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen) {
         setIsOpen(false);
       }
     };
-
-    if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen]);
 
   const handleSelectDevice = (deviceId: string | null) => {
@@ -204,83 +200,102 @@ export const HardwareMidiDropdown: React.FC<HardwareMidiDropdownProps> = ({
         />
       </button>
 
-      {/* FULL Hardware MIDI Interface Dropdown Window */}
+      {/* FULL Hardware MIDI Interface Modal Window - Centered on all screen sizes */}
       {isOpen && (
         <div
-          id="dropdown-hardware-midi-menu"
-          className="absolute right-0 mt-2 w-[94vw] sm:w-[580px] md:w-[700px] lg:w-[780px] max-w-[96vw] max-h-[85vh] overflow-y-auto custom-scrollbar rounded-2xl bg-zinc-950/98 backdrop-blur-2xl border-2 border-zinc-700/90 text-zinc-100 shadow-[0_20px_60px_rgba(0,0,0,0.9)] z-50 p-4 sm:p-5 animate-in fade-in zoom-in-95 duration-150 flex flex-col gap-4 font-sans"
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 md:p-6 bg-black/80 backdrop-blur-md animate-in fade-in duration-150 select-none"
+          onClick={() => setIsOpen(false)}
         >
-          {/* Subtle Top Accent Glow Bar */}
-          <div className="absolute top-0 left-6 right-6 h-[2px] bg-gradient-to-r from-transparent via-amber-500/80 to-transparent rounded-full pointer-events-none" />
+          {/* Centered Modal Card */}
+          <div
+            id="dropdown-hardware-midi-menu"
+            className="relative w-full max-w-2xl sm:max-w-3xl md:max-w-4xl max-h-[90vh] rounded-2xl bg-zinc-950/98 backdrop-blur-2xl border-2 border-zinc-700/90 text-zinc-100 shadow-[0_25px_60px_rgba(0,0,0,0.95)] overflow-hidden flex flex-col font-sans animate-in zoom-in-95 duration-150"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Subtle Top Accent Glow Bar */}
+            <div className="absolute top-0 left-6 right-6 h-[2px] bg-gradient-to-r from-transparent via-amber-500/80 to-transparent rounded-full pointer-events-none" />
 
-          {/* Header Bar */}
-          <div className="flex flex-wrap items-center justify-between gap-3 pb-3.5 border-b border-zinc-800/90">
-            <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-xl bg-gradient-to-br from-amber-500/20 to-amber-600/5 border border-amber-500/30 text-amber-400 shadow-inner">
-                <Cable className="w-5 h-5" />
-              </div>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="text-sm sm:text-base font-bold tracking-wider text-zinc-100 font-['Chakra_Petch'] uppercase">
-                    Hardware MIDI Interface
-                  </h3>
-                  {midiState.isConnected ? (
-                    <span className="flex items-center gap-1.5 text-[10px] px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/40 font-mono font-bold shadow-[0_0_10px_rgba(16,185,129,0.15)]">
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_#34d399] animate-pulse" />
-                      CONNECTED
-                    </span>
-                  ) : (
-                    <span className="flex items-center gap-1.5 text-[10px] px-2.5 py-0.5 rounded-full bg-zinc-900 text-zinc-400 border border-zinc-800 font-mono font-medium">
-                      <span className="w-1.5 h-1.5 rounded-full bg-zinc-600" />
-                      STANDBY
-                    </span>
-                  )}
+            {/* Pinned Modal Header Bar */}
+            <div className="p-3.5 sm:p-4.5 bg-zinc-900/95 border-b border-zinc-800/90 flex flex-wrap items-center justify-between gap-2.5 shrink-0">
+              <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+                <div className="p-2 sm:p-2.5 rounded-xl bg-gradient-to-br from-amber-500/20 to-amber-600/5 border border-amber-500/30 text-amber-400 shadow-inner shrink-0">
+                  <Cable className="w-4 h-4 sm:w-5 sm:h-5" />
                 </div>
-                <p className="text-xs text-zinc-400 mt-0.5">
-                  Ultra low-latency Web MIDI routing for Yamaha Genos arranger keys, pitch bend, CC &amp; 24 PPQN sync
-                </p>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h3 className="text-sm sm:text-base font-bold tracking-wider text-zinc-100 font-['Chakra_Petch'] uppercase truncate">
+                      Hardware MIDI Interface
+                    </h3>
+                    {midiState.isConnected ? (
+                      <span className="flex items-center gap-1.5 text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/40 font-mono font-bold shadow-[0_0_10px_rgba(16,185,129,0.15)] shrink-0">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_#34d399] animate-pulse" />
+                        CONNECTED
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-1.5 text-[10px] px-2 py-0.5 rounded-full bg-zinc-900 text-zinc-400 border border-zinc-800 font-mono font-medium shrink-0">
+                        <span className="w-1.5 h-1.5 rounded-full bg-zinc-600" />
+                        STANDBY
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[11px] sm:text-xs text-zinc-400 mt-0.5">
+                    Ultra low-latency Web MIDI routing for Yamaha Genos arranger keys, pitch bend, CC &amp; 24 PPQN sync
+                  </p>
+                </div>
               </div>
-            </div>
 
-            {/* Quick Action Buttons */}
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={handleRescan}
-                disabled={isRescanning}
-                className="px-3 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800/90 border border-zinc-700/80 hover:border-amber-500/60 text-amber-300 text-xs font-mono font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm active:scale-95 disabled:opacity-50"
-                title="Rescan connected USB and Bluetooth MIDI devices"
-              >
-                <RefreshCw className={`w-3.5 h-3.5 text-amber-400 ${isRescanning ? 'animate-spin' : ''}`} />
-                <span>Rescan</span>
-              </button>
-
-              {onOpenMidiAutomation && (
+              {/* Quick Action Buttons */}
+              <div className="flex items-center gap-1.5 sm:gap-2 ml-auto">
                 <button
                   type="button"
-                  onClick={() => {
-                    setIsOpen(false);
-                    onOpenMidiAutomation();
-                  }}
-                  className="px-3 py-1.5 rounded-xl bg-indigo-950/70 hover:bg-indigo-900/90 border border-indigo-600/50 hover:border-indigo-500 text-indigo-200 text-xs font-mono font-semibold flex items-center gap-1.5 transition-all shadow-sm cursor-pointer active:scale-95"
-                  title="Open MIDI CC Automation Studio"
+                  onClick={handleRescan}
+                  disabled={isRescanning}
+                  className="px-2.5 sm:px-3 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800/90 border border-zinc-700/80 hover:border-amber-500/60 text-amber-300 text-xs font-mono font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-sm active:scale-95 disabled:opacity-50"
+                  title="Rescan connected USB and Bluetooth MIDI devices"
                 >
-                  <Sliders className="w-3.5 h-3.5 text-indigo-400" />
-                  <span>CC Studio</span>
+                  <RefreshCw className={`w-3.5 h-3.5 text-amber-400 ${isRescanning ? 'animate-spin' : ''}`} />
+                  <span className="hidden xs:inline sm:inline">Rescan</span>
                 </button>
-              )}
 
-              <button
-                type="button"
-                onClick={handlePanic}
-                className="px-3 py-1.5 rounded-xl bg-red-950/80 hover:bg-red-900 border border-red-700/70 hover:border-red-500 text-red-200 hover:text-white text-xs font-mono font-bold flex items-center gap-1.5 transition-all shadow-sm cursor-pointer active:scale-95"
-                title="Emergency reset: immediately cuts all active voices, controllers, and sustained notes"
-              >
-                <AlertOctagon className="w-3.5 h-3.5 text-red-400" />
-                <span>Panic</span>
-              </button>
+                {onOpenMidiAutomation && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsOpen(false);
+                      onOpenMidiAutomation();
+                    }}
+                    className="px-2.5 sm:px-3 py-1.5 rounded-xl bg-indigo-950/70 hover:bg-indigo-900/90 border border-indigo-600/50 hover:border-indigo-500 text-indigo-200 text-xs font-mono font-semibold flex items-center gap-1.5 transition-all shadow-sm cursor-pointer active:scale-95"
+                    title="Open MIDI CC Automation Studio"
+                  >
+                    <Sliders className="w-3.5 h-3.5 text-indigo-400" />
+                    <span className="hidden sm:inline">CC Studio</span>
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={handlePanic}
+                  className="px-2.5 sm:px-3 py-1.5 rounded-xl bg-red-950/80 hover:bg-red-900 border border-red-700/70 hover:border-red-500 text-red-200 hover:text-white text-xs font-mono font-bold flex items-center gap-1.5 transition-all shadow-sm cursor-pointer active:scale-95"
+                  title="Emergency reset: immediately cuts all active voices, controllers, and sustained notes"
+                >
+                  <AlertOctagon className="w-3.5 h-3.5 text-red-400" />
+                  <span>Panic</span>
+                </button>
+
+                {/* Close Button */}
+                <button
+                  type="button"
+                  onClick={() => setIsOpen(false)}
+                  className="p-1.5 sm:p-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-100 border border-zinc-800 hover:border-zinc-700 transition-colors cursor-pointer"
+                  title="Close Hardware MIDI window (Esc)"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
             </div>
-          </div>
+
+            {/* Scrollable Modal Content */}
+            <div className="flex-1 overflow-y-auto custom-scrollbar p-3.5 sm:p-5 flex flex-col gap-3.5 sm:gap-4">
 
           {/* Section 1: Detected Hardware MIDI Input Ports */}
           <div className="flex flex-col gap-2.5 p-3.5 bg-zinc-900/80 border border-zinc-800/80 rounded-xl">
@@ -614,7 +629,9 @@ export const HardwareMidiDropdown: React.FC<HardwareMidiDropdownProps> = ({
             </div>
           )}
         </div>
-      )}
+      </div>
     </div>
-  );
+  )}
+</div>
+);
 };
