@@ -78,7 +78,7 @@ export const MainLcdDisplay: React.FC<MainLcdDisplayProps> = ({
   const [showKeypad, setShowKeypad] = useState<boolean>(false);
   const keypadRef = useRef<HTMLDivElement | null>(null);
 
-  // Subtle style loading indicator tracker (supports internal style transition & external prop)
+  // Subtle style loading indicator tracker (tied to styleLoadingProgress prop with fallback)
   const [internalLoading, setInternalLoading] = useState<boolean>(false);
   const [internalProgress, setInternalProgress] = useState<number>(0);
   const prevStyleIdRef = useRef<string>(style.id);
@@ -86,30 +86,31 @@ export const MainLcdDisplay: React.FC<MainLcdDisplayProps> = ({
   useEffect(() => {
     if (prevStyleIdRef.current !== style.id) {
       prevStyleIdRef.current = style.id;
-      setInternalLoading(true);
-      setInternalProgress(18);
+      if (styleLoadingProgress === undefined) {
+        setInternalLoading(true);
+        setInternalProgress(20);
 
-      const step1 = setTimeout(() => setInternalProgress(58), 90);
-      const step2 = setTimeout(() => setInternalProgress(88), 180);
-      const step3 = setTimeout(() => setInternalProgress(100), 280);
-      const step4 = setTimeout(() => {
-        setInternalLoading(false);
-        setInternalProgress(0);
-      }, 500);
+        const step1 = setTimeout(() => setInternalProgress(60), 80);
+        const step2 = setTimeout(() => setInternalProgress(90), 160);
+        const step3 = setTimeout(() => setInternalProgress(100), 260);
+        const step4 = setTimeout(() => {
+          setInternalLoading(false);
+          setInternalProgress(0);
+        }, 480);
 
-      return () => {
-        clearTimeout(step1);
-        clearTimeout(step2);
-        clearTimeout(step3);
-        clearTimeout(step4);
-      };
+        return () => {
+          clearTimeout(step1);
+          clearTimeout(step2);
+          clearTimeout(step3);
+          clearTimeout(step4);
+        };
+      }
     }
-  }, [style.id]);
+  }, [style.id, styleLoadingProgress]);
 
-  const isLoading = isStyleLoading ?? internalLoading;
-  const progressValue = styleLoadingProgress !== undefined && styleLoadingProgress > 0 
-    ? styleLoadingProgress 
-    : internalProgress;
+  // Tied to styleLoadingProgress state, with fallback to internal transition
+  const isLoading = (isStyleLoading ?? (styleLoadingProgress !== undefined && styleLoadingProgress > 0)) || internalLoading;
+  const progressValue = styleLoadingProgress !== undefined ? styleLoadingProgress : internalProgress;
 
   // Synchronize tempo input when tempo prop changes (if not actively editing)
   useEffect(() => {
@@ -239,44 +240,33 @@ export const MainLcdDisplay: React.FC<MainLcdDisplayProps> = ({
 
   return (
     <div className="relative rounded-2xl bg-zinc-950 p-3 sm:p-4 border-2 border-zinc-800 shadow-[inset_0_2px_12px_rgba(0,0,0,0.8),0_8px_24px_rgba(0,0,0,0.6)] text-zinc-100 overflow-hidden font-sans">
-      {/* Subtle, Slim Progress Bar Indicator at the top of LCD Display */}
+      {/* Slim Animated Progress Bar (1px height) at the top of the LCD display area */}
       <div
         id="lcd-style-loading-bar-wrapper"
         aria-hidden={!isLoading}
-        className={`absolute top-0 left-0 right-0 z-30 transition-all duration-300 pointer-events-none ${
+        className={`absolute top-0 left-0 right-0 z-30 pointer-events-none transition-opacity duration-300 ${
           isLoading ? 'opacity-100' : 'opacity-0'
         }`}
       >
-        {/* Slim Progress Rail (2.5px height) */}
-        <div className="w-full h-[2.5px] bg-zinc-900/90 relative overflow-hidden">
-          {/* Glowing Animated Bar Fill */}
+        {/* 1px High-Precision Progress Track */}
+        <div className="w-full h-[1px] bg-zinc-800/60 relative overflow-hidden">
+          {/* Animated Glowing Progress Fill tied to styleLoadingProgress */}
           <div
             id="lcd-style-loading-bar-fill"
-            className="h-full bg-gradient-to-r from-amber-500 via-amber-300 to-cyan-400 shadow-[0_0_8px_rgba(251,191,36,0.95)] transition-all duration-150 ease-out"
+            className="h-full bg-gradient-to-r from-amber-500 via-amber-300 to-cyan-400 shadow-[0_0_8px_rgba(251,191,36,0.95),0_0_12px_rgba(56,189,248,0.8)] transition-all duration-200 ease-out relative"
             style={{ width: `${Math.min(100, Math.max(0, progressValue))}%` }}
-          />
-          {/* Subtle Leading Edge Pulse Pip */}
+          >
+            {/* Animated Luminous Shimmer Light Streak */}
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/70 to-transparent animate-pulse" />
+          </div>
+          {/* Leading-Edge Luminous Pip */}
           {progressValue > 0 && progressValue < 100 && (
             <div
-              className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-white shadow-[0_0_6px_rgba(255,255,255,1)]"
+              className="absolute top-0 -translate-x-1/2 w-3 h-[1px] bg-white shadow-[0_0_8px_rgba(255,255,255,1),0_0_12px_rgba(251,191,36,1)]"
               style={{ left: `${progressValue}%` }}
             />
           )}
         </div>
-
-        {/* Microscopic Hardware Telemetry Readout Strip during style loading */}
-        {isLoading && (
-          <div className="flex items-center justify-between px-3 py-0.5 text-[8px] sm:text-[9px] font-mono tracking-widest font-bold text-amber-400/95 bg-zinc-950/85 border-b border-amber-500/20 backdrop-blur-xs">
-            <div className="flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping" />
-              <span className="uppercase">LOADING STYLE: {style.name}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="text-zinc-500 text-[8px] uppercase hidden sm:inline">DSP BUFFER & VOICING</span>
-              <span className="text-amber-300">{Math.round(progressValue)}%</span>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* LCD Screen Glow Overlay */}

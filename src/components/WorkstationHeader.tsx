@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { 
   Radio,
@@ -103,6 +103,27 @@ export const WorkstationHeader: React.FC<WorkstationHeaderProps> = ({
   });
 
   const [isToolsMenuOpen, setIsToolsMenuOpen] = useState<boolean>(false);
+  const headerRef = useRef<HTMLElement>(null);
+
+  // Allow intuitive horizontal scrolling via mouse wheel over the topbar
+  useEffect(() => {
+    const el = headerRef.current;
+    if (!el) return;
+
+    const handleWheel = (e: WheelEvent) => {
+      if (el.scrollWidth > el.clientWidth) {
+        if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+          e.preventDefault();
+          el.scrollLeft += e.deltaY;
+        }
+      }
+    };
+
+    el.addEventListener('wheel', handleWheel, { passive: false });
+    return () => {
+      el.removeEventListener('wheel', handleWheel);
+    };
+  }, []);
 
   useEffect(() => {
     const unsubscribe = subscribePwaStatus((status) => {
@@ -132,323 +153,325 @@ export const WorkstationHeader: React.FC<WorkstationHeaderProps> = ({
 
   return (
     <>
-      <header className="h-13 sm:h-14 bg-gradient-to-r from-zinc-950 via-zinc-900/98 to-zinc-950 border-b border-zinc-800/90 text-zinc-100 px-2 sm:px-3.5 md:px-4 flex items-center justify-between gap-2 select-none shrink-0 sticky top-0 z-30 overflow-hidden font-sans shadow-md">
-        
-        {/* Left Section: Sidebar Toggle & Brand Mark */}
-        <div className="flex items-center gap-1.5 sm:gap-2.5 min-w-0 shrink-0">
-          {onToggleSidebar && (
-            <button
-              id="btn-header-toggle-sidebar"
-              type="button"
-              onClick={onToggleSidebar}
-              className="p-1.5 sm:p-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 hover:border-zinc-700 text-zinc-300 hover:text-amber-400 active:scale-95 transition-all shadow-xs cursor-pointer"
-              title={isSidebarCollapsed ? 'Expand Sidebar Deck (Ctrl+B)' : 'Collapse Sidebar Deck (Ctrl+B)'}
-              aria-label="Toggle Workstation Sidebar"
-            >
-              {isSidebarCollapsed ? (
-                <PanelLeftOpen className="w-4 h-4" />
-              ) : (
-                <PanelLeftClose className="w-4 h-4" />
-              )}
-            </button>
-          )}
+      <header
+        id="workstation-topbar"
+        ref={headerRef}
+        className="h-13 sm:h-14 bg-gradient-to-r from-zinc-950 via-zinc-900/98 to-zinc-950 border-b border-zinc-800/90 text-zinc-100 px-2 sm:px-3.5 md:px-4 select-none shrink-0 sticky top-0 z-30 font-sans shadow-md overflow-x-auto overflow-y-hidden custom-scrollbar scroll-smooth"
+      >
+        <div className="flex items-center justify-between gap-3 sm:gap-4 min-w-max w-full h-full">
+          {/* Left Section: Sidebar Toggle & Brand Mark */}
+          <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
+            {onToggleSidebar && (
+              <button
+                id="btn-header-toggle-sidebar"
+                type="button"
+                onClick={onToggleSidebar}
+                className="p-1.5 sm:p-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 hover:border-zinc-700 text-zinc-300 hover:text-amber-400 active:scale-95 transition-all shadow-xs cursor-pointer shrink-0"
+                title={isSidebarCollapsed ? 'Expand Sidebar Deck (Ctrl+B)' : 'Collapse Sidebar Deck (Ctrl+B)'}
+                aria-label="Toggle Workstation Sidebar"
+              >
+                {isSidebarCollapsed ? (
+                  <PanelLeftOpen className="w-4 h-4" />
+                ) : (
+                  <PanelLeftClose className="w-4 h-4" />
+                )}
+              </button>
+            )}
 
-          {/* Derrick Munene Arranger Workstation Branding */}
-          <div className="flex items-center gap-2 min-w-0">
-            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-zinc-800 via-zinc-900 to-black flex items-center justify-center shadow-md text-amber-400 font-black text-xs tracking-tighter shrink-0 border border-amber-500/40">
-              DM
-            </div>
-            <div className="min-w-0 flex flex-col justify-center">
-              <h1 className="font-black text-xs sm:text-sm tracking-wider text-zinc-100 font-['Chakra_Petch'] leading-tight truncate">
-                DERRICK MUNENE
-              </h1>
-              <div className="flex items-center gap-1.5">
-                <span className="text-[9px] uppercase font-bold tracking-widest text-amber-400 font-mono">
-                  ARRANGER WORKSTATION
-                </span>
-                <span className="text-[8px] font-mono px-1 rounded bg-zinc-800 text-zinc-400 border border-zinc-700 hidden sm:inline">
-                  PRO
-                </span>
+            {/* Derrick Munene Arranger Workstation Branding */}
+            <div className="flex items-center gap-2 shrink-0">
+              <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-zinc-800 via-zinc-900 to-black flex items-center justify-center shadow-md text-amber-400 font-black text-xs tracking-tighter shrink-0 border border-amber-500/40">
+                DM
+              </div>
+              <div className="flex flex-col justify-center shrink-0">
+                <h1 className="font-black text-xs sm:text-sm tracking-wider text-zinc-100 font-['Chakra_Petch'] leading-tight whitespace-nowrap">
+                  DERRICK MUNENE
+                </h1>
+                <div className="flex items-center gap-1.5 whitespace-nowrap">
+                  <span className="text-[9px] uppercase font-bold tracking-widest text-amber-400 font-mono">
+                    ARRANGER WORKSTATION
+                  </span>
+                  <span className="text-[8px] font-mono px-1 rounded bg-zinc-800 text-zinc-400 border border-zinc-700">
+                    PRO
+                  </span>
+                </div>
               </div>
             </div>
           </div>
-        </div>
 
-        {/* Center Section: Performance Telemetry Readouts (Prompt 4) */}
-        <div className="hidden lg:flex items-center gap-1.5 font-mono text-[11px] bg-zinc-950/90 px-2 py-1 rounded-xl border border-zinc-800 shadow-inner">
-          {/* Style */}
-          <button
-            type="button"
-            onClick={onOpenStyleBrowser}
-            className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-200 border border-zinc-800 hover:border-amber-500/40 transition-colors cursor-pointer"
-            title="Current Accompaniment Style (Click to open Style Browser)"
-          >
-            <span className="text-zinc-500 text-[9px] uppercase font-bold">STYLE:</span>
-            <span className="font-bold text-amber-300 truncate max-w-[100px] xl:max-w-[130px]">{currentStyleName}</span>
-          </button>
-
-          {/* Tempo */}
-          <div className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-zinc-900 text-zinc-200 border border-zinc-800" title="Style Tempo in Beats Per Minute">
-            <span className="text-zinc-500 text-[9px] uppercase font-bold">BPM:</span>
-            <span className="font-bold text-amber-400">{currentTempo}</span>
-          </div>
-
-          {/* Key */}
-          <div className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-zinc-900 text-zinc-200 border border-zinc-800" title="Key Signature">
-            <span className="text-zinc-500 text-[9px] uppercase font-bold">KEY:</span>
-            <span className="font-bold text-cyan-300">{currentKey}</span>
-          </div>
-
-          {/* Time Signature */}
-          <div className="hidden xl:flex items-center gap-1 px-2 py-0.5 rounded-lg bg-zinc-900 text-zinc-200 border border-zinc-800" title="Meter / Time Signature">
-            <span className="text-zinc-500 text-[9px] uppercase font-bold">TIME:</span>
-            <span className="font-bold text-zinc-300">{timeSignature[0]}/{timeSignature[1]}</span>
-          </div>
-
-          {/* Audio Engine */}
-          <div className="hidden 2xl:flex items-center gap-1 px-2 py-0.5 rounded-lg bg-zinc-900 text-zinc-400 border border-zinc-800" title="DSP Audio Engine: 48kHz High-Definition Web Audio Synthesizer">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-            <span className="text-[10px]">48kHz HD</span>
-          </div>
-
-          {/* AI Director Indicator */}
-          <button
-            type="button"
-            onClick={onOpenAiStudio}
-            className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 transition-colors cursor-pointer"
-            title="AI Music Director Status (Click to open AI Studio)"
-          >
-            <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse shadow-[0_0_4px_rgba(251,191,36,0.8)]" />
-            <span className="text-[10px] font-bold">AI READY</span>
-          </button>
-        </div>
-
-        {/* View Mode Switcher: Performance Mode vs Studio / Edit Mode (Prompts 13 & 14) */}
-        {onToggleViewMode && (
-          <div className="hidden sm:flex items-center bg-zinc-950/90 p-1 rounded-xl border border-zinc-800 shadow-inner">
+          {/* Center Section: Performance Telemetry Readouts */}
+          <div className="flex items-center gap-1.5 font-mono text-[11px] bg-zinc-950/90 px-2 py-1 rounded-xl border border-zinc-800 shadow-inner shrink-0">
+            {/* Style */}
             <button
-              id="btn-view-performance"
               type="button"
-              onClick={() => onToggleViewMode('performance')}
-              className={`px-2.5 py-1 rounded-lg text-xs font-mono font-bold tracking-wide transition-all cursor-pointer ${
-                viewMode === 'performance'
-                  ? 'bg-amber-500 text-zinc-950 font-black shadow-sm'
-                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
-              }`}
-              title="Switch to Performance Mode (Clean, focused stage view with large chord display)"
+              onClick={onOpenStyleBrowser}
+              className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-200 border border-zinc-800 hover:border-amber-500/40 transition-colors cursor-pointer shrink-0"
+              title="Current Accompaniment Style (Click to open Style Browser)"
             >
-              PERF
+              <span className="text-zinc-500 text-[9px] uppercase font-bold">STYLE:</span>
+              <span className="font-bold text-amber-300 whitespace-nowrap max-w-[140px] truncate">{currentStyleName}</span>
             </button>
+
+            {/* Tempo */}
+            <div className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-zinc-900 text-zinc-200 border border-zinc-800 shrink-0" title="Style Tempo in Beats Per Minute">
+              <span className="text-zinc-500 text-[9px] uppercase font-bold">BPM:</span>
+              <span className="font-bold text-amber-400">{currentTempo}</span>
+            </div>
+
+            {/* Key */}
+            <div className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-zinc-900 text-zinc-200 border border-zinc-800 shrink-0" title="Key Signature">
+              <span className="text-zinc-500 text-[9px] uppercase font-bold">KEY:</span>
+              <span className="font-bold text-cyan-300">{currentKey}</span>
+            </div>
+
+            {/* Time Signature */}
+            <div className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-zinc-900 text-zinc-200 border border-zinc-800 shrink-0" title="Meter / Time Signature">
+              <span className="text-zinc-500 text-[9px] uppercase font-bold">TIME:</span>
+              <span className="font-bold text-zinc-300">{timeSignature[0]}/{timeSignature[1]}</span>
+            </div>
+
+            {/* Audio Engine */}
+            <div className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-zinc-900 text-zinc-400 border border-zinc-800 shrink-0" title="DSP Audio Engine: 48kHz High-Definition Web Audio Synthesizer">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
+              <span className="text-[10px] whitespace-nowrap">48kHz HD</span>
+            </div>
+
+            {/* AI Director Indicator */}
             <button
-              id="btn-view-studio"
               type="button"
-              onClick={() => onToggleViewMode('studio')}
-              className={`px-2.5 py-1 rounded-lg text-xs font-mono font-bold tracking-wide transition-all cursor-pointer ${
-                viewMode === 'studio'
-                  ? 'bg-amber-500 text-zinc-950 font-black shadow-sm'
-                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
-              }`}
-              title="Switch to Studio / Edit Mode (Expose Digital Mixer, MultiPads, Registration & AI Director)"
+              onClick={onOpenAiStudio}
+              className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 transition-colors cursor-pointer shrink-0"
+              title="AI Music Director Status (Click to open AI Studio)"
             >
-              STUDIO
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse shadow-[0_0_4px_rgba(251,191,36,0.8)] shrink-0" />
+              <span className="text-[10px] font-bold whitespace-nowrap">AI READY</span>
             </button>
           </div>
-        )}
 
-        {/* WORKSTATION <-> MEDIA PLAYER Mode Switcher */}
-        {onSwitchMode && (
-          <div className="flex items-center bg-zinc-950/90 p-1 rounded-xl border border-zinc-800 shadow-inner">
-            <button
-              id="btn-mode-workstation"
-              type="button"
-              onClick={() => onSwitchMode('workstation')}
-              className={`px-2.5 sm:px-3 py-1 rounded-lg text-xs font-mono font-bold tracking-wide flex items-center gap-1.5 transition-all cursor-pointer ${
-                appMode === 'workstation'
-                  ? 'bg-amber-500 text-zinc-950 shadow-sm font-extrabold'
-                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
-              }`}
-              title="Switch to Arranger Keyboard Workstation"
-            >
-              <Piano className="w-3.5 h-3.5" />
-              <span className="hidden md:inline">WORKSTATION</span>
-            </button>
-            <button
-              id="btn-mode-media-player"
-              type="button"
-              onClick={() => onSwitchMode('media_player')}
-              className={`px-2.5 sm:px-3 py-1 rounded-lg text-xs font-mono font-bold tracking-wide flex items-center gap-1.5 transition-all cursor-pointer ${
-                appMode === 'media_player'
-                  ? 'bg-gradient-to-r from-amber-500 to-amber-400 text-zinc-950 shadow-sm font-extrabold'
-                  : 'text-zinc-400 hover:text-amber-300 hover:bg-zinc-900'
-              }`}
-              title="Switch to Lark Universal Media Player (MP3, WAV, FLAC, M4A, MP4, MKV)"
-            >
-              <Disc className="w-3.5 h-3.5" />
-              <span className="hidden md:inline">MEDIA PLAYER</span>
-            </button>
-          </div>
-        )}
-
-        {/* Center Quick Shortcuts: Shown on Large/Desktop Viewports */}
-        <div className="hidden xl:flex items-center gap-1.5 bg-zinc-950/80 p-1 rounded-xl border border-zinc-800/80">
-          {onOpenStyleCreator && (
-            <button
-              id="btn-header-style-creator"
-              type="button"
-              onClick={onOpenStyleCreator}
-              className="px-2.5 py-1 rounded-lg text-xs font-mono font-bold text-amber-300 bg-gradient-to-r from-amber-950/60 to-amber-900/40 hover:from-amber-900/80 hover:to-amber-800/60 border border-amber-500/50 flex items-center gap-1.5 transition-all shadow-xs cursor-pointer active:scale-95"
-              title="Style Creator (Compose Intros, Mains A-D, Fills & Break)"
-            >
-              <Flame className="w-3.5 h-3.5 text-amber-400" />
-              <span>Style Creator</span>
-            </button>
+          {/* View Mode Switcher: Performance Mode vs Studio / Edit Mode */}
+          {onToggleViewMode && (
+            <div className="flex items-center bg-zinc-950/90 p-1 rounded-xl border border-zinc-800 shadow-inner shrink-0">
+              <button
+                id="btn-view-performance"
+                type="button"
+                onClick={() => onToggleViewMode('performance')}
+                className={`px-2.5 py-1 rounded-lg text-xs font-mono font-bold tracking-wide transition-all cursor-pointer whitespace-nowrap ${
+                  viewMode === 'performance'
+                    ? 'bg-amber-500 text-zinc-950 font-black shadow-sm'
+                    : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
+                }`}
+                title="Switch to Performance Mode (Clean, focused stage view with large chord display)"
+              >
+                PERF
+              </button>
+              <button
+                id="btn-view-studio"
+                type="button"
+                onClick={() => onToggleViewMode('studio')}
+                className={`px-2.5 py-1 rounded-lg text-xs font-mono font-bold tracking-wide transition-all cursor-pointer whitespace-nowrap ${
+                  viewMode === 'studio'
+                    ? 'bg-amber-500 text-zinc-950 font-black shadow-sm'
+                    : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
+                }`}
+                title="Switch to Studio / Edit Mode (Expose Digital Mixer, MultiPads, Registration & AI Director)"
+              >
+                STUDIO
+              </button>
+            </div>
           )}
 
-          {onOpenPrayerAtmosphere && (
-            <button
-              type="button"
-              onClick={onOpenPrayerAtmosphere}
-              className="px-2.5 py-1 rounded-lg text-xs font-mono font-bold text-amber-300 bg-amber-950/40 hover:bg-amber-900/60 border border-amber-500/40 flex items-center gap-1.5 transition-all cursor-pointer"
-              title="Continuous Prayer &amp; Worship Pad Drone"
-            >
-              <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-              <span>Prayer Pad</span>
-            </button>
+          {/* WORKSTATION <-> MEDIA PLAYER Mode Switcher */}
+          {onSwitchMode && (
+            <div className="flex items-center bg-zinc-950/90 p-1 rounded-xl border border-zinc-800 shadow-inner shrink-0">
+              <button
+                id="btn-mode-workstation"
+                type="button"
+                onClick={() => onSwitchMode('workstation')}
+                className={`px-2.5 sm:px-3 py-1 rounded-lg text-xs font-mono font-bold tracking-wide flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
+                  appMode === 'workstation'
+                    ? 'bg-amber-500 text-zinc-950 shadow-sm font-extrabold'
+                    : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
+                }`}
+                title="Switch to Arranger Keyboard Workstation"
+              >
+                <Piano className="w-3.5 h-3.5 shrink-0" />
+                <span>WORKSTATION</span>
+              </button>
+              <button
+                id="btn-mode-media-player"
+                type="button"
+                onClick={() => onSwitchMode('media_player')}
+                className={`px-2.5 sm:px-3 py-1 rounded-lg text-xs font-mono font-bold tracking-wide flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap ${
+                  appMode === 'media_player'
+                    ? 'bg-gradient-to-r from-amber-500 to-amber-400 text-zinc-950 shadow-sm font-extrabold'
+                    : 'text-zinc-400 hover:text-amber-300 hover:bg-zinc-900'
+                }`}
+                title="Switch to Lark Universal Media Player (MP3, WAV, FLAC, M4A, MP4, MKV)"
+              >
+                <Disc className="w-3.5 h-3.5 shrink-0" />
+                <span>MEDIA PLAYER</span>
+              </button>
+            </div>
           )}
 
-          {onOpenWorshipSongbook && (
-            <button
-              type="button"
-              onClick={onOpenWorshipSongbook}
-              className="px-2.5 py-1 rounded-lg text-xs font-mono font-bold text-cyan-300 bg-cyan-950/40 hover:bg-cyan-900/60 border border-cyan-500/40 flex items-center gap-1.5 transition-all cursor-pointer"
-              title="Worship Setbook &amp; Song Database"
-            >
-              <Music className="w-3.5 h-3.5 text-cyan-400" />
-              <span>Setbook</span>
-            </button>
-          )}
-
-          {onOpenEffectsRack && (
-            <button
-              type="button"
-              onClick={onOpenEffectsRack}
-              className="px-2.5 py-1 rounded-lg text-xs font-mono font-bold text-purple-300 bg-purple-950/40 hover:bg-purple-900/60 border border-purple-500/40 flex items-center gap-1.5 transition-all cursor-pointer"
-              title="DSP Reverb, Tape Delay, Chorus &amp; Parametric EQ"
-            >
-              <Sliders className="w-3.5 h-3.5 text-purple-400" />
-              <span>DSP FX</span>
-            </button>
-          )}
-
-          {onOpenAudioRecording && (
-            <button
-              type="button"
-              onClick={onOpenAudioRecording}
-              className="px-2.5 py-1 rounded-lg text-xs font-mono font-bold text-red-300 bg-red-950/40 hover:bg-red-900/60 border border-red-500/40 flex items-center gap-1.5 transition-all cursor-pointer"
-              title="Record Master Take &amp; Export WAV/MIDI"
-            >
-              <Circle className="w-3 h-3 fill-red-500 text-red-500" />
-              <span>Record</span>
-            </button>
-          )}
-        </div>
-
-        {/* Right Section: Compact Studio Tools, MIDI & Status Hub */}
-        <div className="flex items-center gap-1 sm:gap-2 shrink-0">
-          
-          {/* Universal Hardware MIDI Controller */}
-          <HardwareMidiDropdown
-            onOpenMidiAutomation={onOpenMidiAutomation}
-            splitPoint={splitPoint}
-            onSplitPointChange={onSplitPointChange}
-            variant="header"
-          />
-
-          {/* Unified "Studio Tools" Dropdown Hub (App Switcher) */}
-          <button
-            id="btn-header-studio-tools"
-            type="button"
-            onClick={() => setIsToolsMenuOpen(prev => !prev)}
-            className={`px-2 sm:px-2.5 py-1.5 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition-all shadow-xs active:scale-95 cursor-pointer ${
-              isToolsMenuOpen
-                ? 'bg-amber-500 text-zinc-950 border-amber-400 font-bold shadow-md shadow-amber-500/20'
-                : 'bg-zinc-900 hover:bg-zinc-800 border-zinc-800 hover:border-zinc-700 text-zinc-200 hover:text-amber-300'
-            }`}
-            title="Open Studio Tools &amp; Arranger Applications Menu"
-            aria-expanded={isToolsMenuOpen}
-          >
-            <LayoutGrid className={`w-3.5 h-3.5 ${isToolsMenuOpen ? 'text-zinc-950' : 'text-amber-400'}`} />
-            <span className="hidden sm:inline font-mono">Studio Tools</span>
-            <ChevronDown className={`w-3 h-3 transition-transform ${isToolsMenuOpen ? 'rotate-180 text-zinc-950' : 'text-zinc-400'}`} />
-          </button>
-
-          {/* Quick Creator Coffee / Support Button (md+ screens) */}
-          {onOpenCreatorMessage && (
-            <button
-              id="btn-header-creator-message"
-              type="button"
-              onClick={onOpenCreatorMessage}
-              className="hidden md:flex px-2 sm:px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-600/20 to-amber-500/15 hover:from-amber-600/30 hover:to-amber-500/25 border border-amber-500/40 text-amber-300 hover:text-amber-200 text-xs font-semibold items-center gap-1.5 transition-all shadow-xs active:scale-95 cursor-pointer"
-              title="Support the Project &amp; Buy Creator a Coffee ☕"
-            >
-              <Coffee className="w-3.5 h-3.5 text-amber-400" />
-              <span className="hidden lg:inline">Support</span>
-              <span className="text-[10px] px-1 py-0.2 rounded bg-amber-500/30 text-amber-200 font-mono">☕</span>
-            </button>
-          )}
-
-          {/* Worship Guide PDF Shortcut (lg+ screens) */}
-          {onOpenUserGuide && (
-            <button
-              id="btn-header-worship-guide"
-              type="button"
-              onClick={onOpenUserGuide}
-              className="hidden lg:flex px-2 sm:px-2.5 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 hover:border-zinc-700 text-zinc-300 hover:text-amber-300 text-xs font-semibold items-center gap-1.5 transition-all shadow-xs active:scale-95 cursor-pointer"
-              title="Open Worship Companion &amp; User Manual (PDF / Word)"
-            >
-              <BookOpen className="w-3.5 h-3.5 text-amber-400" />
-              <span className="hidden xl:inline">Guide</span>
-              <span className="text-[9px] px-1 py-0.2 rounded bg-zinc-800 text-amber-300 font-mono border border-zinc-700">PDF</span>
-            </button>
-          )}
-
-          {/* Global Workstation Settings (sm+ screens) */}
-          {onOpenSettings && (
-            <button
-              id="btn-header-settings"
-              type="button"
-              onClick={onOpenSettings}
-              className="hidden sm:flex p-1.5 sm:p-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 hover:border-zinc-700 text-zinc-300 hover:text-amber-300 transition-all shadow-xs active:scale-95 cursor-pointer"
-              title="Open Workstation Settings &amp; Engine Preferences"
-            >
-              <Settings className="w-4 h-4" />
-            </button>
-          )}
-
-          {/* PWA Offline / Cache Status Pill */}
-          <div 
-            className={`flex items-center gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-xl text-xs font-mono border transition-all ${
-              !pwaStatus.isOnline
-                ? 'bg-amber-950/70 text-amber-300 border-amber-600/80 shadow-sm animate-pulse'
-                : 'bg-zinc-900/90 text-emerald-400 border-zinc-800'
-            }`}
-            title={
-              !pwaStatus.isOnline
-                ? 'Offline Mode Active: Internal synthesis and accompaniment engine are fully operational.'
-                : 'PWA Ready: Arranger Workstation cached for instant zero-latency offline performance.'
-            }
-          >
-            {!pwaStatus.isOnline ? (
-              <>
-                <WifiOff className="w-3.5 h-3.5 text-amber-400" />
-                <span className="text-[10px] font-bold uppercase tracking-wider hidden xl:inline">OFFLINE</span>
-              </>
-            ) : (
-              <>
-                <Wifi className="w-3.5 h-3.5 text-emerald-400" />
-                <span className="text-[10px] font-bold text-zinc-400 tracking-wider hidden 2xl:inline">READY</span>
-              </>
+          {/* Center Quick Shortcuts */}
+          <div className="flex items-center gap-1.5 bg-zinc-950/80 p-1 rounded-xl border border-zinc-800/80 shrink-0">
+            {onOpenStyleCreator && (
+              <button
+                id="btn-header-style-creator"
+                type="button"
+                onClick={onOpenStyleCreator}
+                className="px-2.5 py-1 rounded-lg text-xs font-mono font-bold text-amber-300 bg-gradient-to-r from-amber-950/60 to-amber-900/40 hover:from-amber-900/80 hover:to-amber-800/60 border border-amber-500/50 flex items-center gap-1.5 transition-all shadow-xs cursor-pointer active:scale-95 shrink-0 whitespace-nowrap"
+                title="Style Creator (Compose Intros, Mains A-D, Fills & Break)"
+              >
+                <Flame className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                <span>Style Creator</span>
+              </button>
             )}
+
+            {onOpenPrayerAtmosphere && (
+              <button
+                type="button"
+                onClick={onOpenPrayerAtmosphere}
+                className="px-2.5 py-1 rounded-lg text-xs font-mono font-bold text-amber-300 bg-amber-950/40 hover:bg-amber-900/60 border border-amber-500/40 flex items-center gap-1.5 transition-all cursor-pointer shrink-0 whitespace-nowrap"
+                title="Continuous Prayer & Worship Pad Drone"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                <span>Prayer Pad</span>
+              </button>
+            )}
+
+            {onOpenWorshipSongbook && (
+              <button
+                type="button"
+                onClick={onOpenWorshipSongbook}
+                className="px-2.5 py-1 rounded-lg text-xs font-mono font-bold text-cyan-300 bg-cyan-950/40 hover:bg-cyan-900/60 border border-cyan-500/40 flex items-center gap-1.5 transition-all cursor-pointer shrink-0 whitespace-nowrap"
+                title="Worship Setbook & Song Database"
+              >
+                <Music className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                <span>Setbook</span>
+              </button>
+            )}
+
+            {onOpenEffectsRack && (
+              <button
+                type="button"
+                onClick={onOpenEffectsRack}
+                className="px-2.5 py-1 rounded-lg text-xs font-mono font-bold text-purple-300 bg-purple-950/40 hover:bg-purple-900/60 border border-purple-500/40 flex items-center gap-1.5 transition-all cursor-pointer shrink-0 whitespace-nowrap"
+                title="DSP Reverb, Tape Delay, Chorus & Parametric EQ"
+              >
+                <Sliders className="w-3.5 h-3.5 text-purple-400 shrink-0" />
+                <span>DSP FX</span>
+              </button>
+            )}
+
+            {onOpenAudioRecording && (
+              <button
+                type="button"
+                onClick={onOpenAudioRecording}
+                className="px-2.5 py-1 rounded-lg text-xs font-mono font-bold text-red-300 bg-red-950/40 hover:bg-red-900/60 border border-red-500/40 flex items-center gap-1.5 transition-all cursor-pointer shrink-0 whitespace-nowrap"
+                title="Record Master Take & Export WAV/MIDI"
+              >
+                <Circle className="w-3 h-3 fill-red-500 text-red-500 shrink-0" />
+                <span>Record</span>
+              </button>
+            )}
+          </div>
+
+          {/* Right Section: Compact Studio Tools, MIDI & Status Hub */}
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            {/* Universal Hardware MIDI Controller */}
+            <HardwareMidiDropdown
+              onOpenMidiAutomation={onOpenMidiAutomation}
+              splitPoint={splitPoint}
+              onSplitPointChange={onSplitPointChange}
+              variant="header"
+            />
+
+            {/* Unified "Studio Tools" Dropdown Hub (App Switcher) */}
+            <button
+              id="btn-header-studio-tools"
+              type="button"
+              onClick={() => setIsToolsMenuOpen(prev => !prev)}
+              className={`px-2 sm:px-2.5 py-1.5 rounded-xl border text-xs font-semibold flex items-center gap-1.5 transition-all shadow-xs active:scale-95 cursor-pointer shrink-0 whitespace-nowrap ${
+                isToolsMenuOpen
+                  ? 'bg-amber-500 text-zinc-950 border-amber-400 font-bold shadow-md shadow-amber-500/20'
+                  : 'bg-zinc-900 hover:bg-zinc-800 border-zinc-800 hover:border-zinc-700 text-zinc-200 hover:text-amber-300'
+              }`}
+              title="Open Studio Tools & Arranger Applications Menu"
+              aria-expanded={isToolsMenuOpen}
+            >
+              <LayoutGrid className={`w-3.5 h-3.5 shrink-0 ${isToolsMenuOpen ? 'text-zinc-950' : 'text-amber-400'}`} />
+              <span className="font-mono">Studio Tools</span>
+              <ChevronDown className={`w-3 h-3 shrink-0 transition-transform ${isToolsMenuOpen ? 'rotate-180 text-zinc-950' : 'text-zinc-400'}`} />
+            </button>
+
+            {/* Quick Creator Coffee / Support Button */}
+            {onOpenCreatorMessage && (
+              <button
+                id="btn-header-creator-message"
+                type="button"
+                onClick={onOpenCreatorMessage}
+                className="px-2 sm:px-2.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-600/20 to-amber-500/15 hover:from-amber-600/30 hover:to-amber-500/25 border border-amber-500/40 text-amber-300 hover:text-amber-200 text-xs font-semibold flex items-center gap-1.5 transition-all shadow-xs active:scale-95 cursor-pointer shrink-0 whitespace-nowrap"
+                title="Support the Project & Buy Creator a Coffee ☕"
+              >
+                <Coffee className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                <span>Support</span>
+                <span className="text-[10px] px-1 py-0.2 rounded bg-amber-500/30 text-amber-200 font-mono">☕</span>
+              </button>
+            )}
+
+            {onOpenUserGuide && (
+              <button
+                id="btn-header-worship-guide"
+                type="button"
+                onClick={onOpenUserGuide}
+                className="px-2 sm:px-2.5 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 hover:border-zinc-700 text-zinc-300 hover:text-amber-300 text-xs font-semibold flex items-center gap-1.5 transition-all shadow-xs active:scale-95 cursor-pointer shrink-0 whitespace-nowrap"
+                title="Open Worship Companion & User Manual (PDF / Word)"
+              >
+                <BookOpen className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                <span>Guide</span>
+                <span className="text-[9px] px-1 py-0.2 rounded bg-zinc-800 text-amber-300 font-mono border border-zinc-700">PDF</span>
+              </button>
+            )}
+
+            {onOpenSettings && (
+              <button
+                id="btn-header-settings"
+                type="button"
+                onClick={onOpenSettings}
+                className="p-1.5 sm:p-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 hover:border-zinc-700 text-zinc-300 hover:text-amber-300 transition-all shadow-xs active:scale-95 cursor-pointer shrink-0"
+                title="Open Workstation Settings & Engine Preferences"
+              >
+                <Settings className="w-4 h-4 shrink-0" />
+              </button>
+            )}
+
+            {/* PWA Offline / Cache Status Pill */}
+            <div 
+              className={`flex items-center gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-xl text-xs font-mono border transition-all shrink-0 whitespace-nowrap ${
+                !pwaStatus.isOnline
+                  ? 'bg-amber-950/70 text-amber-300 border-amber-600/80 shadow-sm animate-pulse'
+                  : 'bg-zinc-900/90 text-emerald-400 border-zinc-800'
+              }`}
+              title={
+                !pwaStatus.isOnline
+                  ? 'Offline Mode Active: Internal synthesis and accompaniment engine are fully operational.'
+                  : 'PWA Ready: Arranger Workstation cached for instant zero-latency offline performance.'
+              }
+            >
+              {!pwaStatus.isOnline ? (
+                <>
+                  <WifiOff className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                  <span className="text-[10px] font-bold uppercase tracking-wider">OFFLINE</span>
+                </>
+              ) : (
+                <>
+                  <Wifi className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                  <span className="text-[10px] font-bold text-zinc-400 tracking-wider">READY</span>
+                </>
+              )}
+            </div>
           </div>
         </div>
       </header>
