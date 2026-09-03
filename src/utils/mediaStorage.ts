@@ -45,36 +45,31 @@ export function parseLrcLyrics(rawLyrics: string): LyricLine[] {
 export const BUILT_IN_TRACKS: MediaTrack[] = [
   {
     id: 'track-builtin-1',
-    title: 'Way Maker (Sanctuary Live)',
-    artist: 'Worship Ensemble Pro',
+    title: 'Amazing Grace (Sanctuary Acoustic)',
+    artist: 'Worship Ensemble Pro (Public Domain, 1779)',
     album: 'Live Adoration Vol. 1',
     duration: 254,
-    url: 'builtin:way_maker',
+    url: 'builtin:amazing_grace',
     format: 'flac',
     isVideo: false,
     artworkGradient: 'from-amber-600 via-orange-600 to-rose-700',
     lyrics: `[00:00.00] (Instrumental Piano & Ambient Pad Intro)
-[00:14.00] You are here, moving in our midst
-[00:20.50] I worship You, I worship You
-[00:28.00] You are here, working in this place
-[00:34.50] I worship You, I worship You
-[00:42.00] Way maker, miracle worker
-[00:46.50] Promise keeper, light in the darkness
-[00:50.50] My God, that is who You are
-[00:56.00] Way maker, miracle worker
-[01:00.50] Promise keeper, light in the darkness
-[01:04.50] My God, that is who You are
-[01:12.00] You are here, touching every heart
-[01:19.00] I worship You, I worship You
-[01:26.50] You are here, healing every life
-[01:33.00] I worship You, I worship You
-[01:40.50] Even when I don't see it, You're working
-[01:47.50] Even when I don't feel it, You're working
-[01:54.50] You never stop, You never stop working
-[02:01.50] You never stop, You never stop working
-[02:08.50] Way maker, miracle worker
-[02:13.00] Promise keeper, light in the darkness
-[02:17.00] That is who You are`,
+[00:14.00] Amazing grace! How sweet the sound
+[00:20.50] That saved a wretch like me!
+[00:28.00] I once was lost, but now am found
+[00:34.50] Was blind, but now I see
+[00:42.00] 'Twas grace that taught my heart to fear
+[00:46.50] And grace my fears relieved
+[00:50.50] How precious did that grace appear
+[00:56.00] The hour I first believed
+[01:04.50] Through many dangers, toils and snares
+[01:12.00] I have already come
+[01:19.00] 'Tis grace hath brought me safe thus far
+[01:26.50] And grace will lead me home
+[01:40.50] When we've been there ten thousand years
+[01:47.50] Bright shining as the sun
+[01:54.50] We've no less days to sing God's praise
+[02:01.50] Than when we'd first begun`,
     dateAdded: Date.now() - 86400000 * 5,
     playCount: 14,
     isFavorite: true,
@@ -82,32 +77,23 @@ export const BUILT_IN_TRACKS: MediaTrack[] = [
   },
   {
     id: 'track-builtin-2',
-    title: 'Goodness of God (Acoustic Strings)',
-    artist: 'Elevation Fellowship',
+    title: 'Holy, Holy, Holy! (Pipe Organ & Strings)',
+    artist: 'Cathedral Worship Ensemble (Public Domain, 1826)',
     album: 'Sovereign Heart',
     duration: 298,
-    url: 'builtin:goodness_of_god',
+    url: 'builtin:holy_holy',
     format: 'wav',
     isVideo: false,
     artworkGradient: 'from-emerald-600 via-teal-700 to-cyan-800',
-    lyrics: `[00:00.00] (Acoustic Guitar & Warm Cello Intro)
-[00:12.00] I love You, Lord, for Your mercy never fails me
-[00:20.50] All my days, I've been held in Your hands
-[00:29.00] From the moment that I wake up
-[00:33.50] Until I lay my head
-[00:37.50] Oh, I will sing of the goodness of God
-[00:45.00] 'Cause all my life You have been faithful
-[00:53.00] And all my life You have been so, so good
-[01:02.00] With every breath that I am able
-[01:09.50] Oh, I will sing of the goodness of God
-[01:18.00] I love Your voice, You have led me through the fire
-[01:26.50] In the darkest night, You are close like no other
-[01:35.00] I've known You as a Father
-[01:39.50] I've known You as a Friend
-[01:43.50] And I have lived in the goodness of God
-[01:52.00] Your goodness is running after, it's running after me
-[02:00.00] With my life laid down, I'm surrendered now
-[02:05.50] I give You everything`,
+    lyrics: `[00:00.00] (Pipe Organ & Majestic Swell Intro)
+[00:12.00] Holy, holy, holy! Lord God Almighty!
+[00:20.50] Early in the morning our song shall rise to Thee
+[00:29.00] Holy, holy, holy, merciful and mighty!
+[00:37.50] God in three Persons, blessed Trinity!
+[00:45.00] Holy, holy, holy! All the saints adore Thee
+[00:53.00] Casting down their golden crowns around the glassy sea
+[01:02.00] Cherubim and seraphim falling down before Thee
+[01:09.50] Which wert, and art, and evermore shalt be`,
     dateAdded: Date.now() - 86400000 * 4,
     playCount: 9,
     isFavorite: true,
@@ -115,27 +101,21 @@ export const BUILT_IN_TRACKS: MediaTrack[] = [
   },
   {
     id: 'track-builtin-3',
-    title: 'Reckless Love (Modern Worship 8-Beat)',
-    artist: 'Bethel Acoustic Project',
+    title: 'It Is Well With My Soul (Piano & Cello)',
+    artist: 'Sanctuary Chamber Players (Public Domain, 1873)',
     album: 'Unfailing Grace',
     duration: 215,
-    url: 'builtin:reckless_love',
+    url: 'builtin:it_is_well',
     format: 'mp3',
     isVideo: false,
     artworkGradient: 'from-purple-600 via-indigo-700 to-blue-800',
     lyrics: `[00:00.00] (Fingerstyle Acoustic & Shimmer Pad)
-[00:10.00] Before I spoke a word, You were singing over me
-[00:18.00] You have been so, so good to me
-[00:26.50] Before I took a breath, You breathed Your life in me
-[00:34.50] You have been so, so kind to me
-[00:42.50] Oh, the overwhelming, never-ending, reckless love of God
-[00:51.00] Oh, it chases me down, fights 'til I'm found, leaves the ninety-nine
-[00:59.50] I couldn't earn it, and I don't deserve it, still You give Yourself away
-[01:08.00] Oh, the overwhelming, never-ending, reckless love of God
-[01:24.00] When I was Your foe, still Your love fought for me
-[01:32.00] You have been so, so good to me
-[01:40.50] When I felt no worth, You paid it all for me
-[01:48.50] You have been so, so kind to me`,
+[00:10.00] When peace like a river attendeth my way
+[00:18.00] When sorrows like sea billows roll
+[00:26.50] Whatever my lot, Thou hast taught me to say
+[00:34.50] It is well, it is well with my soul
+[00:42.50] It is well with my soul
+[00:51.00] It is well, it is well with my soul`,
     dateAdded: Date.now() - 86400000 * 3,
     playCount: 19,
     isFavorite: false,
@@ -143,27 +123,23 @@ export const BUILT_IN_TRACKS: MediaTrack[] = [
   },
   {
     id: 'track-builtin-4',
-    title: 'Here I Am to Worship (Piano Solo)',
-    artist: 'Tim Hughes Sessions',
+    title: 'Blessed Assurance (Gospel Swing)',
+    artist: 'Gospel Fellowship (Public Domain, 1873)',
     album: 'Light of the World',
     duration: 202,
-    url: 'builtin:here_i_am',
+    url: 'builtin:blessed_assurance',
     format: 'm4a',
     isVideo: false,
     artworkGradient: 'from-amber-700 via-rose-800 to-purple-900',
-    lyrics: `[00:00.00] (Warm Grand Piano Arpeggio Intro)
-[00:11.00] Light of the world, You stepped down into darkness
-[00:19.50] Opened my eyes, let me see
-[00:27.50] Beauty that made this heart adore You
-[00:35.00] Hope of a life spent with You
-[00:43.00] Here I am to worship, here I am to bow down
-[00:51.00] Here I am to say that You're my God
-[00:58.50] You're altogether lovely, altogether worthy
-[01:06.50] Altogether wonderful to me
-[01:14.50] King of all days, oh so highly exalted
-[01:22.50] Glorious in heaven above
-[01:30.50] Humbly You came to the earth You created
-[01:38.00] All for love's sake became poor`,
+    lyrics: `[00:00.00] (Hammond Organ & Gospel Groove Intro)
+[00:11.00] Blessed assurance, Jesus is mine!
+[00:19.50] Oh, what a foretaste of glory divine!
+[00:27.50] Heir of salvation, purchase of God
+[00:35.00] Born of His Spirit, washed in His blood
+[00:43.00] This is my story, this is my song
+[00:51.00] Praising my Savior all the day long
+[00:58.50] This is my story, this is my song
+[01:06.50] Praising my Savior all the day long`,
     dateAdded: Date.now() - 86400000 * 2,
     playCount: 6,
     isFavorite: true,
@@ -171,27 +147,23 @@ export const BUILT_IN_TRACKS: MediaTrack[] = [
   },
   {
     id: 'track-builtin-5',
-    title: 'Cornerstone (Cathedral Choir & Organ)',
-    artist: 'Hillsong Orchestral',
+    title: 'Joyful, Joyful We Adore Thee (Symphonic)',
+    artist: 'Symphonic Brass Ensemble (Public Domain, 1907)',
     album: 'Hope Resounding',
     duration: 268,
-    url: 'builtin:cornerstone',
+    url: 'builtin:joyful_joyful',
     format: 'wav',
     isVideo: false,
     artworkGradient: 'from-blue-700 via-slate-800 to-indigo-950',
-    lyrics: `[00:00.00] (Pipe Organ & Majestic Swell)
-[00:13.00] My hope is built on nothing less
-[00:19.50] Than Jesus' blood and righteousness
-[00:26.50] I dare not trust the sweetest frame
-[00:33.00] But wholly lean on Jesus' name
-[00:40.00] Christ alone, Cornerstone
-[00:46.50] Weak made strong in the Savior's love
-[00:53.00] Through the storm, He is Lord
-[00:59.50] Lord of all
-[01:07.00] When darkness seems to hide His face
-[01:13.50] I rest on His unchanging grace
-[01:20.50] In every high and stormy gale
-[01:27.00] My anchor holds within the veil`,
+    lyrics: `[00:00.00] (Symphonic Brass & Timpani Flourish)
+[00:13.00] Joyful, joyful, we adore Thee
+[00:19.50] God of glory, Lord of love
+[00:26.50] Hearts unfold like flowers before Thee
+[00:33.00] Opening to the sun above
+[00:40.00] Melt the clouds of sin and sadness
+[00:46.50] Drive the dark of doubt away
+[00:53.00] Giver of immortal gladness
+[00:59.50] Fill us with the light of day!`,
     dateAdded: Date.now() - 86400000 * 1,
     playCount: 11,
     isFavorite: false,

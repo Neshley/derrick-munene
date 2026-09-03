@@ -1,235 +1,230 @@
 import { SongbookEntry, Setbook, SongbookData } from '../types/songbook';
 
-const STORAGE_KEY = 'genos_pro_worship_songbook_v1';
+const STORAGE_KEY = 'genos_pro_worship_songbook_v2';
+const LEGACY_STORAGE_KEY = 'genos_pro_worship_songbook_v1';
 
+// Copyright-free public domain hymns and original arranger templates
 export const FACTORY_WORSHIP_SONGS: SongbookEntry[] = [
   {
-    id: 'way_maker',
-    title: 'Way Maker',
-    artist: 'Sinach / Leeland',
-    key: 'E',
-    tempo: 68,
+    id: 'amazing_grace',
+    title: 'Amazing Grace',
+    artist: 'John Newton (Public Domain, 1779)',
+    key: 'G',
+    tempo: 72,
     timeSignature: '4/4',
-    category: 'African Gospel',
-    recommendedStyleId: 'style_intense_worship',
-    progression: ['E', 'B', 'C#m', 'A'],
+    category: 'Traditional Hymn',
+    recommendedStyleId: 'worship_worship_ballad',
+    progression: ['G', 'G/B', 'C', 'G', 'Em', 'D', 'G'],
     sections: [
       {
         id: 'sec_1',
         name: 'Verse 1',
-        chords: ['E', 'B', 'C#m', 'A'],
-        lyrics: 'You are here, moving in our midst, I worship You, I worship You...',
+        chords: ['G', 'G/B', 'C', 'G', 'Em', 'D', 'G'],
+        lyrics: 'Amazing grace! How sweet the sound, that saved a wretch like me! I once was lost, but now am found; was blind, but now I see.',
         suggestedArrangerSection: 'main_a',
       },
       {
         id: 'sec_2',
-        name: 'Chorus',
-        chords: ['E', 'B', 'C#m', 'A'],
-        lyrics: 'Way maker, miracle worker, promise keeper, light in the darkness, my God that is who You are!',
+        name: 'Verse 2',
+        chords: ['G', 'G/B', 'C', 'G', 'Em', 'D', 'G'],
+        lyrics: "'Twas grace that taught my heart to fear, and grace my fears relieved; how precious did that grace appear the hour I first believed.",
         suggestedArrangerSection: 'main_b',
       },
       {
         id: 'sec_3',
-        name: 'Bridge',
-        chords: ['E', 'B', 'C#m', 'A'],
-        lyrics: 'Even when I don’t see it, You’re working, even when I don’t feel it, You’re working...',
+        name: 'Verse 3 (Build)',
+        chords: ['G', 'G/B', 'C', 'G', 'Em', 'D', 'G'],
+        lyrics: 'Through many dangers, toils and snares, I have already come; ’tis grace hath brought me safe thus far, and grace will lead me home.',
         suggestedArrangerSection: 'main_c',
       },
     ],
-    notes: 'Start softly on Piano & Warm Pad (Main A). Build into Main B for chorus, full brass swell on Bridge (Main C).',
+    notes: 'Start gently on Grand Piano and Slow Strings (Main A). Switch to Main B for verse 2, and trigger Brass swell on verse 3.',
     isCustom: false,
     createdAt: 1700000000000,
     updatedAt: 1700000000000,
   },
   {
-    id: 'excess_love',
-    title: 'Excess Love',
-    artist: 'Mercy Chinwo',
-    key: 'C',
-    tempo: 72,
+    id: 'holy_holy_holy',
+    title: 'Holy, Holy, Holy!',
+    artist: 'Reginald Heber (Public Domain, 1826)',
+    key: 'D',
+    tempo: 74,
     timeSignature: '4/4',
-    category: 'African Gospel',
-    recommendedStyleId: 'style_intense_worship',
-    progression: ['C', 'G/B', 'Am7', 'Fadd9'],
+    category: 'Traditional Hymn',
+    recommendedStyleId: 'worship_worship_ballad',
+    progression: ['D', 'Bm', 'A', 'D', 'G', 'D', 'A', 'D'],
     sections: [
       {
         id: 'sec_1',
-        name: 'Verse',
-        chords: ['C', 'G/B', 'Am7', 'Fadd9'],
-        lyrics: 'Your love is kind, Your love is patient, You have filled my heart with so much peace and joy...',
+        name: 'Verse 1',
+        chords: ['D', 'Bm', 'A', 'D', 'G', 'D', 'A', 'D'],
+        lyrics: 'Holy, holy, holy! Lord God Almighty! Early in the morning our song shall rise to Thee; Holy, holy, holy, merciful and mighty! God in three Persons, blessed Trinity!',
         suggestedArrangerSection: 'main_a',
       },
       {
         id: 'sec_2',
-        name: 'Chorus',
-        chords: ['C', 'G/B', 'Am7', 'Fadd9'],
-        lyrics: 'Jesus You love me too much o, too much o, excess love o...',
-        suggestedArrangerSection: 'main_c',
+        name: 'Verse 2',
+        chords: ['D', 'Bm', 'A', 'D', 'G', 'D', 'A', 'D'],
+        lyrics: 'Holy, holy, holy! All the saints adore Thee, casting down their golden crowns around the glassy sea; Cherubim and seraphim falling down before Thee, which wert, and art, and evermore shalt be.',
+        suggestedArrangerSection: 'main_b',
       },
     ],
-    notes: 'Use Highlife guitar and EPiano layering. High energy African gospel groove.',
+    notes: 'Regal majesty. Utilize rich pipe organ or layered strings with subtle choir underneath.',
     isCustom: false,
     createdAt: 1700000001000,
     updatedAt: 1700000001000,
   },
   {
-    id: 'goodness_of_god',
-    title: 'Goodness of God',
-    artist: 'Bethel Music / Jenn Johnson',
-    key: 'G',
-    tempo: 70,
+    id: 'it_is_well',
+    title: 'It Is Well With My Soul',
+    artist: 'Horatio Spafford (Public Domain, 1873)',
+    key: 'C',
+    tempo: 68,
     timeSignature: '4/4',
-    category: 'Contemporary Worship',
-    recommendedStyleId: 'style_intense_worship',
-    progression: ['G', 'C', 'G', 'D', 'Em', 'C', 'D'],
+    category: 'Traditional Hymn',
+    recommendedStyleId: 'worship_worship_ballad',
+    progression: ['C', 'F', 'G', 'C', 'Am', 'Dm', 'G', 'C'],
     sections: [
       {
         id: 'sec_1',
         name: 'Verse 1',
-        chords: ['G', 'C', 'G', 'D'],
-        lyrics: 'I love You Lord, for Your mercy never fails me, all my days I have been held in Your hands...',
+        chords: ['C', 'F', 'G', 'C'],
+        lyrics: 'When peace like a river attendeth my way, when sorrows like sea billows roll; whatever my lot, Thou hast taught me to say, it is well, it is well with my soul.',
         suggestedArrangerSection: 'main_a',
       },
       {
         id: 'sec_2',
         name: 'Chorus',
-        chords: ['C', 'G', 'C', 'G', 'D', 'Em', 'C', 'D', 'G'],
-        lyrics: 'All my life You have been faithful, all my life You have been so so good...',
-        suggestedArrangerSection: 'main_b',
-      },
-      {
-        id: 'sec_3',
-        name: 'Bridge',
-        chords: ['G/B', 'C', 'D', 'G'],
-        lyrics: 'Your goodness is running after, it’s running after me...',
-        suggestedArrangerSection: 'main_d',
+        chords: ['C', 'G', 'C', 'F', 'C', 'G', 'C'],
+        lyrics: 'It is well with my soul, it is well, it is well with my soul.',
+        suggestedArrangerSection: 'main_c',
       },
     ],
-    notes: 'Acoustic piano ballad. Keep dynamic headroom for the intense bridge climax.',
+    notes: 'Deep sanctuary atmosphere. Hold prayer pad in left hand with warm grand piano in right hand.',
     isCustom: false,
     createdAt: 1700000002000,
     updatedAt: 1700000002000,
   },
   {
-    id: 'agidigba',
-    title: 'Agidigba Praise',
-    artist: 'African Praise Celebration',
+    id: 'blessed_assurance',
+    title: 'Blessed Assurance',
+    artist: 'Fanny Crosby (Public Domain, 1873)',
+    key: 'D',
+    tempo: 84,
+    timeSignature: '4/4',
+    category: 'Gospel Hymn',
+    recommendedStyleId: 'gospel_gospel_shout',
+    progression: ['D', 'G', 'D', 'A', 'D', 'G', 'A', 'D'],
+    sections: [
+      {
+        id: 'sec_1',
+        name: 'Verse 1',
+        chords: ['D', 'G', 'D', 'A'],
+        lyrics: 'Blessed assurance, Jesus is mine! Oh, what a foretaste of glory divine! Heir of salvation, purchase of God, born of His Spirit, washed in His blood.',
+        suggestedArrangerSection: 'main_a',
+      },
+      {
+        id: 'sec_2',
+        name: 'Chorus',
+        chords: ['D', 'G', 'D', 'A', 'D', 'G', 'A', 'D'],
+        lyrics: 'This is my story, this is my song, praising my Savior all the day long; this is my story, this is my song, praising my Savior all the day long.',
+        suggestedArrangerSection: 'main_b',
+      },
+    ],
+    notes: 'Soulful gospel swing. Use Hammond organ percussion with rotary speaker acceleration.',
+    isCustom: false,
+    createdAt: 1700000003000,
+    updatedAt: 1700000003000,
+  },
+  {
+    id: 'joyful_joyful',
+    title: 'Joyful, Joyful We Adore Thee',
+    artist: 'Henry van Dyke (Public Domain, 1907)',
+    key: 'G',
+    tempo: 108,
+    timeSignature: '4/4',
+    category: 'Praise Anthem',
+    recommendedStyleId: 'pop_pop_8beat',
+    progression: ['G', 'D', 'G', 'C', 'G', 'D', 'G'],
+    sections: [
+      {
+        id: 'sec_1',
+        name: 'Verse 1',
+        chords: ['G', 'D', 'G', 'C', 'G', 'D', 'G'],
+        lyrics: 'Joyful, joyful, we adore Thee, God of glory, Lord of love; hearts unfold like flowers before Thee, opening to the sun above.',
+        suggestedArrangerSection: 'main_a',
+      },
+      {
+        id: 'sec_2',
+        name: 'Verse 2',
+        chords: ['G', 'D', 'G', 'C', 'G', 'D', 'G'],
+        lyrics: 'Melt the clouds of sin and sadness, drive the dark of doubt away; Giver of immortal gladness, fill us with the light of day!',
+        suggestedArrangerSection: 'main_b',
+      },
+    ],
+    notes: 'Joyful, uplifting classical-to-modern brass anthem with driving rhythm.',
+    isCustom: false,
+    createdAt: 1700000004000,
+    updatedAt: 1700000004000,
+  },
+  {
+    id: 'african_praise_groove',
+    title: 'African Praise Celebration (Traditional)',
+    artist: 'Traditional Folk Praise / Public Domain',
     key: 'F',
-    tempo: 128,
+    tempo: 126,
     timeSignature: '4/4',
     category: 'Highlife Praise',
-    recommendedStyleId: 'style_disco_funk',
+    recommendedStyleId: 'latin_bossa_nova',
     progression: ['F', 'Bb', 'C', 'F'],
     sections: [
       {
         id: 'sec_1',
         name: 'Main Praise Loop',
         chords: ['F', 'Bb', 'C', 'F'],
-        lyrics: 'Na you be the God of the whole universe, Agidigba o, Baba...',
+        lyrics: 'We lift our voices in joyful praise, Hallelujah! Sing praises to the King of Kings, Hallelujah!',
         suggestedArrangerSection: 'main_a',
       },
       {
         id: 'sec_2',
         name: 'Call & Response Vamp',
         chords: ['F', 'Bb', 'C', 'F'],
-        lyrics: 'He has given me victory, I will lift Him higher! Baba Agidigba o!',
+        lyrics: 'Hallelujah, amen! Hallelujah, amen! Lift Him higher, praise His holy name!',
         suggestedArrangerSection: 'main_c',
       },
     ],
-    notes: 'Fast tempo praise dance. Use brass hits and funky bass.',
-    isCustom: false,
-    createdAt: 1700000003000,
-    updatedAt: 1700000003000,
-  },
-  {
-    id: 'nara',
-    title: 'Nara Ekele',
-    artist: 'Tim Godfrey ft. Travis Greene',
-    key: 'Db',
-    tempo: 74,
-    timeSignature: '4/4',
-    category: 'African Gospel',
-    recommendedStyleId: 'style_intense_worship',
-    progression: ['Db', 'Ab', 'Bbm', 'Gb'],
-    sections: [
-      {
-        id: 'sec_1',
-        name: 'Chorus',
-        chords: ['Db', 'Ab', 'Bbm', 'Gb'],
-        lyrics: 'Nara nara e, Nara ekele, Nara otuto, Nke n’eme nma...',
-        suggestedArrangerSection: 'main_b',
-      },
-      {
-        id: 'sec_2',
-        name: 'Vamp',
-        chords: ['Db', 'Ab/C', 'Bbm', 'Gb'],
-        lyrics: 'What shall I render to Jehovah? For He has done so much for me...',
-        suggestedArrangerSection: 'main_d',
-      },
-    ],
-    notes: 'Power ballad with African choral vocal pad integration.',
-    isCustom: false,
-    createdAt: 1700000004000,
-    updatedAt: 1700000004000,
-  },
-  {
-    id: 'holy_forever',
-    title: 'Holy Forever',
-    artist: 'Chris Tomlin / CeCe Winans',
-    key: 'F',
-    tempo: 72,
-    timeSignature: '4/4',
-    category: 'Contemporary Worship',
-    recommendedStyleId: 'style_intense_worship',
-    progression: ['F', 'Bb', 'Dm', 'C'],
-    sections: [
-      {
-        id: 'sec_1',
-        name: 'Verse 1',
-        chords: ['F', 'Bb', 'Dm', 'C'],
-        lyrics: 'A thousand generations falling down in worship, to sing the song of ages to the Lamb...',
-        suggestedArrangerSection: 'main_a',
-      },
-      {
-        id: 'sec_2',
-        name: 'Chorus',
-        chords: ['Bb', 'Dm', 'C', 'F/A', 'Bb'],
-        lyrics: 'And the angels cry, Holy! All creation cries, Holy! You are lifted high, Holy forever...',
-        suggestedArrangerSection: 'main_c',
-      },
-    ],
-    notes: 'Epic atmospheric modern anthem with expansive cinematic strings.',
+    notes: 'High-energy African highlife groove. Use clean electric guitar, bright brass, and syncopated percussion.',
     isCustom: false,
     createdAt: 1700000005000,
     updatedAt: 1700000005000,
   },
   {
-    id: '10000_reasons',
-    title: '10,000 Reasons (Bless The Lord)',
-    artist: 'Matt Redman',
-    key: 'G',
-    tempo: 73,
+    id: 'sanctuary_flow',
+    title: 'Sanctuary Worship Flow',
+    artist: 'Arranger Worship Template',
+    key: 'E',
+    tempo: 68,
     timeSignature: '4/4',
     category: 'Contemporary Worship',
-    recommendedStyleId: 'style_intense_worship',
-    progression: ['C', 'G', 'D/F#', 'Em', 'C', 'G', 'D', 'G'],
+    recommendedStyleId: 'worship_worship_ballad',
+    progression: ['E', 'B/D#', 'C#m7', 'Aadd9'],
     sections: [
       {
         id: 'sec_1',
-        name: 'Chorus',
-        chords: ['C', 'G', 'D/F#', 'Em', 'C', 'G', 'D', 'G'],
-        lyrics: 'Bless the Lord O my soul, O my soul, worship His holy name. Sing like never before, O my soul...',
+        name: 'Intimate Flow',
+        chords: ['E', 'B/D#', 'C#m7', 'Aadd9'],
+        lyrics: 'Here in this quiet place, we seek Your face; surround us with Your grace as we worship in this space.',
         suggestedArrangerSection: 'main_a',
       },
       {
         id: 'sec_2',
-        name: 'Verse',
-        chords: ['C', 'G', 'D', 'Em', 'C', 'G', 'D', 'G'],
-        lyrics: 'The sun comes up, it’s a new day dawning, it’s time to sing Your song again...',
+        name: 'Build Section',
+        chords: ['F#m7', 'G#m7', 'Aadd9', 'B11'],
+        lyrics: 'From everlasting to everlasting, You are God; worthy of all honor, blessing and glory.',
         suggestedArrangerSection: 'main_b',
       },
     ],
-    notes: 'Gentle acoustic worship with grand choir strings on chorus.',
+    notes: 'Classic 1 - 5 - 6m - 4 worship cycle. Ideal for pastoral prayer and transitional interludes.',
     isCustom: false,
     createdAt: 1700000006000,
     updatedAt: 1700000006000,
@@ -243,7 +238,7 @@ export const FACTORY_SETBOOKS: Setbook[] = [
     description: 'Intimate opening prayer entering into glorious high-praise and communion',
     serviceDate: 'Sunday Celebration',
     color: 'amber',
-    songIds: ['way_maker', 'goodness_of_god', 'holy_forever'],
+    songIds: ['amazing_grace', 'holy_holy_holy', 'it_is_well'],
     createdAt: 1700000010000,
     updatedAt: 1700000010000,
     isDefault: true,
@@ -254,12 +249,23 @@ export const FACTORY_SETBOOKS: Setbook[] = [
     description: 'High energy dance, call-and-response gospel celebration',
     serviceDate: 'Revival Night',
     color: 'emerald',
-    songIds: ['agidigba', 'excess_love', 'nara'],
+    songIds: ['african_praise_groove', 'blessed_assurance', 'joyful_joyful'],
     createdAt: 1700000020000,
     updatedAt: 1700000020000,
     isDefault: true,
   },
 ];
+
+// List of deprecated copyrighted IDs to purge from any persisted state
+const BANNED_COPYRIGHTED_IDS = new Set([
+  'way_maker',
+  'excess_love',
+  'goodness_of_god',
+  'agidigba',
+  'nara',
+  'holy_forever',
+  '10000_reasons',
+]);
 
 export class SongbookStorage {
   private static cachedData: SongbookData | null = null;
@@ -268,20 +274,33 @@ export class SongbookStorage {
     if (this.cachedData) return this.cachedData;
 
     try {
+      // Clear legacy storage key if present
+      if (typeof localStorage !== 'undefined') {
+        localStorage.removeItem(LEGACY_STORAGE_KEY);
+      }
+
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
         const parsed: SongbookData = JSON.parse(raw);
         if (parsed && Array.isArray(parsed.songs) && Array.isArray(parsed.setbooks)) {
-          // Merge with any missing factory songs
-          const existingIds = new Set(parsed.songs.map((s) => s.id));
-          const missingFactory = FACTORY_WORSHIP_SONGS.filter((s) => !existingIds.has(s.id));
-          const allSongs = [...parsed.songs, ...missingFactory];
+          // Filter out any banned copyrighted IDs
+          const cleanCustomSongs = parsed.songs.filter(
+            (s) => !BANNED_COPYRIGHTED_IDS.has(s.id) && s.isCustom
+          );
+          
+          const cleanSetbooks = parsed.setbooks.map((sb) => ({
+            ...sb,
+            songIds: sb.songIds.filter((sid) => !BANNED_COPYRIGHTED_IDS.has(sid)),
+          }));
+
+          const allSongs = [...FACTORY_WORSHIP_SONGS, ...cleanCustomSongs];
 
           this.cachedData = {
             songs: allSongs,
-            setbooks: parsed.setbooks.length > 0 ? parsed.setbooks : FACTORY_SETBOOKS,
-            activeSetbookId: parsed.activeSetbookId || FACTORY_SETBOOKS[0].id,
+            setbooks: cleanSetbooks.length > 0 ? cleanSetbooks : FACTORY_SETBOOKS,
+            activeSetbookId: cleanSetbooks.length > 0 ? cleanSetbooks[0].id : FACTORY_SETBOOKS[0].id,
           };
+          this.saveData(this.cachedData);
           return this.cachedData;
         }
       }

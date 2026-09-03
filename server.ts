@@ -9,7 +9,8 @@ dotenv.config();
 const app = express();
 const PORT = 3000;
 
-app.use(express.json({ limit: '10mb' }));
+// Request body size limit for security
+app.use(express.json({ limit: '500kb' }));
 
 // Mount API Router
 app.use('/api', aiRouter);

@@ -1,73 +1,25 @@
-import { getStoredApiKey, getAiFetchHeaders } from './apiKeyManager';
+import { getAiFetchHeaders, checkServerAiStatus } from './apiKeyManager';
 
 /**
- * Robust AI Client with seamless multi-tier fallback:
- * 1. Serverless / Backend route (/api/ai/...) -> Works on Vercel Serverless, Express, Cloud Run, Docker
- * 2. Client-side Gemini REST API fallback -> Works if deployed statically on Vercel/GitHub Pages with a client key
- * 3. Offline algorithmic presets fallback -> Works 100% offline without key
+ * Robust AI Client:
+ * All Gemini interactions are routed strictly through the backend Express / Vercel API (/api/ai/*).
+ * Never exposes API keys or calls Google API endpoints directly from the browser.
+ * In offline mode or when unconfigured, seamlessly falls back to high-grade local algorithmic presets.
  */
 
-async function callDirectGemini(prompt: string, apiKey: string): Promise<string> {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${encodeURIComponent(apiKey)}`;
-  const res = await fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: {
-        responseMimeType: 'application/json',
-      },
-    }),
-  });
-
-  if (!res.ok) {
-    const errorData = await res.json().catch(() => ({}));
-    throw new Error(errorData?.error?.message || `Gemini API returned status ${res.status}`);
+export async function validateGeminiKey(_key?: string): Promise<{ success: boolean; message: string; error?: string }> {
+  // Queries server status safely without exposing keys
+  const status = await checkServerAiStatus();
+  if (status.active || status.configured) {
+    return {
+      success: true,
+      message: status.message || 'Server-side Gemini AI is active and operational.',
+    };
   }
-
-  const data = await res.json();
-  const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-  if (!text) {
-    throw new Error('Empty response received from Gemini API');
-  }
-  return text;
-}
-
-export async function validateGeminiKey(key: string): Promise<{ success: boolean; message: string; error?: string }> {
-  const trimmed = key.trim();
-  if (!trimmed) {
-    return { success: false, message: 'Please enter an API key.' };
-  }
-
-  // Try server first
-  try {
-    const res = await fetch('/api/ai/validate-key', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-gemini-api-key': trimmed,
-      },
-      body: JSON.stringify({ apiKey: trimmed }),
-    });
-    if (res.ok) {
-      const data = await res.json();
-      if (data.success) return { success: true, message: 'Gemini API key is valid and working!' };
-    }
-  } catch {
-    // Continue to client direct fallback
-  }
-
-  // Direct client test
-  try {
-    const directResult = await callDirectGemini('Respond with JSON {"status": "ok"}', trimmed);
-    if (directResult) {
-      return { success: true, message: 'Gemini API key verified directly with Google!' };
-    }
-  } catch (e: any) {
-    return { success: false, message: e.message || 'Invalid API Key or network error.', error: e.message };
-  }
-
-  return { success: false, message: 'Unable to validate key.' };
+  return {
+    success: false,
+    message: status.message || 'Gemini API key is not configured in server environment.',
+  };
 }
 
 export async function generateAiStyle(params: { prompt: string; category?: string; currentTempo?: number }): Promise<any> {
@@ -83,55 +35,11 @@ export async function generateAiStyle(params: { prompt: string; category?: strin
       const data = await res.json();
       if (data.success && data.style) return data;
     }
-  } catch {
-    // Proceed to direct client fallback
+  } catch (err) {
+    console.warn('Server style generation request failed, using algorithmic fallback', err);
   }
 
-  const clientKey = getStoredApiKey();
-  if (clientKey) {
-    try {
-      const systemPrompt = `You are a Yamaha Genos master arranger programmer.
-The user wants an arranger accompaniment style based on this prompt: "${prompt}".
-Generate a structured JSON configuration for this style.
-Return ONLY raw JSON with:
-{
-  "name": "Creative Style Name (max 24 chars)",
-  "category": "${category}",
-  "tempo": ${currentTempo || 120},
-  "timeSignature": [4, 4],
-  "description": "Short explanation of the groove and feel",
-  "otsVoices": {
-    "ots1": { "r1": "piano", "r2": "slow_strings", "l": "synth_pad" },
-    "ots2": { "r1": "dx_epiano", "r2": "slow_strings", "l": "synth_pad" },
-    "ots3": { "r1": "brass", "r2": "synth_lead", "l": "synth_pad" },
-    "ots4": { "r1": "organ", "r2": "brass", "l": "synth_pad" }
-  },
-  "mixRecommendation": {
-    "drums": 88,
-    "bass": 92,
-    "chords": 78,
-    "pad": 70,
-    "phrase": 80
-  },
-  "suggestedChords": ["C", "G/B", "Am7", "F"]
-}`;
-      const text = await callDirectGemini(systemPrompt, clientKey);
-      const parsed = JSON.parse(text);
-      return {
-        success: true,
-        source: 'gemini-client',
-        style: {
-          id: `ai_style_${Date.now()}`,
-          sourceType: 'user-created',
-          ...parsed,
-        },
-      };
-    } catch (e) {
-      console.warn('Client-side Gemini style generation error, falling back to algorithmic preset', e);
-    }
-  }
-
-  // Fallback preset
+  // High-fidelity local algorithmic preset
   const styleName = prompt ? prompt.slice(0, 24) : 'ARRANGIA Style';
   return {
     success: true,
@@ -163,7 +71,7 @@ Return ONLY raw JSON with:
 }
 
 export async function generateAiChords(params: { rootKey?: string; chordStyle?: string; mood?: string; currentChords?: string }): Promise<any> {
-  const { rootKey = 'C', chordStyle = 'Gospel 2-5-1', mood = 'Inspiring & Uplifting', currentChords = '' } = params;
+  const { rootKey = 'C', chordStyle = 'Gospel 2-5-1' } = params;
 
   try {
     const res = await fetch('/api/ai/generate-chords', {
@@ -175,41 +83,8 @@ export async function generateAiChords(params: { rootKey?: string; chordStyle?: 
       const data = await res.json();
       if (data.success) return data;
     }
-  } catch {
-    // Direct client fallback
-  }
-
-  const clientKey = getStoredApiKey();
-  if (clientKey) {
-    try {
-      const prompt = `You are a world-class Gospel, Jazz, and Arranger keyboard reharmonizer.
-Generate a chord progression in the key of "${rootKey}" with the style "${chordStyle}" and mood "${mood}".
-Current reference chords (if any): "${currentChords}".
-Return ONLY raw JSON with:
-{
-  "key": "${rootKey}",
-  "chordStyle": "${chordStyle}",
-  "explanation": "Harmonic breakdown of how the voice leading works",
-  "bassMovement": "Description of the bass line contour",
-  "progression": [
-    {
-      "chord": "e.g. Cmaj9 or F#m7b5 or Bb13",
-      "roman": "e.g. Imaj9 or iv7 or V7/vi",
-      "duration": 4,
-      "tip": "Short performance tip or passing note hint"
-    }
-  ]
-}`;
-      const text = await callDirectGemini(prompt, clientKey);
-      const parsed = JSON.parse(text);
-      return {
-        success: true,
-        source: 'gemini-client',
-        ...parsed,
-      };
-    } catch (e) {
-      console.warn('Client-side Gemini chords error, using algorithmic fallback', e);
-    }
+  } catch (err) {
+    console.warn('Server chord progression request failed, using algorithmic fallback', err);
   }
 
   return {
@@ -223,7 +98,7 @@ Return ONLY raw JSON with:
       { chord: 'Am9', roman: 'vi9', duration: 4, tip: 'Soulful minor 9th resolution' },
       { chord: 'Dm9', roman: 'ii9', duration: 4, tip: 'Gospel minor 2nd degree' },
       { chord: 'G13sus4', roman: 'V13sus', duration: 2, tip: 'Suspended dominant tension' },
-      { chord: 'G7b9', roman: 'V7b9', duration: 2, tip: 'Crunchy tension resolving home' },
+      { chord: 'G7b9', roman: 'V7b9', duration: 2, tip: 'Rich tension resolving home' },
     ],
     explanation: `Custom ${chordStyle} chord arrangement in the key of ${rootKey}.`,
     bassMovement: `${rootKey} -> E -> A -> D -> G -> ${rootKey}`,
@@ -243,44 +118,8 @@ export async function generateAiSong(params: { songQuery?: string; key?: string;
       const data = await res.json();
       if (data.success && data.song) return data;
     }
-  } catch {
-    // Direct client fallback
-  }
-
-  const clientKey = getStoredApiKey();
-  if (clientKey) {
-    try {
-      const prompt = `You are a master music director for church worship and arranger performances.
-Generate a complete songbook chart and arranger registration for: "${songQuery}" in key "${key}", category "${category}".
-Return ONLY raw JSON with:
-{
-  "title": "${songQuery || 'Worship Song'}",
-  "artist": "Artist or Hymnal",
-  "key": "${key}",
-  "tempo": 68,
-  "styleId": "worship_worship_ballad",
-  "startingSection": "main_a",
-  "r1Voice": "piano",
-  "r2Voice": "slow_strings",
-  "lVoice": "synth_pad",
-  "chordProgression": "G | D | A | Bm7",
-  "lyricsChords": "[Intro]\\nG    D    A    Bm7\\n\\n[Verse 1]\\nG                 D\\nYou are here, moving in our midst\\nA             Bm7\\nI worship You, I worship You",
-  "category": "${category}",
-  "notes": "Arranger performance tips for dynamics and section transitions"
-}`;
-      const text = await callDirectGemini(prompt, clientKey);
-      const parsed = JSON.parse(text);
-      return {
-        success: true,
-        source: 'gemini-client',
-        song: {
-          id: `ai_song_${Date.now()}`,
-          ...parsed,
-        },
-      };
-    } catch (e) {
-      console.warn('Client-side Gemini song chart error, using fallback', e);
-    }
+  } catch (err) {
+    console.warn('Server song chart request failed, using algorithmic fallback', err);
   }
 
   return {
@@ -288,8 +127,8 @@ Return ONLY raw JSON with:
     source: 'fallback',
     song: {
       id: `ai_song_${Date.now()}`,
-      title: songQuery || 'Way Maker (Live Worship)',
-      artist: 'Sinach / Leeland',
+      title: songQuery || 'Sanctuary Worship Flow',
+      artist: 'Traditional / Arranger Original',
       key: key || 'D',
       tempo: 68,
       styleId: 'worship_worship_ballad',
@@ -297,16 +136,16 @@ Return ONLY raw JSON with:
       r1Voice: 'piano',
       r2Voice: 'slow_strings',
       lVoice: 'synth_pad',
-      chordProgression: 'G | D | A | Bm7',
-      lyricsChords: `[Intro]\nG    D    A    Bm7\n\n[Verse 1]\nG                 D\nYou are here, moving in our midst\nA             Bm7\nI worship You, I worship You\nG                 D\nYou are here, working in this place\nA             Bm7\nI worship You, I worship You\n\n[Chorus]\nG                             D\nWay Maker, Miracle Worker, Promise Keeper\nA                          Bm7\nLight in the darkness, my God, that is who You are`,
+      chordProgression: 'D | G | Bm7 | A',
+      lyricsChords: `[Intro]\nD    G    Bm7    A\n\n[Verse 1]\nD                 G\nLord of all life, Your mercy endures\nBm7              A\nForever steadfast, holy and pure\nD                 G\nHere in Your house our praises arise\nBm7              A\nLifting Your name above the skies\n\n[Chorus]\nD                             G\nGreat is the Lord, worthy of endless praise\nBm7                           A\nRighteous and true through all of our days`,
       category: category || 'Worship',
-      notes: 'Build gradually from Intro to Chorus using Section B -> Section C.',
+      notes: 'Build gradually from Intro on Main A to chorus on Main C.',
     },
   };
 }
 
 export async function generateAiVoice(params: { prompt?: string; targetPart?: string }): Promise<any> {
-  const { prompt = '80s Warm Lush Silk Pad with Chorus', targetPart = 'r1' } = params;
+  const { prompt = '80s Warm Lush Silk Pad with Chorus' } = params;
 
   try {
     const res = await fetch('/api/ai/generate-voice', {
@@ -318,52 +157,8 @@ export async function generateAiVoice(params: { prompt?: string; targetPart?: st
       const data = await res.json();
       if (data.success && data.voice) return data;
     }
-  } catch {
-    // Client fallback
-  }
-
-  const clientKey = getStoredApiKey();
-  if (clientKey) {
-    try {
-      const systemPrompt = `You are a Yamaha Genos / FM / Analog Sound Designer.
-Create a rich instrument voice synthesis preset based on this request: "${prompt}".
-Return ONLY raw JSON with:
-{
-  "name": "${prompt.slice(0, 22)}",
-  "category": "Synth & Lead",
-  "synthType": "synth_pad",
-  "presetParams": {
-    "attack": 0.25,
-    "decay": 0.4,
-    "sustain": 0.85,
-    "release": 1.2,
-    "cutoff": 2400,
-    "resonance": 3.5,
-    "waveform": "sawtooth",
-    "chorus": 45,
-    "reverb": 55
-  },
-  "dspRecommendation": {
-    "reverbDecay": 3.2,
-    "reverbMix": 40,
-    "delayMix": 25,
-    "delayFeedback": 35
-  },
-  "description": "Short explanation of the timbre and sonic character"
-}`;
-      const text = await callDirectGemini(systemPrompt, clientKey);
-      const parsed = JSON.parse(text);
-      return {
-        success: true,
-        source: 'gemini-client',
-        voice: {
-          id: `ai_voice_${Date.now()}`,
-          ...parsed,
-        },
-      };
-    } catch (e) {
-      console.warn('Client-side Gemini voice preset error, using fallback', e);
-    }
+  } catch (err) {
+    console.warn('Server voice generation request failed, using fallback', err);
   }
 
   return {
@@ -398,7 +193,7 @@ Return ONLY raw JSON with:
 }
 
 export async function generateAiMix(params: { presetTarget?: string; currentStyle?: string }): Promise<any> {
-  const { presetTarget = 'Sanctuary Worship (Warm & Reverb)', currentStyle = 'Worship Ballad' } = params;
+  const { presetTarget = 'Sanctuary Worship (Warm & Reverb)' } = params;
 
   try {
     const res = await fetch('/api/ai/generate-mix', {
@@ -410,8 +205,8 @@ export async function generateAiMix(params: { presetTarget?: string; currentStyl
       const data = await res.json();
       if (data.success && data.mix) return data;
     }
-  } catch {
-    // Client fallback
+  } catch (err) {
+    console.warn('Server mix request failed, using fallback', err);
   }
 
   return {
@@ -439,7 +234,7 @@ export async function generateAiMix(params: { presetTarget?: string; currentStyl
 }
 
 export async function generateAiMultiPads(params: { theme?: string; key?: string }): Promise<any> {
-  const { theme = 'Gospel & Worship Hits', key = 'C' } = params;
+  const { theme = 'Gospel & Worship Hits' } = params;
 
   try {
     const res = await fetch('/api/ai/generate-multipads', {
@@ -451,8 +246,8 @@ export async function generateAiMultiPads(params: { theme?: string; key?: string
       const data = await res.json();
       if (data.success && data.pads) return data;
     }
-  } catch {
-    // Client fallback
+  } catch (err) {
+    console.warn('Server multipad request failed, using fallback', err);
   }
 
   return {
@@ -532,15 +327,10 @@ export interface AiDirectorSuggestion {
   reasoning: string;
 }
 
-/**
- * Intelligent AI Music Director suggestion generator:
- * Suggests harmonically rich chord sequences, section transitions, or voice blends based on live performance context.
- */
 export async function generateAiDirectorSuggestion(
   context: AiDirectorContext,
   mode: 'harmony' | 'style' | 'voice' | 'arrange' | 'worship' | 'analyze' | 'practice' = 'harmony'
 ): Promise<{ success: boolean; suggestion: AiDirectorSuggestion; source: string }> {
-  // Try server first
   try {
     const res = await fetch('/api/ai/director-suggestion', {
       method: 'POST',
@@ -551,43 +341,8 @@ export async function generateAiDirectorSuggestion(
       const data = await res.json();
       if (data.success && data.suggestion) return data;
     }
-  } catch {
-    // Proceed to client fallback
-  }
-
-  // Client direct Gemini fallback
-  const clientKey = getStoredApiKey();
-  if (clientKey) {
-    try {
-      const prompt = `You are a Yamaha Genos2 & Korg Pa5X AI Music Director integrated into a flagship arranger keyboard.
-Live performance state:
-- Key: ${context.key}
-- Tempo: ${context.tempo} BPM
-- Current Chord: ${context.currentChord}
-- Active Section: ${context.currentSection}
-- Style: ${context.styleName}
-Mode requested: ${mode}
-
-Provide an actionable, musical recommendation for the performer.
-Return ONLY valid raw JSON:
-{
-  "recommendationType": "${mode === 'voice' ? 'voice_layer' : mode === 'arrange' ? 'transition' : 'progression'}",
-  "title": "Short punchy title (max 32 chars)",
-  "description": "Clear musical suggestion",
-  "progression": ["Chord1", "Chord2", "Chord3", "Chord4"],
-  "suggestedSection": "main_b",
-  "reasoning": "1 sentence theory justification"
-}`;
-      const text = await callDirectGemini(prompt, clientKey);
-      const parsed = JSON.parse(text);
-      return {
-        success: true,
-        source: 'gemini-client',
-        suggestion: parsed,
-      };
-    } catch (e) {
-      console.warn('Gemini director suggestion error, falling back to algorithmic rules', e);
-    }
+  } catch (err) {
+    console.warn('Server director suggestion failed, using algorithmic fallback', err);
   }
 
   // Algorithmic Music-Theory Fallback based on Key & Section
@@ -638,7 +393,6 @@ Return ONLY valid raw JSON:
       reasoning: 'Secondary dominants (V7 of vi) inject contemporary gospel and neo-soul tension.',
     };
   } else {
-    // Default harmony progression
     suggestion = {
       recommendationType: 'progression',
       title: `Gospel 2-5-1 Turnaround in ${root}`,
@@ -655,16 +409,12 @@ Return ONLY valid raw JSON:
   };
 }
 
-/**
- * Ask AI Music Director directly with conversational question:
- */
 export async function askAiMusicDirector(params: {
   question: string;
   context: AiDirectorContext;
 }): Promise<{ success: boolean; answer: string; suggestion?: AiDirectorSuggestion; source: string }> {
   const { question, context } = params;
 
-  // Try server first
   try {
     const res = await fetch('/api/ai/director-chat', {
       method: 'POST',
@@ -675,39 +425,13 @@ export async function askAiMusicDirector(params: {
       const data = await res.json();
       if (data.success && data.answer) return data;
     }
-  } catch {
-    // Fallback
-  }
-
-  // Client direct Gemini fallback
-  const clientKey = getStoredApiKey();
-  if (clientKey) {
-    try {
-      const prompt = `You are a professional Arranger Keyboard AI Music Director (like a musical co-producer in Yamaha Genos2).
-Musician is performing live:
-- Key: ${context.key}
-- Tempo: ${context.tempo} BPM
-- Chord: ${context.currentChord}
-- Section: ${context.currentSection}
-- Style: ${context.styleName}
-
-Musician asks: "${question}"
-
-Provide a concise, highly practical musical response (2-3 sentences max) with concrete chords or registration advice if appropriate.`;
-      const text = await callDirectGemini(prompt, clientKey);
-      return {
-        success: true,
-        source: 'gemini-client',
-        answer: text.replace(/[{}"]/g, '').trim(),
-      };
-    } catch (e) {
-      console.warn('Gemini chat error', e);
-    }
+  } catch (err) {
+    console.warn('Server director chat failed, using algorithmic fallback', err);
   }
 
   // Rule-based musical conversational answer
   const q = question.toLowerCase();
-  let answer = `In ${context.key} at ${context.tempo} BPM, try transitioning from ${context.currentChord} to the IV chord (${context.key === 'C' ? 'Fmaj7' : 'IV'}) before resolving back to ${context.key}. Increase R2 strings volume slightly during the chorus.`;
+  let answer = `In ${context.key} at ${context.tempo} BPM, try voice-leading through ${context.currentChord} into the IV chord before resolving back to the tonic. Add a soft string layer on R2 to enrich the tone.`;
 
   if (q.includes('worship') || q.includes('ballad')) {
     answer = `For a deep worship atmosphere, hold a soft prayer pad in the Left hand, voice a rootless 9th chord on ${context.currentChord}, and trigger FILL B at measure 4 to lift the congregation.`;
@@ -723,4 +447,3 @@ Provide a concise, highly practical musical response (2-3 sentences max) with co
     answer,
   };
 }
-

@@ -96,11 +96,18 @@ export class AudioEngine {
     release: 0.15,
   };
 
+  private _isDisposed: boolean = false;
+
   constructor() {
     // Lazy initialize on first user gesture
   }
 
+  public isDisposed(): boolean {
+    return this._isDisposed;
+  }
+
   public init() {
+    this._isDisposed = false;
     if (this.ctx) {
       if (this.ctx.state === 'suspended') {
         this.ctx.resume();
@@ -469,8 +476,46 @@ export class AudioEngine {
 
   public disableMicrophone() {
     if (this.micStream) {
-      this.micStream.getTracks().forEach((t) => t.stop());
+      this.micStream.getTracks().forEach((t) => {
+        try { t.stop(); } catch {}
+      });
       this.micStream = null;
+    }
+    if (this.micSourceNode) {
+      try { this.micSourceNode.disconnect(); } catch {}
+      this.micSourceNode = null;
+    }
+    if (this.micGainNode) {
+      try { this.micGainNode.disconnect(); } catch {}
+      this.micGainNode = null;
+    }
+    if (this.micEqLow) {
+      try { this.micEqLow.disconnect(); } catch {}
+      this.micEqLow = null;
+    }
+    if (this.micEqMid) {
+      try { this.micEqMid.disconnect(); } catch {}
+      this.micEqMid = null;
+    }
+    if (this.micEqHigh) {
+      try { this.micEqHigh.disconnect(); } catch {}
+      this.micEqHigh = null;
+    }
+    if (this.micCompressor) {
+      try { this.micCompressor.disconnect(); } catch {}
+      this.micCompressor = null;
+    }
+    if (this.micReverbSend) {
+      try { this.micReverbSend.disconnect(); } catch {}
+      this.micReverbSend = null;
+    }
+    if (this.micDelaySend) {
+      try { this.micDelaySend.disconnect(); } catch {}
+      this.micDelaySend = null;
+    }
+    if (this.micAnalyser) {
+      try { this.micAnalyser.disconnect(); } catch {}
+      this.micAnalyser = null;
     }
     this.micSettings.enabled = false;
   }
@@ -752,9 +797,9 @@ export class AudioEngine {
 
   // Convert WebM Blob to PCM WAV Blob
   public async exportAsWav(audioBlob: Blob): Promise<Blob | null> {
+    const tempCtx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
     try {
       const arrayBuffer = await audioBlob.arrayBuffer();
-      const tempCtx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
       const audioBuffer = await tempCtx.decodeAudioData(arrayBuffer);
 
       const numOfChan = audioBuffer.numberOfChannels;
@@ -823,6 +868,12 @@ export class AudioEngine {
     } catch (e) {
       console.warn('WAV export conversion failed, falling back to original blob', e);
       return audioBlob;
+    } finally {
+      try {
+        if (tempCtx.state !== 'closed') {
+          await tempCtx.close();
+        }
+      } catch {}
     }
   }
 
@@ -1992,8 +2043,130 @@ export class AudioEngine {
   }
 
   public stopAllNotes() {
-    this.activeNotes.forEach((handle) => handle.stop());
+    this.activeNotes.forEach((handle) => {
+      try {
+        handle.stop();
+      } catch {}
+    });
     this.activeNotes.clear();
+  }
+
+  public disconnect(): void {
+    // 1. Stop all active synthesizer voices
+    this.stopAllNotes();
+
+    // 2. Stop ambient drone oscillators & nodes
+    if (this.droneOscs.length > 0) {
+      this.droneOscs.forEach((o) => {
+        try {
+          o.stop();
+          o.disconnect();
+        } catch {}
+      });
+      this.droneOscs = [];
+      this.currentDroneKey = null;
+    }
+    if (this.droneGain) {
+      try { this.droneGain.disconnect(); } catch {}
+      this.droneGain = null;
+    }
+    if (this.droneFilter) {
+      try { this.droneFilter.disconnect(); } catch {}
+      this.droneFilter = null;
+    }
+
+    // 3. Stop microphone streams and release devices
+    this.disableMicrophone();
+
+    // 4. Stop recording if active
+    if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
+      try { this.mediaRecorder.stop(); } catch {}
+      this.mediaRecorder = null;
+    }
+
+    // 5. Teardown Chorus nodes
+    if (this.chorusLfo) {
+      try {
+        this.chorusLfo.stop();
+        this.chorusLfo.disconnect();
+      } catch {}
+      this.chorusLfo = null;
+    }
+    if (this.chorusLfoGain) {
+      try { this.chorusLfoGain.disconnect(); } catch {}
+      this.chorusLfoGain = null;
+    }
+    if (this.chorusDelayL) {
+      try { this.chorusDelayL.disconnect(); } catch {}
+      this.chorusDelayL = null;
+    }
+    if (this.chorusDelayR) {
+      try { this.chorusDelayR.disconnect(); } catch {}
+      this.chorusDelayR = null;
+    }
+    if (this.chorusWetGain) {
+      try { this.chorusWetGain.disconnect(); } catch {}
+      this.chorusWetGain = null;
+    }
+
+    // 6. Teardown Delay nodes
+    if (this.delayNode) {
+      try { this.delayNode.disconnect(); } catch {}
+      this.delayNode = null;
+    }
+    if (this.delayFeedbackGain) {
+      try { this.delayFeedbackGain.disconnect(); } catch {}
+      this.delayFeedbackGain = null;
+    }
+    if (this.delayFilter) {
+      try { this.delayFilter.disconnect(); } catch {}
+      this.delayFilter = null;
+    }
+    if (this.delayWetGain) {
+      try { this.delayWetGain.disconnect(); } catch {}
+      this.delayWetGain = null;
+    }
+
+    // 7. Teardown track gains, panners, and effect sends
+    this.trackGains.forEach((g) => { try { g.disconnect(); } catch {} });
+    this.trackGains.clear();
+    this.trackPanners.forEach((p) => { try { p.disconnect(); } catch {} });
+    this.trackPanners.clear();
+    this.trackRevSends.forEach((s) => { try { s.disconnect(); } catch {} });
+    this.trackRevSends.clear();
+    this.trackChorusSends.forEach((s) => { try { s.disconnect(); } catch {} });
+    this.trackChorusSends.clear();
+    this.trackAnalysers.forEach((a) => { try { a.disconnect(); } catch {} });
+    this.trackAnalysers.clear();
+
+    // 8. Teardown Master EQ nodes
+    if (this.eqLow) { try { this.eqLow.disconnect(); } catch {} this.eqLow = null; }
+    if (this.eqMid) { try { this.eqMid.disconnect(); } catch {} this.eqMid = null; }
+    if (this.eqHigh) { try { this.eqHigh.disconnect(); } catch {} this.eqHigh = null; }
+
+    // 9. Teardown Master Chain
+    if (this.compressor) { try { this.compressor.disconnect(); } catch {} this.compressor = null; }
+    if (this.reverbNode) { try { this.reverbNode.disconnect(); } catch {} this.reverbNode = null; }
+    if (this.reverbGain) { try { this.reverbGain.disconnect(); } catch {} this.reverbGain = null; }
+    if (this.dryGain) { try { this.dryGain.disconnect(); } catch {} this.dryGain = null; }
+    if (this.analyser) { try { this.analyser.disconnect(); } catch {} this.analyser = null; }
+    if (this.masterGain) { try { this.masterGain.disconnect(); } catch {} this.masterGain = null; }
+    if (this.mediaDest) { try { this.mediaDest.disconnect(); } catch {} this.mediaDest = null; }
+  }
+
+  public async dispose(): Promise<void> {
+    this._isDisposed = true;
+    this.disconnect();
+    if (this.ctx) {
+      try {
+        if (this.ctx.state !== 'closed') {
+          await this.ctx.close();
+        }
+      } catch (e) {
+        console.warn('Error closing AudioContext', e);
+      }
+      this.ctx = null;
+    }
   }
 }
 

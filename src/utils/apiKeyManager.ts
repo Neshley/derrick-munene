@@ -1,65 +1,91 @@
-// Browser-safe API key manager for Gemini
-// Reads from localStorage or Vite environment variables
+// Server-side AI Connection Manager
+// Enforces that secrets are kept strictly server-side (process.env.GEMINI_API_KEY)
+// Automatically purges any legacy secrets from browser localStorage for security.
 
-const STORAGE_KEYS = [
+const LEGACY_STORAGE_KEYS = [
   'genos_gemini_browser_api_key',
   'gemini_api_key',
   'google_genai_api_key',
   'GEMINI_API_KEY',
 ];
 
-export function getStoredApiKey(): string {
+// Purge any legacy browser-stored keys immediately to uphold security
+export function purgeBrowserStoredSecrets(): void {
   try {
-    for (const key of STORAGE_KEYS) {
-      const val = localStorage.getItem(key);
-      if (val && val.trim()) {
-        return val.trim();
-      }
-    }
-    // Also check Vite env if provided during build or runtime
-    const viteKey = (import.meta as any)?.env?.VITE_GEMINI_API_KEY;
-    if (typeof viteKey === 'string' && viteKey.trim()) {
-      return viteKey.trim();
+    if (typeof localStorage !== 'undefined') {
+      LEGACY_STORAGE_KEYS.forEach((k) => localStorage.removeItem(k));
     }
   } catch (e) {
-    console.warn('Unable to read API key from storage', e);
+    // Ignore storage errors
   }
+}
+
+// Automatically invoke on module load
+purgeBrowserStoredSecrets();
+
+export interface ServerAiStatus {
+  configured: boolean;
+  active: boolean;
+  message: string;
+  details?: string;
+  hasGeminiKey?: boolean;
+}
+
+export async function checkServerAiStatus(): Promise<ServerAiStatus> {
+  try {
+    const res = await fetch('/api/ai/status');
+    if (res.ok) {
+      const data = await res.json();
+      return {
+        configured: Boolean(data.configured),
+        active: Boolean(data.active),
+        message: data.message || 'Connected to server AI',
+        details: data.details,
+      };
+    }
+    // Try health check
+    const healthRes = await fetch('/api/health');
+    if (healthRes.ok) {
+      const healthData = await healthRes.json();
+      return {
+        configured: Boolean(healthData.hasGeminiKey),
+        active: Boolean(healthData.hasGeminiKey),
+        message: healthData.hasGeminiKey ? 'Gemini configured on server' : 'No Gemini key on server',
+        hasGeminiKey: healthData.hasGeminiKey,
+      };
+    }
+  } catch (e: any) {
+    return {
+      configured: false,
+      active: false,
+      message: 'Server unreachable or offline. Local algorithmic mode active.',
+      details: e.message,
+    };
+  }
+  return {
+    configured: false,
+    active: false,
+    message: 'Unable to determine server AI status.',
+  };
+}
+
+// Backwards-compatible stubs that do NOT store secrets
+export function getStoredApiKey(): string {
+  // Always returns empty string - secrets are managed server-side
   return '';
 }
 
-export function setStoredApiKey(key: string): void {
-  try {
-    const trimmed = key.trim();
-    if (trimmed) {
-      localStorage.setItem('genos_gemini_browser_api_key', trimmed);
-      localStorage.setItem('gemini_api_key', trimmed);
-    } else {
-      STORAGE_KEYS.forEach((k) => localStorage.removeItem(k));
-    }
-    window.dispatchEvent(new CustomEvent('genos-api-key-updated', { detail: trimmed }));
-  } catch (e) {
-    console.error('Unable to save API key to localStorage', e);
-  }
+export function setStoredApiKey(_key: string): void {
+  // Deliberately no-op: server-side only
+  purgeBrowserStoredSecrets();
 }
 
 export function clearStoredApiKey(): void {
-  try {
-    STORAGE_KEYS.forEach((k) => localStorage.removeItem(k));
-    window.dispatchEvent(new CustomEvent('genos-api-key-updated', { detail: '' }));
-  } catch (e) {
-    console.error('Unable to clear API key from localStorage', e);
-  }
+  purgeBrowserStoredSecrets();
 }
 
 export function getAiFetchHeaders(): Record<string, string> {
-  const headers: Record<string, string> = {
+  return {
     'Content-Type': 'application/json',
   };
-  const key = getStoredApiKey();
-  if (key) {
-    headers['x-gemini-api-key'] = key;
-    headers['Authorization'] = `Bearer ${key}`;
-  }
-  return headers;
 }
-

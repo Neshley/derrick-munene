@@ -1,765 +1,673 @@
-import { Router, Request, Response } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import { GoogleGenAI } from '@google/genai';
+import {
+  validateAndClampStyle,
+  validateAndClampChords,
+  validateAndClampSong,
+  validateAndClampVoice,
+  createDefaultStyleFallback,
+  sanitizeString,
+  clampNumber,
+} from './aiValidators';
 
 export const aiRouter = Router();
 
-// Helper to extract custom API key provided from client request (browser localStorage or header)
-export function extractApiKey(req: Request): string | undefined {
-  const headerKey = req.headers['x-gemini-api-key'];
-  if (typeof headerKey === 'string' && headerKey.trim()) {
-    return headerKey.trim();
+// --- Rate Limiting Middleware (In-memory token bucket / sliding window per client IP) ---
+interface RateLimitRecord {
+  count: number;
+  resetTime: number;
+}
+const ipRateLimits = new Map<string, RateLimitRecord>();
+const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute
+const MAX_REQUESTS_PER_WINDOW = 30; // 30 AI requests per minute
+
+function rateLimiter(req: Request, res: Response, next: NextFunction) {
+  const ip = (req.headers['x-forwarded-for'] as string) || req.socket.remoteAddress || 'unknown-client';
+  const now = Date.now();
+  const record = ipRateLimits.get(ip);
+
+  if (!record || now > record.resetTime) {
+    ipRateLimits.set(ip, { count: 1, resetTime: now + RATE_LIMIT_WINDOW_MS });
+    return next();
   }
-  const authHeader = req.headers['authorization'];
-  if (typeof authHeader === 'string' && authHeader.startsWith('Bearer ')) {
-    const token = authHeader.substring(7).trim();
-    if (token) return token;
+
+  if (record.count >= MAX_REQUESTS_PER_WINDOW) {
+    const retryAfterSec = Math.ceil((record.resetTime - now) / 1000);
+    res.setHeader('Retry-After', retryAfterSec.toString());
+    return res.status(429).json({
+      success: false,
+      error: 'Too many requests. Please wait a moment before trying again.',
+      retryAfter: retryAfterSec,
+    });
   }
-  if (req.body && typeof req.body.apiKey === 'string' && req.body.apiKey.trim()) {
-    return req.body.apiKey.trim();
-  }
-  return undefined;
+
+  record.count++;
+  next();
 }
 
-// Lazy GoogleGenAI client or custom client instantiation
-let defaultGenAIClient: GoogleGenAI | null = null;
-
-export function getGenAI(customKey?: string): GoogleGenAI | null {
-  const trimmedCustom = customKey?.trim();
-  if (trimmedCustom) {
-    return new GoogleGenAI({ apiKey: trimmedCustom });
-  }
-  const serverKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
-  if (serverKey && serverKey.trim()) {
-    if (!defaultGenAIClient) {
-      defaultGenAIClient = new GoogleGenAI({ apiKey: serverKey.trim() });
+// Clean up old rate limit records periodically
+setInterval(() => {
+  const now = Date.now();
+  for (const [ip, rec] of ipRateLimits.entries()) {
+    if (now > rec.resetTime) {
+      ipRateLimits.delete(ip);
     }
-    return defaultGenAIClient;
   }
-  return null;
+}, 5 * 60 * 1000);
+
+// --- Server-Side Only Gemini Client ---
+let genAIClient: GoogleGenAI | null = null;
+
+export function getServerGenAI(): GoogleGenAI | null {
+  const apiKey = process.env.GEMINI_API_KEY?.trim();
+  if (!apiKey) {
+    return null;
+  }
+  if (!genAIClient) {
+    genAIClient = new GoogleGenAI({ apiKey });
+  }
+  return genAIClient;
 }
 
-// 1. Health check
+// Timeout wrapper for AI calls (20 seconds max)
+async function callWithTimeout<T>(promise: Promise<T>, timeoutMs = 20000): Promise<T> {
+  let timer: NodeJS.Timeout;
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => {
+      reject(new Error('AI request timed out. Please try again.'));
+    }, timeoutMs);
+  });
+  try {
+    return await Promise.race([promise, timeoutPromise]);
+  } finally {
+    clearTimeout(timer!);
+  }
+}
+
+// Apply rate limiter to all /ai/* routes
+aiRouter.use('/ai', rateLimiter);
+
+// 1. Health check & Server AI status
 aiRouter.get('/health', (req: Request, res: Response) => {
-  const serverKey = process.env.GEMINI_API_KEY || process.env.VITE_GEMINI_API_KEY || process.env.GOOGLE_API_KEY;
+  const hasKey = Boolean(process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY.trim().length > 0);
   res.json({
     status: 'ok',
     environment: process.env.VERCEL ? 'vercel' : 'node',
-    hasGeminiKey: Boolean(serverKey && serverKey.trim().length > 0),
+    hasGeminiKey: hasKey,
+    model: 'gemini-3.8-flash',
   });
 });
 
-// 1b. Validate API Key endpoint
-aiRouter.post('/ai/validate-key', async (req: Request, res: Response) => {
-  try {
-    const customKey = extractApiKey(req);
-    const ai = getGenAI(customKey);
-    if (!ai) {
-      return res.status(400).json({ success: false, error: 'No API key provided or configured.' });
-    }
-    const response = await ai.models.generateContent({
-      model: 'gemini-3.8-flash',
-      contents: 'Respond with JSON {"status": "ok", "message": "Key is valid"}',
-      config: {
-        responseMimeType: 'application/json',
-      },
+// 2. Validate Server AI Connection
+aiRouter.get('/ai/status', async (req: Request, res: Response) => {
+  const ai = getServerGenAI();
+  if (!ai) {
+    return res.json({
+      configured: false,
+      message: 'Gemini API key is not configured on the server. Algorithmic fallback mode active.',
     });
-    return res.json({ success: true, message: 'Gemini API key is valid and working!', keyActive: true, raw: response.text });
-  } catch (error: any) {
-    console.error('Key validation error:', error);
-    return res.status(400).json({ success: false, error: error.message || 'Invalid API Key' });
+  }
+
+  try {
+    const response = await callWithTimeout(
+      ai.models.generateContent({
+        model: 'gemini-3.8-flash',
+        contents: 'Respond with JSON {"status": "ok"}',
+        config: {
+          responseMimeType: 'application/json',
+        },
+      }),
+      8000
+    );
+
+    const parsed = JSON.parse(response.text || '{}');
+    return res.json({
+      configured: true,
+      active: parsed.status === 'ok',
+      message: 'Gemini AI service connected and operational.',
+    });
+  } catch (err: any) {
+    return res.json({
+      configured: true,
+      active: false,
+      message: 'Server key configured, but connection check failed.',
+      details: err?.message ? sanitizeString(err.message, 120) : 'Check network connection',
+    });
   }
 });
 
-// 2. AI Style Generator API
+// Deprecated client key validation route (for compatibility, now checks server status safely)
+aiRouter.post('/ai/validate-key', async (req: Request, res: Response) => {
+  const ai = getServerGenAI();
+  if (!ai) {
+    return res.status(200).json({
+      success: false,
+      message: 'Server has no GEMINI_API_KEY configured. Keys are managed on the server only.',
+    });
+  }
+  try {
+    await callWithTimeout(
+      ai.models.generateContent({
+        model: 'gemini-3.8-flash',
+        contents: 'Respond with JSON {"status": "ok"}',
+        config: { responseMimeType: 'application/json' },
+      }),
+      8000
+    );
+    return res.json({ success: true, message: 'Server-side Gemini AI is active!' });
+  } catch (error: any) {
+    return res.status(200).json({ success: false, message: 'Server Gemini check failed.', error: sanitizeString(error.message, 100) });
+  }
+});
+
+// 3. AI Style Generator API
 aiRouter.post('/ai/generate-style', async (req: Request, res: Response) => {
   try {
-    const { prompt, category = 'African Gospel', currentTempo = 118 } = req.body;
-    const ai = getGenAI(extractApiKey(req));
+    const rawPrompt = sanitizeString(req.body?.prompt, 250);
+    const category = sanitizeString(req.body?.category, 50, 'African Gospel');
+    const currentTempo = Math.round(clampNumber(req.body?.currentTempo, 40, 240, 118));
 
+    const ai = getServerGenAI();
     if (!ai) {
-      // Return smart programmatic preset style if key is not provided
-      const styleName = prompt ? prompt.slice(0, 24) : 'ARRANGIA Style';
       return res.json({
         success: true,
         source: 'fallback',
         style: {
           id: `ai_style_${Date.now()}`,
-          name: styleName.charAt(0).toUpperCase() + styleName.slice(1),
-          category: category || 'Custom',
-          tempo: currentTempo || 120,
-          timeSignature: [4, 4],
-          description: `Custom arranger style generated for: "${prompt || 'Contemporary Worship'}"`,
           sourceType: 'user-created',
-          otsVoices: {
-            ots1: { r1: 'piano', r2: 'slow_strings', l: 'synth_pad' },
-            ots2: { r1: 'dx_epiano', r2: 'slow_strings', l: 'synth_pad' },
-            ots3: { r1: 'brass', r2: 'synth_lead', l: 'synth_pad' },
-            ots4: { r1: 'organ', r2: 'brass', l: 'synth_pad' },
-          },
-          mixRecommendation: {
-            drums: 88,
-            bass: 92,
-            chords: 78,
-            pad: 70,
-            phrase: 80,
-          },
-          suggestedChords: ['C', 'G/B', 'Am7', 'Fmaj7'],
+          ...createDefaultStyleFallback(rawPrompt || 'Worship Groove'),
         },
       });
     }
 
-    const systemPrompt = `You are ARRANGIA AI, master style programmer for DM ARRANGIA (Yamaha-compatible style architecture).
-The user wants an arranger accompaniment style based on this prompt: "${prompt}".
-Generate a structured JSON configuration for this style.
-Return ONLY raw JSON with:
+    const systemPrompt = `You are ARRANGIA AI, master arranger keyboard style programmer.
+Create an arranger accompaniment style for: "${rawPrompt}".
+Category: "${category}". Target Tempo: ${currentTempo} BPM.
+Return ONLY valid JSON with schema:
 {
   "name": "Creative Style Name (max 24 chars)",
-  "category": "African Gospel" | "Worship & Praise" | "Pop" | "Rock" | "Dance" | "Jazz & Swing" | "Latin & Ballroom" | "Custom",
-  "tempo": number (60-180),
-  "timeSignature": [4, 4] | [3, 4] | [6, 8],
+  "category": "${category}",
+  "tempo": ${currentTempo},
+  "timeSignature": [4, 4],
   "description": "Short explanation of the groove and feel",
   "otsVoices": {
-    "ots1": { "r1": "piano" | "bright_piano" | "dx_epiano" | "organ" | "strings" | "brass" | "synth_lead" | "guitar_acoustic", "r2": "slow_strings", "l": "synth_pad" },
+    "ots1": { "r1": "piano", "r2": "slow_strings", "l": "synth_pad" },
     "ots2": { "r1": "dx_epiano", "r2": "slow_strings", "l": "synth_pad" },
     "ots3": { "r1": "brass", "r2": "synth_lead", "l": "synth_pad" },
     "ots4": { "r1": "organ", "r2": "brass", "l": "synth_pad" }
   },
   "mixRecommendation": {
-    "drums": number (0-100),
-    "bass": number (0-100),
-    "chords": number (0-100),
-    "pad": number (0-100),
-    "phrase": number (0-100)
+    "drums": 88,
+    "bass": 92,
+    "chords": 78,
+    "pad": 70,
+    "phrase": 80
   },
   "suggestedChords": ["C", "G/B", "Am7", "F"]
 }`;
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-3.8-flash',
-      contents: systemPrompt,
-      config: {
-        responseMimeType: 'application/json',
-      },
-    });
+    const response = await callWithTimeout(
+      ai.models.generateContent({
+        model: 'gemini-3.8-flash',
+        contents: systemPrompt,
+        config: {
+          responseMimeType: 'application/json',
+        },
+      })
+    );
 
-    const parsed = JSON.parse(response.text || '{}');
+    let parsed: any;
+    try {
+      parsed = JSON.parse(response.text || '{}');
+    } catch {
+      parsed = {};
+    }
+
+    const validated = validateAndClampStyle(parsed, rawPrompt);
+
     return res.json({
       success: true,
       source: 'gemini',
       style: {
         id: `ai_style_${Date.now()}`,
         sourceType: 'user-created',
-        ...parsed,
+        ...validated,
       },
     });
   } catch (error: any) {
-    console.error('Error generating style:', error);
-    res.status(500).json({ success: false, error: error.message || 'Style generation failed' });
+    console.error('Style generation error:', error?.message);
+    const fallback = createDefaultStyleFallback('Worship Groove');
+    return res.json({
+      success: true,
+      source: 'fallback',
+      style: {
+        id: `ai_style_${Date.now()}`,
+        sourceType: 'user-created',
+        ...fallback,
+      },
+    });
   }
 });
 
-// 3. AI Harmonic Reharmonizer & Chord Progression Builder API
-aiRouter.post('/api/ai/generate-chords', async (req: Request, res: Response) => {
-  // Alias route in case full path is mounted
-  return handleGenerateChords(req, res);
-});
+// 4. AI Chord Progression Generator API
 aiRouter.post('/ai/generate-chords', async (req: Request, res: Response) => {
-  return handleGenerateChords(req, res);
-});
-
-async function handleGenerateChords(req: Request, res: Response) {
   try {
-    const { rootKey = 'C', chordStyle = 'Gospel 2-5-1', mood = 'Inspiring & Uplifting', currentChords = '' } = req.body;
-    const ai = getGenAI(extractApiKey(req));
+    const rootKey = sanitizeString(req.body?.rootKey, 8, 'C');
+    const chordStyle = sanitizeString(req.body?.chordStyle, 40, 'Gospel 2-5-1');
+    const mood = sanitizeString(req.body?.mood, 60, 'Inspiring & Uplifting');
+    const currentChords = sanitizeString(req.body?.currentChords, 100, '');
 
+    const ai = getServerGenAI();
     if (!ai) {
-      // Smart offline gospel / jazz progression defaults
-      const defaultProgressions: Record<string, any[]> = {
-        'Gospel 2-5-1': [
-          { chord: `${rootKey}maj9`, roman: 'Imaj9', duration: 4, tip: 'Warm tonic foundation with major 9th' },
-          { chord: `E7#9`, roman: 'V7/vi', duration: 4, tip: 'Altered dominant secondary leading to vi' },
-          { chord: `Am9`, roman: 'vi9', duration: 4, tip: 'Soulful minor 9th resolution' },
-          { chord: `Dm9`, roman: 'ii9', duration: 4, tip: 'Gospel minor 2nd degree' },
-          { chord: `G13sus4`, roman: 'V13sus', duration: 2, tip: 'Suspended dominant tension' },
-          { chord: `G7b9`, roman: 'V7b9', duration: 2, tip: 'Crunchy tension resolving home' },
-        ],
-        'Neo-Soul & RnB': [
-          { chord: `${rootKey}maj7`, roman: 'Imaj7', duration: 4, tip: 'Lush Rhodes voicing' },
-          { chord: `Bm7`, roman: 'vii7', duration: 4, tip: 'Passing minor 7th' },
-          { chord: `Em9`, roman: 'iii9', duration: 4, tip: 'Deep bass root movement' },
-          { chord: `A13`, roman: 'VI13', duration: 4, tip: 'Smooth extended dominant' },
-        ],
-      };
-
-      const selectedProg = defaultProgressions[chordStyle] || defaultProgressions['Gospel 2-5-1'];
-      return res.json({
-        success: true,
-        source: 'fallback',
-        key: rootKey,
-        chordStyle,
-        progression: selectedProg,
-        explanation: `Custom ${chordStyle} chord arrangement in the key of ${rootKey}.`,
-        bassMovement: `${rootKey} -> E -> A -> D -> G -> ${rootKey}`,
-      });
+      const clamped = validateAndClampChords(null, rootKey);
+      return res.json({ success: true, source: 'fallback', ...clamped });
     }
 
     const prompt = `You are a world-class Gospel, Jazz, and Arranger keyboard reharmonizer.
-Generate a chord progression in the key of "${rootKey}" with the style "${chordStyle}" and mood "${mood}".
+Generate a chord progression in the key of "${rootKey}" with style "${chordStyle}" and mood "${mood}".
 Current reference chords (if any): "${currentChords}".
-Return ONLY raw JSON with:
+Return ONLY valid JSON with:
 {
   "key": "${rootKey}",
   "chordStyle": "${chordStyle}",
-  "explanation": "Harmonic breakdown of how the voice leading works",
-  "bassMovement": "Description of the bass line contour",
+  "explanation": "Harmonic breakdown of voice leading",
+  "bassMovement": "Description of the bassline contour",
   "progression": [
     {
-      "chord": "e.g. Cmaj9 or F#m7b5 or Bb13",
-      "roman": "e.g. Imaj9 or iv7 or V7/vi",
+      "chord": "e.g. Cmaj9",
+      "roman": "e.g. Imaj9",
       "duration": 4,
-      "tip": "Short performance tip or passing note hint"
+      "tip": "Performance tip"
     }
   ]
 }`;
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-3.8-flash',
-      contents: prompt,
-      config: {
-        responseMimeType: 'application/json',
-      },
-    });
+    const response = await callWithTimeout(
+      ai.models.generateContent({
+        model: 'gemini-3.8-flash',
+        contents: prompt,
+        config: {
+          responseMimeType: 'application/json',
+        },
+      })
+    );
 
-    const parsed = JSON.parse(response.text || '{}');
+    let parsed: any;
+    try {
+      parsed = JSON.parse(response.text || '{}');
+    } catch {
+      parsed = {};
+    }
+
+    const clamped = validateAndClampChords(parsed, rootKey);
     return res.json({
       success: true,
       source: 'gemini',
-      ...parsed,
+      ...clamped,
     });
   } catch (error: any) {
-    console.error('Error generating chords:', error);
-    res.status(500).json({ success: false, error: error.message || 'Chord generation failed' });
+    console.error('Chord generation error:', error?.message);
+    const clamped = validateAndClampChords(null, 'C');
+    return res.json({ success: true, source: 'fallback', ...clamped });
   }
-}
+});
 
-// 4. AI Songbook & Chart Master API
+// 5. AI Worship Song Chart Generator API (Public domain & original templates only)
 aiRouter.post('/ai/generate-song', async (req: Request, res: Response) => {
   try {
-    const { songQuery = '', key = 'D', category = 'Worship' } = req.body;
-    const ai = getGenAI(extractApiKey(req));
+    const songQuery = sanitizeString(req.body?.songQuery, 80, 'Joyful Adoration Hymn');
+    const key = sanitizeString(req.body?.key, 8, 'D');
+    const category = sanitizeString(req.body?.category, 40, 'Worship');
 
+    const ai = getServerGenAI();
     if (!ai) {
+      const clamped = validateAndClampSong(null, songQuery);
       return res.json({
         success: true,
         source: 'fallback',
-        song: {
-          id: `ai_song_${Date.now()}`,
-          title: songQuery || 'Way Maker (Live Worship)',
-          artist: 'Sinach / Leeland',
-          key: key || 'D',
-          tempo: 68,
-          styleId: 'worship_worship_ballad',
-          startingSection: 'main_a',
-          r1Voice: 'piano',
-          r2Voice: 'slow_strings',
-          lVoice: 'synth_pad',
-          chordProgression: 'G | D | A | Bm7',
-          lyricsChords: `[Intro]
-G    D    A    Bm7
-
-[Verse 1]
-G                 D
-You are here, moving in our midst
-A             Bm7
-I worship You, I worship You
-G                 D
-You are here, working in this place
-A             Bm7
-I worship You, I worship You
-
-[Chorus]
-G                             D
-Way Maker, Miracle Worker, Promise Keeper
-A                          Bm7
-Light in the darkness, my God, that is who You are`,
-          category: category || 'Worship',
-          notes: 'Build gradually from Intro to Chorus using Section B -> Section C.',
-        },
+        song: { id: `ai_song_${Date.now()}`, ...clamped },
       });
     }
 
     const prompt = `You are a master music director for church worship and arranger performances.
-Generate a complete songbook chart and arranger registration for: "${songQuery}" in key "${key}", category "${category}".
+Create a worship chord chart and arranger registration for: "${songQuery}" in key "${key}", category "${category}".
+CRITICAL: Do NOT copy any copyrighted commercial lyrics. Use original devotional worship text or public-domain hymn adaptations only.
 Return ONLY raw JSON with:
 {
-  "title": "Song Title",
-  "artist": "Artist or Hymnal",
+  "title": "${songQuery}",
+  "artist": "Arranger Worship Chart",
   "key": "${key}",
-  "tempo": number (40-160),
-  "styleId": "worship_worship_ballad" | "african_praise_groove" | "pop_80s_ballad" | "pop_modern_dance" | "jazz_smooth_bossa" | "latin_salsa_club",
-  "startingSection": "main_a" | "intro_a",
-  "r1Voice": "piano" | "dx_epiano" | "organ" | "strings" | "brass" | "synth_pad",
-  "r2Voice": "slow_strings" | "synth_pad" | "choir",
-  "lVoice": "synth_pad" | "bass_acoustic",
-  "chordProgression": "Four chord summary e.g. G | D | A | Bm7",
-  "lyricsChords": "Full lyrics formatted with chord names directly above words where chord changes occur",
+  "tempo": 70,
+  "styleId": "worship_worship_ballad",
+  "startingSection": "main_a",
+  "r1Voice": "piano",
+  "r2Voice": "slow_strings",
+  "lVoice": "synth_pad",
+  "chordProgression": "D | G | Bm7 | A",
+  "lyricsChords": "[Verse 1]\\nD                 G\\nLord of all glory, sovereign and true\\nBm7               A\\nOur hearts in worship reach out to You",
   "category": "${category}",
   "notes": "Arranger performance tips for dynamics and section transitions"
 }`;
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-3.8-flash',
-      contents: prompt,
-      config: {
-        responseMimeType: 'application/json',
-      },
-    });
+    const response = await callWithTimeout(
+      ai.models.generateContent({
+        model: 'gemini-3.8-flash',
+        contents: prompt,
+        config: {
+          responseMimeType: 'application/json',
+        },
+      })
+    );
 
-    const parsed = JSON.parse(response.text || '{}');
+    let parsed: any;
+    try {
+      parsed = JSON.parse(response.text || '{}');
+    } catch {
+      parsed = {};
+    }
+
+    const clamped = validateAndClampSong(parsed, songQuery);
     return res.json({
       success: true,
       source: 'gemini',
       song: {
         id: `ai_song_${Date.now()}`,
-        ...parsed,
+        ...clamped,
       },
     });
   } catch (error: any) {
-    console.error('Error generating song chart:', error);
-    res.status(500).json({ success: false, error: error.message || 'Song chart generation failed' });
+    console.error('Song generation error:', error?.message);
+    const clamped = validateAndClampSong(null, 'Sanctuary Flow');
+    return res.json({
+      success: true,
+      source: 'fallback',
+      song: { id: `ai_song_${Date.now()}`, ...clamped },
+    });
   }
 });
 
-// 5. AI Sound Designer & Voice Preset Synthesizer API
+// 6. AI Voice Preset Generator API
 aiRouter.post('/ai/generate-voice', async (req: Request, res: Response) => {
   try {
-    const { prompt = '80s Warm Lush Silk Pad with Chorus', targetPart = 'r1' } = req.body;
-    const ai = getGenAI(extractApiKey(req));
+    const prompt = sanitizeString(req.body?.prompt, 120, 'Warm Ambient Worship Pad');
 
+    const ai = getServerGenAI();
     if (!ai) {
+      const clamped = validateAndClampVoice(null, prompt);
       return res.json({
         success: true,
         source: 'fallback',
-        voice: {
-          id: `ai_voice_${Date.now()}`,
-          name: prompt.slice(0, 24) || 'AI Silk Synth',
-          category: 'Synth & Lead',
-          synthType: 'synth_pad',
-          presetParams: {
-            attack: 0.25,
-            decay: 0.4,
-            sustain: 0.85,
-            release: 1.2,
-            cutoff: 2400,
-            resonance: 3.5,
-            harmonicity: 1.0,
-            waveform: 'sawtooth',
-            chorus: 45,
-            reverb: 55,
-          },
-          dspRecommendation: {
-            reverbDecay: 3.2,
-            reverbMix: 40,
-            delayMix: 25,
-            delayFeedback: 35,
-          },
-          description: `Custom synthesized voice preset for "${prompt}".`,
-        },
+        voice: { id: `ai_voice_${Date.now()}`, ...clamped },
       });
     }
 
-    const systemPrompt = `You are ARRANGIA AI, sound designer and synthesis programmer for DM ARRANGIA.
-Create a rich instrument voice synthesis preset based on this request: "${prompt}".
-Return ONLY raw JSON with:
+    const systemPrompt = `You are a synthesizer sound designer.
+Create a rich instrument voice synthesis preset based on: "${prompt}".
+Return ONLY valid JSON with:
 {
-  "name": "Preset Name (max 22 chars)",
-  "category": "Piano" | "E.Piano & Clav" | "Organ & Accordion" | "Strings & Choir" | "Brass & Woodwinds" | "Guitar & Plucked" | "Bass" | "Synth & Lead",
-  "synthType": "piano" | "epiano" | "organ" | "accordion" | "strings" | "brass" | "flute" | "guitar_acoustic" | "guitar_electric" | "bass_acoustic" | "bass_electric" | "synth_lead" | "synth_pad" | "synth_pluck",
+  "name": "${prompt.slice(0, 22)}",
+  "category": "Synth & Lead",
+  "synthType": "synth_pad",
   "presetParams": {
-    "attack": number (0.01 to 2.0 seconds),
-    "decay": number (0.1 to 3.0 seconds),
-    "sustain": number (0.0 to 1.0),
-    "release": number (0.1 to 4.0 seconds),
-    "cutoff": number (200 to 12000 Hz),
-    "resonance": number (0.5 to 15.0),
-    "waveform": "sawtooth" | "sine" | "square" | "triangle",
-    "chorus": number (0 to 100),
-    "reverb": number (0 to 100)
+    "attack": 0.25,
+    "decay": 0.4,
+    "sustain": 0.85,
+    "release": 1.2,
+    "cutoff": 2400,
+    "resonance": 3.5,
+    "waveform": "sawtooth",
+    "chorus": 45,
+    "reverb": 55
   },
   "dspRecommendation": {
-    "reverbDecay": number (0.5 to 5.0),
-    "reverbMix": number (0 to 100),
-    "delayMix": number (0 to 100),
-    "delayFeedback": number (0 to 80)
+    "reverbDecay": 3.2,
+    "reverbMix": 40,
+    "delayMix": 25,
+    "delayFeedback": 35
   },
   "description": "Short explanation of the timbre and sonic character"
 }`;
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-3.8-flash',
-      contents: systemPrompt,
-      config: {
-        responseMimeType: 'application/json',
-      },
-    });
+    const response = await callWithTimeout(
+      ai.models.generateContent({
+        model: 'gemini-3.8-flash',
+        contents: systemPrompt,
+        config: {
+          responseMimeType: 'application/json',
+        },
+      })
+    );
 
-    const parsed = JSON.parse(response.text || '{}');
+    let parsed: any;
+    try {
+      parsed = JSON.parse(response.text || '{}');
+    } catch {
+      parsed = {};
+    }
+
+    const clamped = validateAndClampVoice(parsed, prompt);
     return res.json({
       success: true,
       source: 'gemini',
       voice: {
         id: `ai_voice_${Date.now()}`,
-        ...parsed,
+        ...clamped,
       },
     });
   } catch (error: any) {
-    console.error('Error generating voice:', error);
-    res.status(500).json({ success: false, error: error.message || 'Voice generation failed' });
+    console.error('Voice generation error:', error?.message);
+    const clamped = validateAndClampVoice(null, 'Silk Pad');
+    return res.json({
+      success: true,
+      source: 'fallback',
+      voice: { id: `ai_voice_${Date.now()}`, ...clamped },
+    });
   }
 });
 
-// 6. AI Mix & Mastering Engineer API
+// 7. AI Mix & DSP Optimization API
 aiRouter.post('/ai/generate-mix', async (req: Request, res: Response) => {
-  try {
-    const { presetTarget = 'Sanctuary Worship (Warm & Reverb)', currentStyle = 'Worship Ballad' } = req.body;
-    const ai = getGenAI(extractApiKey(req));
-
-    if (!ai) {
-      return res.json({
-        success: true,
-        source: 'fallback',
-        mix: {
-          name: presetTarget,
-          masterVolume: 1.0,
-          tracks: {
-            rhythm1: { volume: 75, pan: 0, reverb: 30, eqLow: 1, eqMid: -1, eqHigh: 2 },
-            rhythm2: { volume: 65, pan: 15, reverb: 40, eqLow: 0, eqMid: 0, eqHigh: 3 },
-            bass: { volume: 88, pan: 0, reverb: 10, eqLow: 3, eqMid: 0, eqHigh: -2 },
-            chord1: { volume: 80, pan: -20, reverb: 45, eqLow: -1, eqMid: 1, eqHigh: 1 },
-            chord2: { volume: 72, pan: 20, reverb: 50, eqLow: -2, eqMid: 0, eqHigh: 2 },
-            pad: { volume: 70, pan: 0, reverb: 65, eqLow: 0, eqMid: -2, eqHigh: 3 },
-            phrase1: { volume: 82, pan: -10, reverb: 40, eqLow: 0, eqMid: 2, eqHigh: 1 },
-            phrase2: { volume: 78, pan: 10, reverb: 40, eqLow: 0, eqMid: 1, eqHigh: 2 },
-          },
-          masterEq: { low: 2, mid: -1, high: 2 },
-          reverb: { enabled: true, type: 'cathedral', decay: 3.5, mix: 45 },
-          delay: { enabled: true, timeMode: 'medium', feedback: 30, mix: 20 },
-          advice: 'Balanced for spacious sanctuary acoustics with solid low-end foundation.',
-        },
-      });
-    }
-
-    const prompt = `You are ARRANGIA AI, world-class front-of-house and studio mixing engineer for DM ARRANGIA.
-Optimize an 8-track accompaniment mix and master bus for target: "${presetTarget}", active style: "${currentStyle}".
-Return ONLY raw JSON with:
-{
-  "name": "${presetTarget}",
-  "masterVolume": number (0.8 to 1.2),
-  "tracks": {
-    "rhythm1": { "volume": number(0-100), "pan": number(-50 to 50), "reverb": number(0-100), "eqLow": number(-6 to 6), "eqMid": number(-6 to 6), "eqHigh": number(-6 to 6) },
-    "rhythm2": { "volume": number(0-100), "pan": number(-50 to 50), "reverb": number(0-100), "eqLow": number(-6 to 6), "eqMid": number(-6 to 6), "eqHigh": number(-6 to 6) },
-    "bass": { "volume": number(0-100), "pan": number(-50 to 50), "reverb": number(0-100), "eqLow": number(-6 to 6), "eqMid": number(-6 to 6), "eqHigh": number(-6 to 6) },
-    "chord1": { "volume": number(0-100), "pan": number(-50 to 50), "reverb": number(0-100), "eqLow": number(-6 to 6), "eqMid": number(-6 to 6), "eqHigh": number(-6 to 6) },
-    "chord2": { "volume": number(0-100), "pan": number(-50 to 50), "reverb": number(0-100), "eqLow": number(-6 to 6), "eqMid": number(-6 to 6), "eqHigh": number(-6 to 6) },
-    "pad": { "volume": number(0-100), "pan": number(-50 to 50), "reverb": number(0-100), "eqLow": number(-6 to 6), "eqMid": number(-6 to 6), "eqHigh": number(-6 to 6) },
-    "phrase1": { "volume": number(0-100), "pan": number(-50 to 50), "reverb": number(0-100), "eqLow": number(-6 to 6), "eqMid": number(-6 to 6), "eqHigh": number(-6 to 6) },
-    "phrase2": { "volume": number(0-100), "pan": number(-50 to 50), "reverb": number(0-100), "eqLow": number(-6 to 6), "eqMid": number(-6 to 6), "eqHigh": number(-6 to 6) }
-  },
-  "masterEq": { "low": number(-6 to 6), "mid": number(-6 to 6), "high": number(-6 to 6) },
-  "reverb": { "enabled": true, "type": "hall" | "cathedral" | "room" | "plate", "decay": number(1.0 to 5.0), "mix": number(10 to 60) },
-  "delay": { "enabled": true, "timeMode": "short" | "medium" | "long", "feedback": number(10 to 60), "mix": number(10 to 50) },
-  "advice": "1-2 sentence mixing rationale"
-}`;
-
-    const response = await ai.models.generateContent({
-      model: 'gemini-3.8-flash',
-      contents: prompt,
-      config: {
-        responseMimeType: 'application/json',
+  const presetTarget = sanitizeString(req.body?.presetTarget, 80, 'Sanctuary Worship (Warm & Reverb)');
+  return res.json({
+    success: true,
+    source: 'preset-engine',
+    mix: {
+      name: presetTarget,
+      masterVolume: 1.0,
+      tracks: {
+        rhythm1: { volume: 75, pan: 0, reverb: 30, eqLow: 1, eqMid: -1, eqHigh: 2 },
+        rhythm2: { volume: 65, pan: 15, reverb: 40, eqLow: 0, eqMid: 0, eqHigh: 3 },
+        bass: { volume: 88, pan: 0, reverb: 10, eqLow: 3, eqMid: 0, eqHigh: -2 },
+        chord1: { volume: 80, pan: -20, reverb: 45, eqLow: -1, eqMid: 1, eqHigh: 1 },
+        chord2: { volume: 72, pan: 20, reverb: 50, eqLow: -2, eqMid: 0, eqHigh: 2 },
+        pad: { volume: 70, pan: 0, reverb: 65, eqLow: 0, eqMid: -2, eqHigh: 3 },
+        phrase1: { volume: 82, pan: -10, reverb: 40, eqLow: 0, eqMid: 2, eqHigh: 1 },
+        phrase2: { volume: 78, pan: 10, reverb: 40, eqLow: 0, eqMid: 1, eqHigh: 2 },
       },
-    });
-
-    const parsed = JSON.parse(response.text || '{}');
-    return res.json({
-      success: true,
-      source: 'gemini',
-      mix: parsed,
-    });
-  } catch (error: any) {
-    console.error('Error generating mix:', error);
-    res.status(500).json({ success: false, error: error.message || 'Mix generation failed' });
-  }
+      masterEq: { low: 2, mid: -1, high: 2 },
+      reverb: { enabled: true, type: 'cathedral', decay: 3.5, mix: 45 },
+      delay: { enabled: true, timeMode: 'medium', feedback: 30, mix: 20 },
+      advice: 'Engineered for warm sanctuary acoustics with solid low-end foundation.',
+    },
+  });
 });
 
-// 7. AI Multi-Pad Riffs & Loop Package API
+// 8. AI Multi-Pads Generator API
 aiRouter.post('/ai/generate-multipads', async (req: Request, res: Response) => {
-  try {
-    const { theme = 'Gospel & Worship Hits', key = 'C' } = req.body;
-    const ai = getGenAI(extractApiKey(req));
-
-    if (!ai) {
-      return res.json({
-        success: true,
-        source: 'fallback',
-        bankName: theme,
-        pads: [
-          {
-            id: `pad_ai_1_${Date.now()}`,
-            name: 'Praise Saw Stab',
-            type: 'synth_stab',
-            loop: false,
-            notes: [
-              { note: 72, delay: 0, duration: 0.18, velocity: 115 },
-              { note: 76, delay: 0, duration: 0.18, velocity: 115 },
-              { note: 79, delay: 0, duration: 0.18, velocity: 120 },
-              { note: 84, delay: 0.12, duration: 0.3, velocity: 127 },
-            ],
-          },
-          {
-            id: `pad_ai_2_${Date.now()}`,
-            name: 'Gospel Tutti Hit',
-            type: 'orchestra_hit',
-            loop: false,
-            notes: [
-              { note: 48, delay: 0, duration: 0.35, velocity: 127 },
-              { note: 60, delay: 0, duration: 0.35, velocity: 120 },
-              { note: 67, delay: 0, duration: 0.35, velocity: 120 },
-              { note: 72, delay: 0, duration: 0.35, velocity: 127 },
-            ],
-          },
-          {
-            id: `pad_ai_3_${Date.now()}`,
-            name: 'Harp Arpeggio Roll',
-            type: 'harp_gliss',
-            loop: false,
-            notes: [
-              { note: 60, delay: 0, duration: 0.3, velocity: 90 },
-              { note: 64, delay: 0.08, duration: 0.3, velocity: 95 },
-              { note: 67, delay: 0.16, duration: 0.3, velocity: 100 },
-              { note: 71, delay: 0.24, duration: 0.3, velocity: 105 },
-              { note: 72, delay: 0.32, duration: 0.5, velocity: 115 },
-            ],
-          },
-          {
-            id: `pad_ai_4_${Date.now()}`,
-            name: 'Brass Shout Fall',
-            type: 'brass_hit',
-            loop: false,
-            notes: [
-              { note: 79, delay: 0, duration: 0.12, velocity: 127 },
-              { note: 76, delay: 0.08, duration: 0.12, velocity: 120 },
-              { note: 72, delay: 0.16, duration: 0.25, velocity: 115 },
-            ],
-          },
+  const theme = sanitizeString(req.body?.theme, 60, 'Gospel & Worship Hits');
+  return res.json({
+    success: true,
+    source: 'preset-engine',
+    bankName: theme,
+    pads: [
+      {
+        id: `pad_ai_1_${Date.now()}`,
+        name: 'Praise Saw Stab',
+        type: 'synth_stab',
+        loop: false,
+        notes: [
+          { note: 72, delay: 0, duration: 0.18, velocity: 115 },
+          { note: 76, delay: 0, duration: 0.18, velocity: 115 },
+          { note: 79, delay: 0, duration: 0.18, velocity: 120 },
+          { note: 84, delay: 0.12, duration: 0.3, velocity: 127 },
         ],
-      });
-    }
-
-    const prompt = `You are ARRANGIA AI, multi-pad phrase programmer for DM ARRANGIA.
-Generate a 4-pad interactive Multi-Pad phrase set for theme: "${theme}" in root key "${key}".
-Return ONLY raw JSON with:
-{
-  "bankName": "Bank Name (max 20 chars)",
-  "pads": [
-    {
-      "id": "pad_1",
-      "name": "Pad 1 Name (max 18 chars)",
-      "type": "synth_stab" | "orchestra_hit" | "harp_gliss" | "brass_hit" | "guitar_strum" | "sfx",
-      "loop": false,
-      "notes": [
-        { "note": number(36-96), "delay": number(0 to 0.8 seconds), "duration": number(0.05 to 0.8 seconds), "velocity": number(60-127) }
-      ]
-    },
-    {
-      "id": "pad_2",
-      "name": "Pad 2 Name",
-      "type": "synth_stab" | "orchestra_hit" | "harp_gliss" | "brass_hit" | "guitar_strum" | "sfx",
-      "loop": false,
-      "notes": [
-        { "note": number(36-96), "delay": number(0 to 0.8), "duration": number(0.05 to 0.8), "velocity": number(60-127) }
-      ]
-    },
-    {
-      "id": "pad_3",
-      "name": "Pad 3 Name",
-      "type": "synth_stab" | "orchestra_hit" | "harp_gliss" | "brass_hit" | "guitar_strum" | "sfx",
-      "loop": false,
-      "notes": [
-        { "note": number(36-96), "delay": number(0 to 0.8), "duration": number(0.05 to 0.8), "velocity": number(60-127) }
-      ]
-    },
-    {
-      "id": "pad_4",
-      "name": "Pad 4 Name",
-      "type": "synth_stab" | "orchestra_hit" | "harp_gliss" | "brass_hit" | "guitar_strum" | "sfx",
-      "loop": false,
-      "notes": [
-        { "note": number(36-96), "delay": number(0 to 0.8), "duration": number(0.05 to 0.8), "velocity": number(60-127) }
-      ]
-    }
-  ]
-}`;
-
-    const response = await ai.models.generateContent({
-      model: 'gemini-3.8-flash',
-      contents: prompt,
-      config: {
-        responseMimeType: 'application/json',
       },
-    });
-
-    const parsed = JSON.parse(response.text || '{}');
-    return res.json({
-      success: true,
-      source: 'gemini',
-      bankName: parsed.bankName || theme,
-      pads: (parsed.pads || []).map((pad: any, idx: number) => ({
-        ...pad,
-        id: `ai_pad_${idx}_${Date.now()}`,
-      })),
-    });
-  } catch (error: any) {
-    console.error('Error generating multipads:', error);
-    res.status(500).json({ success: false, error: error.message || 'Multipads generation failed' });
-  }
+      {
+        id: `pad_ai_2_${Date.now()}`,
+        name: 'Gospel Tutti Hit',
+        type: 'orchestra_hit',
+        loop: false,
+        notes: [
+          { note: 48, delay: 0, duration: 0.35, velocity: 127 },
+          { note: 60, delay: 0, duration: 0.35, velocity: 120 },
+          { note: 67, delay: 0, duration: 0.35, velocity: 120 },
+          { note: 72, delay: 0, duration: 0.35, velocity: 127 },
+        ],
+      },
+      {
+        id: `pad_ai_3_${Date.now()}`,
+        name: 'Harp Arpeggio Roll',
+        type: 'harp_gliss',
+        loop: false,
+        notes: [
+          { note: 60, delay: 0, duration: 0.3, velocity: 90 },
+          { note: 64, delay: 0.08, duration: 0.3, velocity: 95 },
+          { note: 67, delay: 0.16, duration: 0.3, velocity: 100 },
+          { note: 71, delay: 0.24, duration: 0.3, velocity: 105 },
+          { note: 72, delay: 0.32, duration: 0.5, velocity: 115 },
+        ],
+      },
+      {
+        id: `pad_ai_4_${Date.now()}`,
+        name: 'Brass Shout Fall',
+        type: 'brass_hit',
+        loop: false,
+        notes: [
+          { note: 79, delay: 0, duration: 0.12, velocity: 127 },
+          { note: 76, delay: 0.08, duration: 0.12, velocity: 120 },
+          { note: 72, delay: 0.16, duration: 0.25, velocity: 115 },
+        ],
+      },
+    ],
+  });
 });
 
-// 8. AI Director Suggestion API
+// 9. AI Music Director Suggestion API
 aiRouter.post('/ai/director-suggestion', async (req: Request, res: Response) => {
-  try {
-    const { context, mode = 'harmony' } = req.body || {};
-    const safeContext = context || {
-      key: 'C',
-      tempo: 120,
-      currentChord: 'C',
-      currentSection: 'main_a',
-      styleName: 'Worship Ballad',
-    };
-    const ai = getGenAI(extractApiKey(req));
+  const ctx = req.body?.context || {};
+  const mode = sanitizeString(req.body?.mode, 20, 'harmony');
+  const key = sanitizeString(ctx.key, 8, 'C');
+  const chord = sanitizeString(ctx.currentChord, 12, key);
+  const section = sanitizeString(ctx.currentSection, 16, 'main_a');
+  const tempo = clampNumber(ctx.tempo, 40, 240, 120);
 
-    if (!ai) {
-      const root = safeContext.key.replace(/m.*/, '').trim() || 'C';
-      let suggestion: any;
-      if (mode === 'voice') {
-        suggestion = {
-          recommendationType: 'voice_layer',
-          title: 'Layer Warm Analog Strings (R2)',
-          description: 'Blend Warm Strings underneath Grand Piano with +15% Reverb Send to widen stereo imagery.',
-          suggestedVoice: { part: 'r2', voiceId: 'slow_strings', voiceName: 'Warm Lush Strings' },
-          reasoning: 'Smooth acoustic sustain complements transient-heavy piano chords in ballads and praise.',
-        };
-      } else if (mode === 'arrange') {
-        const nextSection = safeContext.currentSection === 'main_a' ? 'main_b' : safeContext.currentSection === 'main_b' ? 'main_c' : 'main_d';
-        suggestion = {
-          recommendationType: 'transition',
-          title: `Build Dynamic Energy -> ${nextSection.toUpperCase()}`,
-          description: `Trigger Auto-Fill and advance to ${nextSection.toUpperCase()} as chorus approaches to double the rhythm drive.`,
-          suggestedSection: nextSection,
-          reasoning: 'Gradual multi-stage variation keeps congregation/audience engaged throughout song progression.',
-        };
-      } else {
-        suggestion = {
-          recommendationType: 'progression',
-          title: `Anthem Worship Flow in ${root}`,
-          description: `Try: ${root} → ${root}/B → Am7 → Fmaj7 (1 - 7/3 - 6 - 4)`,
-          progression: [root, `${root}/B`, 'Am7', 'Fmaj7'],
-          reasoning: 'Descending stepwise bassline evokes deep reverence and emotional release.',
-        };
-      }
-      return res.json({ success: true, source: 'fallback', suggestion });
-    }
-
-    const prompt = `You are ARRANGIA AI integrated into DM ARRANGIA.
+  const ai = getServerGenAI();
+  if (ai) {
+    try {
+      const prompt = `You are an AI Music Director integrated into a flagship arranger keyboard.
 Live performance state:
-- Key: ${safeContext.key}
-- Tempo: ${safeContext.tempo} BPM
-- Current Chord: ${safeContext.currentChord}
-- Active Section: ${safeContext.currentSection}
-- Style: ${safeContext.styleName}
-Mode requested: ${mode}
+- Key: ${key}
+- Tempo: ${tempo} BPM
+- Current Chord: ${chord}
+- Active Section: ${section}
+Mode: ${mode}
 
-Provide an actionable, musical recommendation for the performer.
-Return ONLY valid raw JSON:
+Provide a practical musical recommendation.
+Return ONLY valid JSON:
 {
   "recommendationType": "${mode === 'voice' ? 'voice_layer' : mode === 'arrange' ? 'transition' : 'progression'}",
-  "title": "Short punchy title (max 32 chars)",
+  "title": "Short title (max 32 chars)",
   "description": "Clear musical suggestion",
   "progression": ["Chord1", "Chord2", "Chord3", "Chord4"],
   "suggestedSection": "main_b",
   "reasoning": "1 sentence theory justification"
 }`;
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-3.8-flash',
-      contents: prompt,
-      config: {
-        responseMimeType: 'application/json',
-      },
-    });
+      const response = await callWithTimeout(
+        ai.models.generateContent({
+          model: 'gemini-3.8-flash',
+          contents: prompt,
+          config: { responseMimeType: 'application/json' },
+        })
+      );
 
-    const parsed = JSON.parse(response.text || '{}');
-    return res.json({
-      success: true,
-      source: 'gemini',
-      suggestion: parsed,
-    });
-  } catch (error: any) {
-    console.error('Error generating director suggestion:', error);
-    res.status(500).json({ success: false, error: error.message || 'Director suggestion failed' });
-  }
-});
-
-// 9. AI Director Chat API
-aiRouter.post('/ai/director-chat', async (req: Request, res: Response) => {
-  try {
-    const { question = '', context } = req.body || {};
-    const safeContext = context || {
-      key: 'C',
-      tempo: 120,
-      currentChord: 'C',
-      currentSection: 'main_a',
-      styleName: 'Worship Ballad',
-    };
-    const ai = getGenAI(extractApiKey(req));
-
-    if (!ai) {
-      const q = question.toLowerCase();
-      let answer = `In ${safeContext.key} at ${safeContext.tempo} BPM, try transitioning from ${safeContext.currentChord} to the IV chord (${safeContext.key === 'C' ? 'Fmaj7' : 'IV'}) before resolving back to ${safeContext.key}.`;
-      if (q.includes('worship') || q.includes('ballad')) {
-        answer = `For a deep worship atmosphere, hold a soft prayer pad in the Left hand, voice a rootless 9th chord on ${safeContext.currentChord}, and trigger FILL B at measure 4 to lift the congregation.`;
-      } else if (q.includes('praise') || q.includes('fast') || q.includes('groove')) {
-        answer = `Advance the style to MAIN C with Brass stabs, tighten the bassline, and keep a steady 2-and-4 snare pocket at ${safeContext.tempo} BPM.`;
-      } else if (q.includes('chord') || q.includes('next')) {
-        answer = `From ${safeContext.currentChord}, a soulful resolution is: Fmaj7 → G → Em7 → Am7, or substitute a Dm9 to G13 turnaround.`;
+      const parsed = JSON.parse(response.text || '{}');
+      if (parsed.title && parsed.description) {
+        return res.json({
+          success: true,
+          source: 'gemini',
+          suggestion: {
+            recommendationType: parsed.recommendationType || 'progression',
+            title: sanitizeString(parsed.title, 40),
+            description: sanitizeString(parsed.description, 200),
+            progression: Array.isArray(parsed.progression) ? parsed.progression.map((c: any) => sanitizeString(c, 16)) : undefined,
+            suggestedSection: parsed.suggestedSection ? sanitizeString(parsed.suggestedSection, 16) : undefined,
+            reasoning: sanitizeString(parsed.reasoning, 200),
+          },
+        });
       }
-      return res.json({ success: true, source: 'fallback', answer });
+    } catch {
+      // Fallback
     }
-
-    const prompt = `You are ARRANGIA AI, the intelligent co-producer for DM ARRANGIA.
-Musician is performing live:
-- Key: ${safeContext.key}
-- Tempo: ${safeContext.tempo} BPM
-- Chord: ${safeContext.currentChord}
-- Section: ${safeContext.currentSection}
-- Style: ${safeContext.styleName}
-
-Musician asks: "${question}"
-
-Provide a concise, highly practical musical response (2-3 sentences max) with concrete chords or registration advice if appropriate.`;
-
-    const response = await ai.models.generateContent({
-      model: 'gemini-3.8-flash',
-      contents: prompt,
-    });
-
-    return res.json({
-      success: true,
-      source: 'gemini',
-      answer: (response.text || '').replace(/[{}"]/g, '').trim(),
-    });
-  } catch (error: any) {
-    console.error('Error generating director chat:', error);
-    res.status(500).json({ success: false, error: error.message || 'Director chat failed' });
   }
+
+  // Algorithmic Fallback
+  return res.json({
+    success: true,
+    source: 'music-theory-engine',
+    suggestion: {
+      recommendationType: mode === 'voice' ? 'voice_layer' : 'progression',
+      title: `Gospel Turnaround in ${key}`,
+      description: `Try: ${key} → Fmaj7 → G → Am7 to elevate emotional expression`,
+      progression: [key, 'Fmaj7', 'G', 'Am7'],
+      reasoning: 'Subdominant to relative minor movement maintains harmonic momentum.',
+    },
+  });
 });
 
+// 10. AI Music Director Conversational Chat
+aiRouter.post('/ai/director-chat', async (req: Request, res: Response) => {
+  const question = sanitizeString(req.body?.question, 300, '');
+  const ctx = req.body?.context || {};
+  const key = sanitizeString(ctx.key, 8, 'C');
+  const chord = sanitizeString(ctx.currentChord, 12, key);
+  const tempo = clampNumber(ctx.tempo, 40, 240, 120);
+
+  if (!question) {
+    return res.status(400).json({ success: false, error: 'Question is required.' });
+  }
+
+  const ai = getServerGenAI();
+  if (ai) {
+    try {
+      const prompt = `You are a professional Arranger Keyboard AI Music Director.
+Performance context: Key ${key}, Tempo ${tempo} BPM, Current Chord ${chord}.
+Musician asks: "${question}".
+Provide a concise, practical 2-sentence response with musical tips or chord recommendations.`;
+
+      const response = await callWithTimeout(
+        ai.models.generateContent({
+          model: 'gemini-3.8-flash',
+          contents: prompt,
+        })
+      );
+
+      const answer = sanitizeString(response.text, 500, '');
+      if (answer) {
+        return res.json({
+          success: true,
+          source: 'gemini',
+          answer,
+        });
+      }
+    } catch {
+      // Fallback
+    }
+  }
+
+  return res.json({
+    success: true,
+    source: 'local-director-engine',
+    answer: `In ${key} at ${tempo} BPM, try voice-leading through ${chord} into the IV chord before resolving back to the tonic. Add a soft string layer on R2 to enrich the tone.`,
+  });
+});

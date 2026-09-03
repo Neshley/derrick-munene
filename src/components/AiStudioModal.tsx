@@ -890,7 +890,7 @@ export const AiStudioModal: React.FC<AiStudioModalProps> = ({
                       type="text"
                       value={songQuery}
                       onChange={(e) => setSongQuery(e.target.value)}
-                      placeholder="e.g. Way Maker, 10,000 Reasons, Goodness of God..."
+                      placeholder="e.g. Amazing Grace, Holy Holy Holy, Blessed Assurance, It Is Well..."
                       className="px-3 py-2 rounded-lg bg-zinc-950 border border-zinc-700 text-xs text-zinc-100 outline-hidden font-sans"
                     />
                   </div>
