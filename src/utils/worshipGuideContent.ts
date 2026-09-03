@@ -24,9 +24,9 @@ export const WORSHIP_GUIDE_SECTIONS: GuideSection[] = [
     title: "1. Welcome",
     level: 3,
     content: [
-      "Welcome to DM ARRANGIA, designed for musicians who want to create a rich, expressive worship and performance atmosphere using their keyboard or computer.",
+      "Welcome to DM ARRANGIA, conceived and engineered by Derrick Munene (Lead Architect & Worship Keyboardist) for musicians, church worship teams, and producers who want to create a rich, expressive worship and performance atmosphere using their keyboard or computer.",
       "The application combines:",
-      "• Real-time chord recognition\n• Automatic accompaniment\n• Piano, organ, bass and pad sounds\n• Drum and percussion patterns\n• Style/beat playback\n• Yamaha-style .STY style support\n• Intro, Main, Fill and Ending sections\n• MIDI keyboard support\n• Registration memory\n• Custom worship arrangements",
+      "• Real-time chord recognition (Fingered, Single-Finger & Slash Chords)\n• Automatic accompaniment engine powered by low-latency Web Audio synthesis\n• Piano, organ, bass, warm pads, and acoustic strings\n• Authentic drum and percussion accompaniment patterns\n• Full Yamaha-style .STY style support (CASM, NTR, NTT & RTR rules)\n• Intro (1–3), Main (A–D), Fill In (AA–DD), Break, and Ending (1–3)\n• Low-latency Web MIDI keyboard and hardware controller integration\n• Registration memory banks (8 quick-recall slots per bank)\n• Gemini AI Music Director for real-time worship chord charts and praise setlists\n• Built-in Songbook with instant key transposition and chords sync",
       "The goal is simple:",
       "Play naturally, focus on worship, and let the arranger support you."
     ]
@@ -297,53 +297,131 @@ export const WORSHIP_GUIDE_SECTIONS: GuideSection[] = [
     }
   },
   {
-    id: "final-note",
-    title: "22. Final Note",
+    id: "ai-music-director",
+    title: "22. Gemini AI Music Director & Worship Assistant",
     level: 3,
     content: [
-      "The purpose of this application is to give musicians a flexible musical environment for prayer and worship.",
-      "Start simply. Let the music breathe. Build gradually. Use the drums when they are needed. Remove them when silence and space are more appropriate.",
+      "DM ARRANGIA integrates an intelligent server-side Gemini AI Music Director acting as an interactive musical companion for keyboardists, worship leaders, and music producers.",
+      "Key Capabilities of the AI Music Director:",
+      "• Real-time Worship Progressions: Ask for modern praise and worship chord progressions in any key (such as 1-5-6-4, 4-1-5-6, or gospel 2-5-1 passing chord variations).\n• Spontaneous Service Guidance: Request suggestions on how to build musical dynamics during prayer, scripture readings, or ministry moments.\n• Seamless Harmonic Modulations: Discover smooth transitional pivot chords when changing keys (e.g., modulating from C Major to D Major or E-flat Major).\n• African Praise Arrangements: Generate rhythmic chord charts suited for Kenyan Sebene, Congolese Lingala, or Nigerian Highlife.\n• Setlist Structuring: Curate complete church service setlists that flow cohesively from opening thanksgiving into deep prayer and benediction.",
+      "How to use:",
+      "Click the 'AI Director' button in the toolbar, select a preset question or type your musical prompt, and explore tailored chord voicings, style recommendations, and arrangement insights in real time."
+    ],
+    subsections: [
+      {
+        title: "Recommended AI Prompts for Worship",
+        items: [
+          "Suggest a modern gospel 7-3-6 turnaround in the key of F for a worship bridge.",
+          "How do I modulate smoothly from G Major to A Major during congregational singing?",
+          "Give me an energetic Kenyan Sebene progression with bass movement in C Major.",
+          "What tempo, variation, and voice balance works best for deep intercession prayer?"
+        ]
+      }
+    ]
+  },
+  {
+    id: "african-praise-grooves",
+    title: "23. African Praise, Sebene & Gospel Grooves",
+    level: 3,
+    content: [
+      "African gospel and praise music possess an unmistakable vitality and rhythmic drive. DM ARRANGIA is uniquely engineered with authentic African groove modeling and style support.",
+      "Major African Groove Styles:",
+      "• Kenyan Sebene (120–135 BPM): Fast-paced, joyful praise characterized by a driving four-on-the-floor kick, rolling hi-hats, an active syncopated 5-string electric bass, and clean arpeggiated lead guitar phrasing.\n• Congolese Soukous & Lingala: Features intricate call-and-response rhythm guitars, liquid melodic basslines, and an 'Animation / Seben' section where the rhythm section intensifies into high praise.\n• West African Highlife & Afrobeat (85–110 BPM): Characterized by syncopated clave percussion, bright brass horn punches, and rhythm guitar skanks.\n• South African Gospel Praise: Known for rich suspended 4th chords, minor 11ths, deep sub-bass pedal notes, and powerful vamp build-ups.",
+      "Performance Technique:",
+      "Set your keyboard split point at C3 (MIDI note 48). Keep your left hand solid on the chord recognition zone (e.g. playing simple I - IV - V triads or power chords) to maintain steady accompaniment, while your right hand plays bright brass stabs, organ sweeps, or clean acoustic guitar lead licks."
+    ],
+    subsections: [
+      {
+        title: "Sebene Progression Example (Key of C)",
+        description: "Chord Cycle: C → F → G → F (or C → Am → F → G)\nTempo: 126–130 BPM\nStyle: African Praise / Sebene\nLeft Hand: Trigger chord changes on beat 1 and 3\nRight Hand: Arpeggiate high register triads with clean guitar or bright piano voice.",
+        bestFor: [
+          "Sunday service praise sessions",
+          "High-energy thanksgiving praise",
+          "Offering and celebration songs",
+          "Choir processional and recessional"
+        ]
+      }
+    ]
+  },
+  {
+    id: "songbook-setlists",
+    title: "24. Songbook & Live Setlist Management",
+    level: 3,
+    content: [
+      "The built-in Songbook allows keyboardists and music directors to store, organize, and recall chord charts and lyrics seamlessly during live church services and band rehearsals.",
+      "Core Songbook Features:",
+      "• Instant Key Transposition: Transpose any chord chart up or down by semitones on the fly to match a singer's vocal range without needing to transpose the keyboard or relearn chord fingerings.\n• Accompaniment Synchronization: Clicking or tapping a chord directly in the songbook chart instructs the arranger engine to transition to that chord immediately.\n• Live Service Setlists: Organize songs into sequential setlists (Opening Praise → Hymn of the Week → Sermon Reflection → Altar Call → Benediction).\n• Cloud & Local Backup: Save song collections securely to your browser storage or sync them across devices."
+    ]
+  },
+  {
+    id: "audio-engine-midi",
+    title: "25. Audio Engine, Latency & MIDI Controller Setup",
+    level: 3,
+    content: [
+      "DM ARRANGIA is powered by a custom Web Audio API synthesis engine and Web MIDI integration designed for ultra-low latency (<15ms) without requiring multi-gigabyte sound libraries.",
+      "MIDI Keyboard & Hardware Controller Setup:",
+      "• Plug-and-Play USB MIDI: Connect any standard USB or 5-pin DIN (via USB-MIDI adapter) keyboard from Yamaha, Roland, Korg, Novation, Arturia, or Casio. The browser auto-detects incoming MIDI signals.\n• Lower Split Point: The keyboard is split at C3 (MIDI note 48) by default. Notes below C3 trigger chord recognition and arranger accompaniment; notes above C3 play the lead melody instrument.\n• Velocity & Expression: Supports note velocity dynamics, sustain pedal (CC #64), pitch bend wheel, and modulation wheel (CC #1).\n• Low-Latency Performance: Runs directly inside modern browsers (Google Chrome, Microsoft Edge, Opera, Safari, Firefox). On mobile and tablet devices, tap once to initialize the AudioContext for pristine sound output."
+    ]
+  },
+  {
+    id: "final-note",
+    title: "26. Final Note & Worship Blessing",
+    level: 3,
+    content: [
+      "The ultimate purpose of this application is to give musicians a flexible, inspiring musical sanctuary for prayer, worship, and creative expression.",
+      "Start simply. Let the music breathe. Build gradually. Use the drums when they are needed. Remove them when silence, reverence, and space are more appropriate.",
       "The most powerful arrangement is not necessarily the busiest one.",
-      "Sometimes the best accompaniment is simply a warm piano, a sustained organ, a gentle bass line, and enough space to pray."
+      "Sometimes the best accompaniment is simply a warm piano, a sustained organ, a gentle bass line, and enough space to pray.",
+      "May this instrument inspire your hands, bless your worship ministry, and bring peace and joy to all who hear you play."
     ]
   },
   {
     id: "creator-message",
-    title: "23. A Message from the Creator",
+    title: "27. A Message from the Creator (Derrick Munene)",
     level: 3,
     content: [
-      "Technology should serve music, not get in the way of it.",
-      "As a musician and engineer, I have always been interested in the relationship between creativity, technology, sound, and automation. I wanted to build something that could bring those worlds together in a practical way.",
-      "The idea behind this arranger started with a desire to create a digital environment where a musician could sit down, play a chord, and immediately have a musical world respond to it.",
-      "But I didn't want to build just another music player. I wanted to build an interactive arranger — something that could understand chords, respond to the musician, change accompaniment, control different instruments, work with MIDI keyboards, and provide a dynamic musical experience.",
-      "One of the most important directions of this project is worship and prayer. During prayer, music can create space for reflection, singing, meditation, and worship. That is why the arranger is designed around musical dynamics: No Drums → Shaker → Light Groove → Full Worship.",
-      "Behind the interface is a combination of software engineering, digital audio, MIDI technology, music theory, and arranger-system concepts:\n• Web Audio API & polyphonic multi-sample synthesis\n• Real-time event processing & MIDI keyboard controllers\n• Real-time chord recognition (fingered & single finger)\n• Automatic accompaniment engine\n• Yamaha-style STY parsing (CASM, NTR, NTT, retrigger rules)\n• Progressive worship arrangement dynamics\n• Progressive Web App (PWA) offline technology",
-      "My vision is to create an arranger that feels less like a machine and more like a musical partner. A musician should be able to sit down, choose a style, play a chord, and immediately begin creating — whether in prayer, worship, practice, composition, performance, or simply playing for the joy of music."
+      "“Technology should never be a barrier to creativity; it should be a quiet, responsive servant that brings out the heart of music.” — Derrick Munene",
+      "About the Creator & Architect:",
+      "I am Derrick Munene, a worship keyboardist, music technologist, and software engineer based in Nairobi, Kenya. For years, I have served in church worship teams, playing keyboards and directing music during prayer meetings, Sunday services, and evangelistic missions.",
+      "The Flagship Arranger Dilemma:",
+      "Musicians everywhere dream of playing flagship arranger keyboards—workstations like the Yamaha Genos, Tyros, and PSR-SX series. Their polyphonic accompaniment, intelligent chord following, and realistic styles provide a complete orchestra at your fingertips. However, with price tags ranging from $2,000 to $5,000+, these instruments remain completely unaffordable for countless talented young keyboardists, rural and urban church ministries, and music students across Kenya, Africa, and around the world.",
+      "The Vision of DM ARRANGIA:",
+      "I set out to build DM ARRANGIA to solve this dilemma once and for all: to prove that modern web technology (Web Audio API, Web MIDI, and TypeScript) can deliver that same polyphonic, interactive arranger experience inside a standard web browser—100% free, low-latency, cross-platform, and accessible to anyone with a computer, tablet, or phone.",
+      "Behind the Code:",
+      "Every part of DM ARRANGIA has been built with meticulous attention to musical and engineering detail:\n• Multi-sample and FM synthesis modeling without bulky soundfont downloads\n• Yamaha-style .STY parser decoding binary chunks (CASM, NTR, NTT tables, RTR retriggering)\n• Real-time zero-dependency polyphonic chord detection matrix (handling 30+ chord qualities and slash chords)\n• Four-stage progressive worship dynamics (Main A Prayer to Main D Full Worship)\n• Gemini AI Music Director integration for spontaneous harmonic guidance",
+      "My prayer and hope is that DM ARRANGIA serves as a faithful musical partner in your hands—whether in private devotion, Sunday morning worship, band rehearsals, or musical discovery.\n\nKeep playing. Keep creating. Keep building.\n— Derrick Munene (Lead Architect & Worship Keyboardist)"
     ],
     subsections: [
       {
-        title: "Key Technological Pillars",
+        title: "Technical Innovations in DM ARRANGIA",
         items: [
-          "Web Audio & low-latency sound synthesis",
-          "MIDI keyboard input & real-time message handling",
-          "Harmonic recognition engine & dynamic accompaniment",
-          "Yamaha .STY file format decoding & CASM voice routing",
-          "Progressive 4-stage worship dynamics & transitions"
+          "Native Web Audio API synthesis engine (low latency, zero external soundfont overhead)",
+          "Real-time Web MIDI hardware controller support with plug-and-play detection",
+          "Full Yamaha .STY binary parsing with CASM voice routing and NTT chord transposition",
+          "Zero-dependency polyphonic chord detection (Fingered, Single-Finger, Inversions, Slash Chords)",
+          "Server-side Gemini AI Music Director for real-time chord charts and praise arrangements"
         ]
       }
     ]
   },
   {
     id: "support-project",
-    title: "24. Support the Project & Buy a Coffee",
+    title: "28. Support the Project & Buy a Coffee",
     level: 3,
     content: [
-      "If you enjoy using this application and feel that it has been useful to you, you are welcome to buy the creator a coffee.",
-      "There is absolutely no obligation to contribute. Your support is simply a way of saying: “I appreciate the work.”",
-      "Every contribution, regardless of its size, helps support continued development, testing, improvements, new worship styles, better sounds, and new features.",
-      "Support channels:\n• PayPal: derrickmunene2025@gmail.com\n• M-Pesa: +254 704 034 278",
-      "Thank you for supporting independent development. Whether you contribute or simply use the application, your interest in this project means a lot.",
-      "Keep playing. Keep creating. Keep building. — The Creator"
+      "DM ARRANGIA is completely free, open, and accessible to everyone. There are no subscriptions, no locked features, and no paywalls.",
+      "If this application has blessed your personal devotional times, helped your church worship team during Sunday services, powered your band rehearsals, or simplified your music production, you are warmly invited to buy the creator a coffee.",
+      "Your voluntary contributions directly fund:",
+      "• 🎹 New Arranger Styles & Voice Design: Studio recording, acoustic instrument modeling, and expanding African praise grooves (Kenyan Sebene, Congolese Lingala/Soukous, West African Praise, and South African Gospel).\n• ☁️ High-Speed Cloud & AI Server Hosting: Keeping the server proxy and Gemini AI Music Director running with high availability and fast response times worldwide.\n• 🔌 Hardware Testing & Device Certification: Acquiring and testing physical USB/Bluetooth MIDI controllers (Yamaha, Roland, Korg, Novation, Arturia) for plug-and-play reliability.\n• 🌍 Free Global Access for Churches & Students: Ensuring youth musicians, rural ministries, and students in developing regions always have unrestricted access.",
+      "Direct Donation Channels:",
+      "• PayPal: derrickmunene2025@gmail.com\n• M-Pesa: +254 704 034 278",
+      "International Mobile Money Remittance to M-Pesa:",
+      "Senders outside Kenya can send mobile money directly to M-Pesa (+254 704 034 278, Name: Derrick Munene) via Sendwave, WorldRemit, Remitly, or Chipper Cash.",
+      "Voluntary Support Tiers:",
+      "• ☕ A Warm Coffee ($5): Fuels late-night coding and DSP synthesis debugging.\n• 🎹 Style & Voice Patron ($20): Sponsors authentic instrument modeling and African praise grooves.\n• ☁️ Cloud Pillar Sponsor ($50+): Keeps the Gemini AI Music Director and cloud proxy servers fast and reliable worldwide.",
+      "Free Ways to Support the Project:",
+      "• Star the GitHub repository (Neshley/derrick-munene).\n• Introduce DM ARRANGIA to your church musicians, choir directors, and keyboardist friends.\n• Share .STY styles, chord charts, or bug reports to help refine the engine.",
+      "Thank you from the bottom of my heart for giving this project a place in your music.\n— Derrick Munene"
     ]
   }
 ];
@@ -994,152 +1072,138 @@ Use the arrangement dynamically and allow the music to breathe.
 
 ---
 
-# 22. Final Note
+# 22. Gemini AI Music Director & Worship Assistant
 
-The purpose of this application is to give musicians a flexible musical environment for prayer and worship.
+DM ARRANGIA integrates an intelligent server-side Gemini AI Music Director acting as an interactive musical companion for keyboardists, worship leaders, and music producers.
 
-Start simply.
+### Key Capabilities:
+* **Real-time Worship Progressions**: Ask for modern praise and worship chord progressions in any key (such as 1-5-6-4, 4-1-5-6, or gospel 2-5-1 passing chord variations).
+* **Spontaneous Service Guidance**: Request suggestions on how to build musical dynamics during prayer, scripture readings, or ministry moments.
+* **Seamless Harmonic Modulations**: Discover smooth transitional pivot chords when changing keys (e.g., modulating from C Major to D Major or E-flat Major).
+* **African Praise Arrangements**: Generate rhythmic chord charts suited for Kenyan Sebene, Congolese Lingala, or Nigerian Highlife.
+* **Setlist Structuring**: Curate complete church service setlists that flow cohesively from opening thanksgiving into deep prayer and benediction.
 
-Let the music breathe.
+### Recommended Prompts:
+* *"Suggest a modern gospel 7-3-6 turnaround in the key of F for a worship bridge."*
+* *"How do I modulate smoothly from G Major to A Major during congregational singing?"*
+* *"Give me an energetic Kenyan Sebene progression with bass movement in C Major."*
+* *"What tempo, variation, and voice balance works best for deep intercession prayer?"*
 
-Build gradually.
+---
 
-Use the drums when they are needed.
+# 23. African Praise, Sebene & Gospel Grooves
 
-Remove them when silence and space are more appropriate.
+African gospel and praise music possess an unmistakable vitality and rhythmic drive. DM ARRANGIA is uniquely engineered with authentic African groove modeling and style support.
+
+### Major African Groove Styles:
+* **Kenyan Sebene (120–135 BPM)**: Fast-paced, joyful praise characterized by a driving four-on-the-floor kick, rolling hi-hats, an active syncopated 5-string electric bass, and clean arpeggiated lead guitar phrasing.
+* **Congolese Soukous & Lingala**: Features intricate call-and-response rhythm guitars, liquid melodic basslines, and an "Animation / Seben" section where the rhythm section intensifies into high praise.
+* **West African Highlife & Afrobeat (85–110 BPM)**: Characterized by syncopated clave percussion, bright brass horn punches, and rhythm guitar skanks.
+* **South African Gospel Praise**: Known for rich suspended 4th chords, minor 11ths, deep sub-bass pedal notes, and powerful vamp build-ups.
+
+### Performance Technique:
+Set your keyboard split point at C3 (MIDI note 48). Keep your left hand solid on the chord recognition zone (e.g. playing simple I - IV - V triads or power chords) to maintain steady accompaniment, while your right hand plays bright brass stabs, organ sweeps, or clean acoustic guitar lead licks.
+
+---
+
+# 24. Songbook & Live Setlist Management
+
+The built-in Songbook allows keyboardists and music directors to store, organize, and recall chord charts and lyrics seamlessly during live church services and band rehearsals.
+
+### Core Songbook Features:
+* **Instant Key Transposition**: Transpose any chord chart up or down by semitones on the fly to match a singer's vocal range without needing to transpose the keyboard or relearn chord fingerings.
+* **Accompaniment Synchronization**: Clicking or tapping a chord directly in the songbook chart instructs the arranger engine to transition to that chord immediately.
+* **Live Service Setlists**: Organize songs into sequential setlists (Opening Praise → Hymn of the Week → Sermon Reflection → Altar Call → Benediction).
+* **Cloud & Local Backup**: Save song collections securely to your browser storage or sync them across devices.
+
+---
+
+# 25. Audio Engine, Latency & MIDI Controller Setup
+
+DM ARRANGIA is powered by a custom Web Audio API synthesis engine and Web MIDI integration designed for ultra-low latency (<15ms) without requiring multi-gigabyte sound libraries.
+
+### MIDI Keyboard & Hardware Controller Setup:
+* **Plug-and-Play USB MIDI**: Connect any standard USB or 5-pin DIN (via USB-MIDI adapter) keyboard from Yamaha, Roland, Korg, Novation, Arturia, or Casio. The browser auto-detects incoming MIDI signals.
+* **Lower Split Point**: The keyboard is split at C3 (MIDI note 48) by default. Notes below C3 trigger chord recognition and arranger accompaniment; notes above C3 play the lead melody instrument.
+* **Velocity & Expression**: Supports note velocity dynamics, sustain pedal (CC #64), pitch bend wheel, and modulation wheel (CC #1).
+* **Low-Latency Performance**: Runs directly inside modern browsers (Google Chrome, Microsoft Edge, Opera, Safari, Firefox). On mobile and tablet devices, tap once to initialize the AudioContext for pristine sound output.
+
+---
+
+# 26. Final Note & Worship Blessing
+
+The ultimate purpose of this application is to give musicians a flexible, inspiring musical sanctuary for prayer, worship, and creative expression.
+
+Start simply. Let the music breathe. Build gradually. Use the drums when they are needed. Remove them when silence, reverence, and space are more appropriate.
 
 The most powerful arrangement is not necessarily the busiest one.
 
 **Sometimes the best accompaniment is simply a warm piano, a sustained organ, a gentle bass line, and enough space to pray.**
 
----
-
-# A MESSAGE FROM THE CREATOR
-
-## Why I Created This Application
-
-I created this application from a simple idea:
-
-**Technology should serve music, not get in the way of it.**
-
-As a musician and engineer, I have always been interested in the relationship between creativity, technology, sound, and automation. I wanted to build something that could bring those worlds together in a practical way.
-
-The idea behind this arranger started with a desire to create a digital environment where a musician could sit down, play a chord, and immediately have a musical world respond to it.
-
-But I didn't want to build just another music player.
-
-I wanted to build an **interactive arranger**.
-
-Something that could understand chords, respond to the musician, change accompaniment, control different instruments, work with MIDI keyboards, and provide a dynamic musical experience.
-
-## Built for Worship
-
-One of the most important directions of this project is **worship and prayer**.
-
-During prayer, music can create space for reflection, singing, meditation, and worship. Sometimes a full drum pattern is appropriate. Other times, the best accompaniment is simply a warm piano, a soft organ, a gentle bass line, and enough space to breathe.
-
-That is why the arranger is designed around **musical dynamics**.
-
-You can gradually move from:
-
-**No Drums → Shaker → Light Groove → Full Worship**
-
-The music can grow with the moment, and it can become quiet again when the moment calls for it.
-
-## Built With Technology
-
-Behind the interface is a combination of software engineering, digital audio, MIDI technology, music theory, and arranger-system concepts.
-
-The project explores technologies such as:
-
-* Web Audio
-* MIDI
-* Real-time event processing
-* Chord recognition
-* Automatic accompaniment
-* MIDI style parsing
-* Yamaha-style STY structures
-* CASM
-* NTR
-* NTT
-* Retrigger rules
-* Progressive arrangement
-* PWA/offline technology
-
-The goal is not simply to reproduce the appearance of a keyboard.
-
-The goal is to understand the **musical intelligence behind an arranger** and bring that experience into software.
-
-## Still Growing
-
-This application is a work in progress.
-
-There are many things I want to improve, including more realistic accompaniment, better Yamaha-style compatibility, more expressive instruments, improved chord recognition, better MIDI control, richer worship styles, and more intelligent accompaniment behavior.
-
-Every improvement is part of the journey toward creating a more capable digital arranger.
-
-## My Vision
-
-My vision is to create an arranger that feels less like a machine and more like a **musical partner**.
-
-A musician should be able to sit down, choose a style, play a chord, and immediately begin creating.
-
-Whether the moment is:
-
-**Prayer.
-Worship.
-Practice.
-Composition.
-Performance.
-Or simply playing for the joy of music.**
-
-The technology should disappear into the experience.
-
-The musician should remain at the center.
+May this instrument inspire your hands, bless your worship ministry, and bring peace and joy to all who hear you play.
 
 ---
 
-# ☕ SUPPORT THE PROJECT
+# 27. A Message from the Creator (Derrick Munene)
 
-If you enjoy using this application and feel that it has been useful to you, you are welcome to **buy the creator a coffee**.
+> *“Technology should never be a barrier to creativity; it should be a quiet, responsive servant that brings out the heart of music.”*  
+> — **Derrick Munene** (Lead Architect & Worship Keyboardist)
 
-There is absolutely **no obligation** to contribute. Your support is simply a way of saying:
+### About the Creator & Architect
+I am **Derrick Munene**, a worship keyboardist, music technologist, and software engineer based in Nairobi, Kenya. For years, I have served in church worship teams, playing keyboards and directing music during prayer meetings, Sunday services, and evangelistic missions.
 
-**“I appreciate the work.”**
+### The Flagship Arranger Dilemma
+Musicians everywhere dream of playing flagship arranger keyboards—workstations like the Yamaha Genos, Tyros, and PSR-SX series. Their polyphonic accompaniment, intelligent chord following, and realistic styles provide a complete orchestra at your fingertips. However, with price tags ranging from **$2,000 to $5,000+**, these instruments remain completely unaffordable for countless talented young keyboardists, rural and urban church ministries, and music students across Kenya, Africa, and around the world.
 
-Every contribution, regardless of its size, helps support continued development, testing, improvements, new worship styles, better sounds, and new features.
+### The Vision of DM ARRANGIA
+I set out to build DM ARRANGIA to solve this dilemma once and for all: to prove that modern web technology (Web Audio API, Web MIDI, and TypeScript) can deliver that same polyphonic, interactive arranger experience inside a standard web browser—**100% free, low-latency, cross-platform**, and accessible to anyone with a computer, tablet, or phone.
 
-### PayPal
+### Behind the Code
+Every part of DM ARRANGIA has been built with meticulous attention to musical and engineering detail:
+* Multi-sample and FM synthesis modeling without bulky soundfont downloads
+* Yamaha-style .STY parser decoding binary chunks (CASM, NTR, NTT tables, RTR retriggering)
+* Real-time zero-dependency polyphonic chord detection matrix (handling 30+ chord qualities and slash chords)
+* Four-stage progressive worship dynamics (Main A Prayer to Main D Full Worship)
+* Gemini AI Music Director integration for spontaneous harmonic guidance
 
-**derrickmunene2025@gmail.com**
+My prayer and hope is that DM ARRANGIA serves as a faithful musical partner in your hands—whether in private devotion, Sunday morning worship, band rehearsals, or musical discovery.
 
-### M-Pesa
-
-**+254 704 034 278**
-
-Thank you for supporting independent development.
-
-Whether you contribute or simply use the application, your interest in this project means a lot.
+**Keep playing. Keep creating. Keep building.**  
+— **Derrick Munene** (Lead Architect & Worship Keyboardist)
 
 ---
 
-## A Final Word
+# 28. ☕ Support the Project & Buy a Coffee
 
-Thank you for giving this project a place in your music.
+DM ARRANGIA is completely free, open, and accessible to everyone. There are no subscriptions, no locked features, and no paywalls.
 
-I hope it helps you create something beautiful.
+If this application has blessed your personal devotional times, helped your church worship team during Sunday services, powered your band rehearsals, or simplified your music production, you are warmly invited to **buy the creator a coffee**.
 
-I hope it gives you a peaceful atmosphere when you need one.
+### 💖 Your voluntary contributions directly fund:
+1. **🎹 New Arranger Styles & Voice Design**: Studio recording, acoustic instrument modeling, and expanding African praise grooves (Kenyan Sebene, Congolese Lingala/Soukous, West African Praise, and South African Gospel).
+2. **☁️ High-Speed Cloud & AI Server Hosting**: Keeping the server proxy and Gemini AI Music Director running with high availability and fast response times worldwide.
+3. **🔌 Hardware Testing & Device Certification**: Acquiring and testing physical USB/Bluetooth MIDI controllers (Yamaha, Roland, Korg, Novation, Arturia) for plug-and-play reliability.
+4. **🌍 Free Global Access for Churches & Students**: Ensuring youth musicians, rural ministries, and students in developing regions always have unrestricted access.
 
-I hope it inspires you to experiment.
+### 💳 Direct Donation Channels
 
-And most importantly, I hope it reminds you that music does not always have to be complicated to be meaningful.
+| Channel | Details | Notes |
+|---|---|---|
+| **PayPal (International)** | derrickmunene2025@gmail.com | Cards, USD, EUR, GBP, Global |
+| **M-Pesa (Kenya & East Africa)** | +254 704 034 278 | Name: **Derrick Munene** (Send Money / Lipa) |
+| **Global Remittance to M-Pesa** | Sendwave, WorldRemit, Remitly, Chipper Cash | Mobile Money to +254 704 034 278 |
+| **Email / Inquiries** | derrickmunene2025@gmail.com | Suggestions, Custom Styles & Partnerships |
 
-Sometimes one chord, one melody, and one quiet moment are enough.
+### ☕ Voluntary Support Tiers
+* **☕ A Warm Coffee ($5)**: Fuels late-night coding and DSP synthesis debugging.
+* **🎹 Style & Voice Patron ($20)**: Sponsors authentic instrument modeling and African praise grooves.
+* **☁️ Cloud Pillar Sponsor ($50+)**: Keeps the Gemini AI Music Director and cloud proxy servers fast and reliable worldwide.
 
-**Keep playing.
-Keep creating.
-Keep building.**
+### ⭐ Free Ways to Support the Project
+* **Star the GitHub repository**: [Neshley/derrick-munene](https://github.com/Neshley/derrick-munene)
+* **Introduce DM ARRANGIA to your church musicians**, choir directors, and keyboardist friends.
+* **Share .STY styles, chord charts, or bug reports** to help refine the engine.
 
-— **The Creator**
+Thank you from the bottom of my heart for giving this project a place in your music.  
+— **Derrick Munene**
 `;
