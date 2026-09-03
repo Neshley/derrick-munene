@@ -39,9 +39,13 @@ import { ApiKeyModal } from './components/ApiKeyModal';
 import { SettingsPage } from './components/SettingsPage';
 import { StyleCreatorModal } from './components/StyleCreatorModal';
 import { MediaPlayerView } from './components/media/MediaPlayerView';
+import { StartupLoadingScreen } from './components/StartupLoadingScreen';
 import { addMultiPadBank } from './audio/multiPads';
 
 export default function App() {
+  // --- Loading / Startup Screen State ---
+  const [isAppLoaded, setIsAppLoaded] = useState<boolean>(false);
+
   // --- Active App Mode: WORKSTATION <-> MEDIA PLAYER ---
   const [appMode, setAppMode] = useState<'workstation' | 'media_player'>('workstation');
 
@@ -502,6 +506,11 @@ export default function App() {
     }
     setAppMode(mode);
   };
+
+  // --- Show Opening / Startup Loading Page ---
+  if (!isAppLoaded) {
+    return <StartupLoadingScreen onStart={() => setIsAppLoaded(true)} />;
+  }
 
   return (
     <div className="h-screen w-screen max-h-screen overflow-hidden bg-zinc-950 text-zinc-100 flex flex-col selection:bg-amber-500 selection:text-black">

@@ -922,8 +922,8 @@ export const MainLcdDisplay: React.FC<MainLcdDisplayProps> = ({
         {/* Right Column: Live Part Voices (Right 1, Right 2, Left) */}
         <div className="lg:col-span-3 bg-zinc-900/80 rounded-xl p-3 border border-zinc-800/80 flex flex-col justify-between gap-1.5">
           <div className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 mb-0.5 flex items-center justify-between">
-            <span>LIVE KEYBOARD VOICES</span>
-            <span className="text-amber-400 text-[11px] font-mono">OTS LINK</span>
+            <span>SOUND VOICES</span>
+            <span className="text-amber-400 text-[11px] font-mono">AUTO SOUND</span>
           </div>
 
           {/* Right 1 Voice */}
@@ -933,7 +933,7 @@ export const MainLcdDisplay: React.FC<MainLcdDisplayProps> = ({
             className="flex items-center justify-between p-1.5 rounded-lg bg-zinc-950/80 hover:bg-zinc-800 border border-amber-500/30 text-left transition-colors group"
           >
             <div className="truncate">
-              <div className="text-[9px] font-bold uppercase text-amber-400">RIGHT 1 (MAIN LEAD)</div>
+              <div className="text-[9px] font-bold uppercase text-amber-400">MAIN SOUND (RIGHT 1)</div>
               <div className="text-xs font-semibold text-zinc-100 group-hover:text-amber-200 truncate">
                 {VOICE_MAP.get(r1Voice)?.name || r1Voice}
               </div>
@@ -953,9 +953,9 @@ export const MainLcdDisplay: React.FC<MainLcdDisplayProps> = ({
           >
             <div className="truncate">
               <div className="text-[9px] font-bold uppercase text-sky-400 flex items-center gap-1">
-                <span>RIGHT 2 (LAYER)</span>
+                <span>LAYER SOUND (RIGHT 2)</span>
                 <span className="text-[8px] font-mono px-1 rounded bg-zinc-800">
-                  {r2Enabled ? 'ACTIVE' : 'OFF'}
+                  {r2Enabled ? 'ON' : 'OFF'}
                 </span>
               </div>
               <div className="text-xs font-semibold truncate">
@@ -977,9 +977,9 @@ export const MainLcdDisplay: React.FC<MainLcdDisplayProps> = ({
           >
             <div className="truncate">
               <div className="text-[9px] font-bold uppercase text-purple-400 flex items-center gap-1">
-                <span>LEFT (LOWER SPLIT)</span>
+                <span>LEFT HAND SOUND (LOWER)</span>
                 <span className="text-[8px] font-mono px-1 rounded bg-zinc-800">
-                  {lEnabled ? 'ACTIVE' : 'OFF'}
+                  {lEnabled ? 'ON' : 'OFF'}
                 </span>
               </div>
               <div className="text-xs font-semibold truncate">

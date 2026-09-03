@@ -265,14 +265,14 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-base sm:text-lg font-bold font-['Chakra_Petch'] text-zinc-100 uppercase tracking-wide">
-                  Workstation Master Settings &amp; Preferences
+                  Settings &amp; Preferences
                 </h2>
                 <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-mono font-bold border border-amber-500/30">
-                  DM ARRANGIA SYSTEM
+                  DM ARRANGIA
                 </span>
               </div>
               <p className="text-xs text-zinc-400">
-                Configure arranger engine, 5-band master EQ, DSP reverb, MIDI matrix routing, ARRANGIA AI &amp; backups
+                Adjust arranger settings, equalizer, sound effects, MIDI keyboard, ARRANGIA AI, and backups
               </p>
             </div>
           </div>
@@ -310,7 +310,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
             }`}
           >
             <Volume2 className="w-4 h-4" />
-            <span>Audio, EQ &amp; DSP Reverb</span>
+            <span>Sound &amp; Effects</span>
           </button>
 
           <button
@@ -322,7 +322,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
             }`}
           >
             <Piano className="w-4 h-4" />
-            <span>MIDI Hardware Routing</span>
+            <span>MIDI Keyboard</span>
           </button>
 
           <button
@@ -334,7 +334,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
             }`}
           >
             <Sparkles className="w-4 h-4" />
-            <span>ARRANGIA AI Director</span>
+            <span>ARRANGIA AI</span>
           </button>
 
           <button
@@ -346,7 +346,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
             }`}
           >
             <Palette className="w-4 h-4" />
-            <span>Display &amp; Key Touch</span>
+            <span>Display &amp; Keys</span>
           </button>
 
           <button
@@ -358,7 +358,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
             }`}
           >
             <Database className="w-4 h-4" />
-            <span>Data &amp; Cloud Backup</span>
+            <span>Save &amp; Backup</span>
           </button>
 
           <button

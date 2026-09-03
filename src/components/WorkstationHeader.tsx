@@ -241,8 +241,8 @@ export const WorkstationHeader: React.FC<WorkstationHeaderProps> = ({
                   type="button"
                   onClick={onToggleSidebar}
                   className="p-1.5 sm:p-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 hover:border-zinc-700 text-zinc-300 hover:text-amber-400 active:scale-95 transition-all shadow-xs cursor-pointer shrink-0 touch-manipulation min-h-[36px] flex items-center justify-center"
-                  title={isSidebarCollapsed ? 'Expand Sidebar Deck (Ctrl+B)' : 'Collapse Sidebar Deck (Ctrl+B)'}
-                  aria-label="Toggle Workstation Sidebar"
+                  title={isSidebarCollapsed ? 'Open Sidebar (Ctrl+B)' : 'Close Sidebar (Ctrl+B)'}
+                  aria-label="Toggle Sidebar"
                 >
                   {isSidebarCollapsed ? (
                     <PanelLeftOpen className="w-4 h-4" />
@@ -272,32 +272,32 @@ export const WorkstationHeader: React.FC<WorkstationHeaderProps> = ({
                 type="button"
                 onClick={onOpenStyleBrowser}
                 className="flex items-center gap-1 px-2 py-1 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-200 border border-zinc-800 hover:border-amber-500/40 transition-colors cursor-pointer shrink-0 touch-manipulation min-h-[32px]"
-                title="Current Accompaniment Style (Click to open Style Browser)"
+                title="Current Rhythm Style (Click to choose another style)"
               >
                 <span className="text-zinc-500 text-[9px] uppercase font-bold">STYLE:</span>
                 <span className="font-bold text-amber-300 whitespace-nowrap max-w-[140px] truncate">{currentStyleName}</span>
               </button>
 
               {/* Tempo */}
-              <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-zinc-900 text-zinc-200 border border-zinc-800 shrink-0 min-h-[32px]" title="Style Tempo in Beats Per Minute">
+              <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-zinc-900 text-zinc-200 border border-zinc-800 shrink-0 min-h-[32px]" title="Speed in Beats Per Minute (BPM)">
                 <span className="text-zinc-500 text-[9px] uppercase font-bold">BPM:</span>
                 <span className="font-bold text-amber-400">{currentTempo}</span>
               </div>
 
               {/* Key */}
-              <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-zinc-900 text-zinc-200 border border-zinc-800 shrink-0 min-h-[32px]" title="Key Signature">
+              <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-zinc-900 text-zinc-200 border border-zinc-800 shrink-0 min-h-[32px]" title="Musical Key">
                 <span className="text-zinc-500 text-[9px] uppercase font-bold">KEY:</span>
                 <span className="font-bold text-cyan-300">{currentKey}</span>
               </div>
 
               {/* Time Signature */}
-              <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-zinc-900 text-zinc-200 border border-zinc-800 shrink-0 min-h-[32px]" title="Meter / Time Signature">
+              <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-zinc-900 text-zinc-200 border border-zinc-800 shrink-0 min-h-[32px]" title="Time Signature (Beats per measure)">
                 <span className="text-zinc-500 text-[9px] uppercase font-bold">TIME:</span>
                 <span className="font-bold text-zinc-300">{timeSignature[0]}/{timeSignature[1]}</span>
               </div>
 
               {/* Audio Engine */}
-              <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-zinc-900 text-zinc-400 border border-zinc-800 shrink-0 min-h-[32px]" title="DSP Audio Engine: 48kHz High-Definition Web Audio Synthesizer">
+              <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-zinc-900 text-zinc-400 border border-zinc-800 shrink-0 min-h-[32px]" title="Sound Engine: High-Definition Web Audio">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
                 <span className="text-[10px] whitespace-nowrap">48kHz HD</span>
               </div>
@@ -307,7 +307,7 @@ export const WorkstationHeader: React.FC<WorkstationHeaderProps> = ({
                 type="button"
                 onClick={onOpenAiStudio}
                 className="flex items-center gap-1 px-2 py-1 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 transition-colors cursor-pointer shrink-0 touch-manipulation min-h-[32px]"
-                title="ARRANGIA AI Status (Click to open AI Studio)"
+                title="ARRANGIA AI (Click to open AI Studio)"
               >
                 <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse shadow-[0_0_4px_rgba(251,191,36,0.8)] shrink-0" />
                 <span className="text-[10px] font-bold whitespace-nowrap">AI READY</span>
@@ -326,7 +326,7 @@ export const WorkstationHeader: React.FC<WorkstationHeaderProps> = ({
                       ? 'bg-amber-500 text-zinc-950 font-black shadow-sm'
                       : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
                   }`}
-                  title="Switch to Performance Mode (Clean, focused stage view with large chord display)"
+                  title="Stage View: Clean screen focused on large chord display"
                 >
                   PERF
                 </button>
@@ -339,7 +339,7 @@ export const WorkstationHeader: React.FC<WorkstationHeaderProps> = ({
                       ? 'bg-amber-500 text-zinc-950 font-black shadow-sm'
                       : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
                   }`}
-                  title="Switch to Arrangia Studio / Edit Mode (Expose Digital Mixer, MultiPads, Registration & Arrangia AI)"
+                  title="Studio View: Show Sound Mixer, Pads, and ARRANGIA AI"
                 >
                   STUDIO
                 </button>
@@ -358,7 +358,7 @@ export const WorkstationHeader: React.FC<WorkstationHeaderProps> = ({
                       ? 'bg-amber-500 text-zinc-950 shadow-sm font-extrabold'
                       : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
                   }`}
-                  title="Switch to DM Arrangia Workstation"
+                  title="Switch to Keyboard Workstation"
                 >
                   <Piano className="w-3.5 h-3.5 shrink-0" />
                   <span>WORKSTATION</span>
@@ -372,7 +372,7 @@ export const WorkstationHeader: React.FC<WorkstationHeaderProps> = ({
                       ? 'bg-gradient-to-r from-amber-500 to-amber-400 text-zinc-950 shadow-sm font-extrabold'
                       : 'text-zinc-400 hover:text-amber-300 hover:bg-zinc-900'
                   }`}
-                  title="Switch to Lark Universal Media Player (MP3, WAV, FLAC, M4A, MP4, MKV)"
+                  title="Switch to Media Player (Audio and Video)"
                 >
                   <Disc className="w-3.5 h-3.5 shrink-0" />
                   <span>MEDIA PLAYER</span>
@@ -388,7 +388,7 @@ export const WorkstationHeader: React.FC<WorkstationHeaderProps> = ({
                   type="button"
                   onClick={onOpenStyleCreator}
                   className="px-2.5 py-1 rounded-lg text-xs font-mono font-bold text-amber-300 bg-gradient-to-r from-amber-950/60 to-amber-900/40 hover:from-amber-900/80 hover:to-amber-800/60 border border-amber-500/50 flex items-center gap-1.5 transition-all shadow-xs cursor-pointer active:scale-95 shrink-0 whitespace-nowrap touch-manipulation min-h-[32px]"
-                  title="Style Creator (Compose Intros, Mains A-D, Fills & Break)"
+                  title="Style Creator: Build your own rhythm styles"
                 >
                   <Flame className="w-3.5 h-3.5 text-amber-400 shrink-0" />
                   <span>Style Creator</span>
@@ -400,7 +400,7 @@ export const WorkstationHeader: React.FC<WorkstationHeaderProps> = ({
                   type="button"
                   onClick={onOpenPrayerAtmosphere}
                   className="px-2.5 py-1 rounded-lg text-xs font-mono font-bold text-amber-300 bg-amber-950/40 hover:bg-amber-900/60 border border-amber-500/40 flex items-center gap-1.5 transition-all cursor-pointer shrink-0 whitespace-nowrap touch-manipulation min-h-[32px]"
-                  title="Continuous Prayer & Worship Pad Drone"
+                  title="Continuous prayer and worship background pads"
                 >
                   <Sparkles className="w-3.5 h-3.5 text-amber-400 shrink-0" />
                   <span>Prayer Pad</span>
@@ -412,7 +412,7 @@ export const WorkstationHeader: React.FC<WorkstationHeaderProps> = ({
                   type="button"
                   onClick={onOpenWorshipSongbook}
                   className="px-2.5 py-1 rounded-lg text-xs font-mono font-bold text-cyan-300 bg-cyan-950/40 hover:bg-cyan-900/60 border border-cyan-500/40 flex items-center gap-1.5 transition-all cursor-pointer shrink-0 whitespace-nowrap touch-manipulation min-h-[32px]"
-                  title="Worship Setbook & Song Database"
+                  title="Worship songbook and song list"
                 >
                   <Music className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
                   <span>Setbook</span>
@@ -424,7 +424,7 @@ export const WorkstationHeader: React.FC<WorkstationHeaderProps> = ({
                   type="button"
                   onClick={onOpenEffectsRack}
                   className="px-2.5 py-1 rounded-lg text-xs font-mono font-bold text-purple-300 bg-purple-950/40 hover:bg-purple-900/60 border border-purple-500/40 flex items-center gap-1.5 transition-all cursor-pointer shrink-0 whitespace-nowrap touch-manipulation min-h-[32px]"
-                  title="DSP Reverb, Tape Delay, Chorus & Parametric EQ"
+                  title="Sound effects: Reverb, Echo, Chorus & Equalizer"
                 >
                   <Sliders className="w-3.5 h-3.5 text-purple-400 shrink-0" />
                   <span>DSP FX</span>
@@ -436,7 +436,7 @@ export const WorkstationHeader: React.FC<WorkstationHeaderProps> = ({
                   type="button"
                   onClick={onOpenAudioRecording}
                   className="px-2.5 py-1 rounded-lg text-xs font-mono font-bold text-red-300 bg-red-950/40 hover:bg-red-900/60 border border-red-500/40 flex items-center gap-1.5 transition-all cursor-pointer shrink-0 whitespace-nowrap touch-manipulation min-h-[32px]"
-                  title="Record Master Take & Export WAV/MIDI"
+                  title="Record your playing and save as audio or MIDI"
                 >
                   <Circle className="w-3 h-3 fill-red-500 text-red-500 shrink-0" />
                   <span>Record</span>
@@ -598,14 +598,14 @@ export const WorkstationHeader: React.FC<WorkstationHeaderProps> = ({
                 <div>
                   <div className="flex items-center gap-2">
                     <h3 className="text-sm sm:text-base font-bold tracking-wider text-zinc-100 font-['Chakra_Petch'] uppercase">
-                      Studio Tools &amp; Applications
+                      Studio Tools &amp; Apps
                     </h3>
                     <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30 font-mono font-bold">
-                      GENOS·PRO
+                      PRO
                     </span>
                   </div>
                   <p className="text-[11px] sm:text-xs text-zinc-400 mt-0.5">
-                    Launch specialized arranger modules, audio DSP units, songbook databases, and manual companion
+                    Open sound effects, recording, song lists, user guide, and player
                   </p>
                 </div>
               </div>
@@ -614,7 +614,7 @@ export const WorkstationHeader: React.FC<WorkstationHeaderProps> = ({
                 type="button"
                 onClick={() => setIsToolsMenuOpen(false)}
                 className="p-1.5 sm:p-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-zinc-100 border border-zinc-800 hover:border-zinc-700 transition-colors cursor-pointer"
-                title="Close Studio Tools (Esc)"
+                title="Close Tools (Esc)"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -627,7 +627,7 @@ export const WorkstationHeader: React.FC<WorkstationHeaderProps> = ({
               <div className="flex flex-col gap-2">
                 <div className="text-xs font-mono font-bold uppercase tracking-wider text-amber-400/90 flex items-center gap-2">
                   <Flame className="w-3.5 h-3.5" />
-                  <span>Creative Arranger &amp; Performance Engines</span>
+                  <span>Rhythm Styles &amp; Performance</span>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
                   
@@ -647,14 +647,14 @@ export const WorkstationHeader: React.FC<WorkstationHeaderProps> = ({
                           <Disc className="w-4 h-4" />
                         </div>
                         <span className="text-[10px] font-mono font-bold text-amber-300 bg-amber-950/90 px-2 py-0.5 rounded border border-amber-500/60 animate-pulse">
-                          ALL CODECS
+                          ALL FILES
                         </span>
                       </div>
                       <div className="font-bold text-sm text-zinc-100 group-hover:text-amber-300 transition-colors">
                         Lark Media Player
                       </div>
                       <p className="text-[11px] text-zinc-400 line-clamp-2">
-                        Universal media player supporting MP3, WAV, FLAC, M4A, MP4, MKV with synced lyrics, queue, &amp; visualizer.
+                        Play songs and videos (MP3, WAV, FLAC, MP4) with visualizer and lyrics.
                       </p>
                     </button>
                   )}
@@ -678,7 +678,7 @@ export const WorkstationHeader: React.FC<WorkstationHeaderProps> = ({
                         Style Creator
                       </div>
                       <p className="text-[11px] text-zinc-400 line-clamp-2">
-                        Compose custom Yamaha STY accompaniment rhythms (Intros, Mains A–D, Fills, Break &amp; Endings).
+                        Build your own custom accompaniment styles (Intros, Variations A–D, Fills, &amp; Endings).
                       </p>
                     </button>
                   )}
@@ -700,7 +700,7 @@ export const WorkstationHeader: React.FC<WorkstationHeaderProps> = ({
                         Prayer Atmosphere
                       </div>
                       <p className="text-[11px] text-zinc-400 line-clamp-2">
-                        Continuous warm worship pad drone, spontaneous prayer flow keys, and custom ambient WAV playback.
+                        Continuous warm background pad sounds and ambient audio for prayer and worship.
                       </p>
                     </button>
                   )}
@@ -719,10 +719,10 @@ export const WorkstationHeader: React.FC<WorkstationHeaderProps> = ({
                         <span className="text-[10px] font-mono text-cyan-400">Songbook</span>
                       </div>
                       <div className="font-bold text-sm text-zinc-100 group-hover:text-cyan-300 transition-colors">
-                        Worship Setbook
+                        Worship Songbook
                       </div>
                       <p className="text-[11px] text-zinc-400 line-clamp-2">
-                        Manage church service song lists, lyrics, chord sheets, and 1-click instant arranger style recalls.
+                        Organize your worship song list, chord sheets, lyrics, and 1-click style setups.
                       </p>
                     </button>
                   )}
@@ -744,7 +744,7 @@ export const WorkstationHeader: React.FC<WorkstationHeaderProps> = ({
                         Chord Sequencer
                       </div>
                       <p className="text-[11px] text-zinc-400 line-clamp-2">
-                        Step-by-step worship chord progression looper with automatic transposition and hands-free accompaniment.
+                        Loop chord patterns hands-free with automatic key change and accompaniment.
                       </p>
                     </button>
                   )}
@@ -766,7 +766,7 @@ export const WorkstationHeader: React.FC<WorkstationHeaderProps> = ({
                         ARRANGIA AI
                       </div>
                       <p className="text-[11px] text-zinc-400 line-clamp-2">
-                        Generate custom worship styles, rhythm patterns, multi-pads, and harmonic arrangements with ARRANGIA AI.
+                        Create custom worship styles, rhythm patterns, and chords automatically with AI.
                       </p>
                     </button>
                   )}
@@ -777,7 +777,7 @@ export const WorkstationHeader: React.FC<WorkstationHeaderProps> = ({
               <div className="flex flex-col gap-2">
                 <div className="text-xs font-mono font-bold uppercase tracking-wider text-purple-400/90 flex items-center gap-2">
                   <Sliders className="w-3.5 h-3.5" />
-                  <span>Audio Routing, DSP FX &amp; Automation</span>
+                  <span>Sound Effects, Microphone &amp; Recording</span>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2.5">
                   
@@ -792,10 +792,10 @@ export const WorkstationHeader: React.FC<WorkstationHeaderProps> = ({
                         <Sliders className="w-4 h-4" />
                       </div>
                       <div className="font-bold text-sm text-zinc-100 group-hover:text-purple-300 transition-colors">
-                        DSP Effects Rack
+                        Sound Effects (DSP)
                       </div>
                       <p className="text-[11px] text-zinc-400">
-                        Lexicon-style Reverb, Stereo Delay, Chorus modulation &amp; 3-Band Parametric EQ.
+                        Adjust Reverb, Echo / Delay, Chorus, and 3-Band Equalizer.
                       </p>
                     </button>
                   )}
@@ -811,10 +811,10 @@ export const WorkstationHeader: React.FC<WorkstationHeaderProps> = ({
                         <Mic className="w-4 h-4" />
                       </div>
                       <div className="font-bold text-sm text-zinc-100 group-hover:text-rose-300 transition-colors">
-                        Vocal Workstation
+                        Microphone Station
                       </div>
                       <p className="text-[11px] text-zinc-400">
-                        Live microphone input, preamp gain, compressor dynamics, noise gate &amp; FX sends.
+                        Plug in your mic, set volume gain, noise filter, and vocal effects.
                       </p>
                     </button>
                   )}
@@ -824,16 +824,16 @@ export const WorkstationHeader: React.FC<WorkstationHeaderProps> = ({
                     <button
                       type="button"
                       onClick={() => handleOpenTool(onOpenMidiAutomation)}
-                      className="p-3 rounded-xl bg-zinc-900/80 hover:bg-indigo-500/15 border border-zinc-800 hover:border-indigo-500/50 text-left transition-all group cursor-pointer flex flex-col gap-1.5"
+                      className="p-3 rounded-xl bg-zinc-900/80 hover:bg-indigo-500/15 border border-indigo-800/50 hover:border-indigo-500 text-left transition-all group cursor-pointer flex flex-col gap-1.5"
                     >
                       <div className="p-2 w-fit rounded-lg bg-indigo-500/20 text-indigo-300 group-hover:scale-105 transition-transform">
                         <Volume2 className="w-4 h-4" />
                       </div>
                       <div className="font-bold text-sm text-zinc-100 group-hover:text-indigo-300 transition-colors">
-                        MIDI CC Automation
+                        MIDI Knob Controls
                       </div>
                       <p className="text-[11px] text-zinc-400">
-                        Custom hardware CC mapping (Expression, Modulation, Cutoff, Reverb Send).
+                        Map knobs and sliders on your keyboard to volume and effects.
                       </p>
                     </button>
                   )}
@@ -849,10 +849,10 @@ export const WorkstationHeader: React.FC<WorkstationHeaderProps> = ({
                         <Circle className="w-4 h-4 fill-red-500 text-red-500" />
                       </div>
                       <div className="font-bold text-sm text-zinc-100 group-hover:text-red-300 transition-colors">
-                        Audio &amp; MIDI Recorder
+                        Recorder
                       </div>
                       <p className="text-[11px] text-zinc-400">
-                        Record live performance takes and export studio-grade lossless WAV / MIDI chords.
+                        Record your performance and download it as high-quality WAV or MIDI.
                       </p>
                     </button>
                   )}
@@ -863,7 +863,7 @@ export const WorkstationHeader: React.FC<WorkstationHeaderProps> = ({
               <div className="flex flex-col gap-2">
                 <div className="text-xs font-mono font-bold uppercase tracking-wider text-zinc-400 flex items-center gap-2">
                   <BookOpen className="w-3.5 h-3.5" />
-                  <span>Manual, Companion &amp; System Configuration</span>
+                  <span>Guides, Settings &amp; Support</span>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2.5">
                   
@@ -878,10 +878,10 @@ export const WorkstationHeader: React.FC<WorkstationHeaderProps> = ({
                         <BookOpen className="w-4 h-4" />
                       </div>
                       <div className="font-bold text-sm text-zinc-100 group-hover:text-amber-300 transition-colors">
-                        Worship Companion
+                        User Guide &amp; Tips
                       </div>
                       <p className="text-[11px] text-zinc-400">
-                        Complete handbook, stage prayer guide, dynamics tips, and printable PDF/Word manual.
+                        Full manual with worship stages, tips, and printable PDF or Word file.
                       </p>
                     </button>
                   )}
@@ -897,10 +897,10 @@ export const WorkstationHeader: React.FC<WorkstationHeaderProps> = ({
                         <Settings className="w-4 h-4" />
                       </div>
                       <div className="font-bold text-sm text-zinc-100 group-hover:text-zinc-200 transition-colors">
-                        Engine Preferences
+                        Settings
                       </div>
                       <p className="text-[11px] text-zinc-400">
-                        Audio buffer, sample rate, split point, keyboard keys display &amp; latency optimizations.
+                        Adjust audio sound quality, keyboard split point, and display options.
                       </p>
                     </button>
                   )}
@@ -916,10 +916,10 @@ export const WorkstationHeader: React.FC<WorkstationHeaderProps> = ({
                         <Coffee className="w-4 h-4" />
                       </div>
                       <div className="font-bold text-sm text-amber-300 group-hover:text-amber-200 transition-colors">
-                        Creator Support ☕
+                        Support Creator ☕
                       </div>
                       <p className="text-[11px] text-zinc-400">
-                        Read a special message from the creator, leave feedback, or support continued development.
+                        Read a note from the creator and support future development.
                       </p>
                     </button>
                   )}
@@ -935,10 +935,10 @@ export const WorkstationHeader: React.FC<WorkstationHeaderProps> = ({
                         <Key className="w-4 h-4" />
                       </div>
                       <div className="font-bold text-sm text-zinc-100 group-hover:text-zinc-200 transition-colors">
-                        API Credentials
+                        Gemini AI Key
                       </div>
                       <p className="text-[11px] text-zinc-400">
-                        Configure custom Gemini API key for unlimited AI style creation &amp; phrase generation.
+                        Add your Gemini API key to enable AI style and phrase creation.
                       </p>
                     </button>
                   )}

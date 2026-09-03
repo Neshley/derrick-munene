@@ -313,11 +313,11 @@ export const InteractiveKeyboard: React.FC<InteractiveKeyboardProps> = ({
         <div className="flex items-center gap-1.5 bg-zinc-900/90 px-3 py-1.5 rounded-xl border border-zinc-800 max-w-full overflow-x-auto">
           <span className="text-[10px] font-mono font-bold text-zinc-500 uppercase shrink-0 flex items-center gap-1">
             <Sparkles className="w-3 h-3 text-cyan-400" />
-            CHORD FLOW:
+            CHORDS PLAYED:
           </span>
           <div className="flex items-center gap-1">
             {ChordEngine.getHistory().length === 0 ? (
-              <span className="text-[11px] font-mono text-zinc-600 italic">Play lower keys to build progression</span>
+              <span className="text-[11px] font-mono text-zinc-600 italic">Play left-hand keys to show chords</span>
             ) : (
               ChordEngine.getHistory().map((ch, i, arr) => (
                 <React.Fragment key={`${ch.displayName}-${i}`}>
@@ -347,7 +347,7 @@ export const InteractiveKeyboard: React.FC<InteractiveKeyboardProps> = ({
                   ? 'bg-cyan-500/20 text-cyan-300 border-cyan-400 shadow-sm shadow-cyan-500/20'
                   : 'bg-zinc-900 text-zinc-400 border-zinc-800 hover:text-zinc-200 hover:bg-zinc-850'
               }`}
-              title="Sync Start (Shift+S): Accompaniment triggers on first chord key"
+              title="Sync Start: Rhythm starts when you press a key"
             >
               <div
                 className={`w-2 h-2 rounded-full ${
@@ -359,7 +359,7 @@ export const InteractiveKeyboard: React.FC<InteractiveKeyboardProps> = ({
               <span className="uppercase text-[10px] tracking-wide">SYNC START</span>
               {syncStart && (
                 <span className="text-[9px] px-1 py-0.2 rounded bg-cyan-400 text-zinc-950 font-sans font-black animate-pulse">
-                  ARMED
+                  READY
                 </span>
               )}
             </button>
@@ -372,14 +372,14 @@ export const InteractiveKeyboard: React.FC<InteractiveKeyboardProps> = ({
           }`}>
             <span className="text-[10px] uppercase tracking-wider text-zinc-400">SPLIT POINT:</span>
             <span className="font-bold text-amber-300">
-              {noteNames[splitPoint % 12]}{Math.floor(splitPoint / 12) - 1} (MIDI {splitPoint})
+              {noteNames[splitPoint % 12]}{Math.floor(splitPoint / 12) - 1} ({splitPoint})
             </span>
             <button
               id="btn-set-split-point"
               onClick={() => setIsSettingSplit(s => !s)}
               className="ml-1 text-[10px] px-1.5 py-0.5 rounded bg-zinc-800 hover:bg-zinc-700 text-amber-400 font-sans font-semibold border border-zinc-700 cursor-pointer"
             >
-              {isSettingSplit ? 'TAP ANY KEY' : 'CHANGE'}
+              {isSettingSplit ? 'PRESS A KEY' : 'CHANGE'}
             </button>
           </div>
         </div>
@@ -406,14 +406,14 @@ export const InteractiveKeyboard: React.FC<InteractiveKeyboardProps> = ({
               onClick={() => setVisibleKeyRange('49')}
               className={`px-2 py-1 cursor-pointer transition-colors ${visibleKeyRange === '49' ? 'bg-amber-500 text-zinc-950 font-bold' : 'text-zinc-400 hover:text-zinc-200'}`}
             >
-              49K
+              49 Keys
             </button>
             <button
               id="btn-keys-61"
               onClick={() => setVisibleKeyRange('61')}
               className={`px-2 py-1 cursor-pointer transition-colors ${visibleKeyRange === '61' ? 'bg-amber-500 text-zinc-950 font-bold' : 'text-zinc-400 hover:text-zinc-200'}`}
             >
-              61K
+              61 Keys
             </button>
           </div>
         </div>
@@ -425,11 +425,11 @@ export const InteractiveKeyboard: React.FC<InteractiveKeyboardProps> = ({
         <div className="flex items-center gap-3 flex-wrap">
           <div className="flex items-center gap-1.5 text-amber-400">
             <span className="w-2.5 h-2.5 rounded-xs bg-amber-500 inline-block shadow-[0_0_8px_rgba(245,158,11,0.8)]" />
-            <span>LOWER ZONE: CHORD ACCOMPANIMENT &amp; LEFT VOICE</span>
+            <span>LEFT KEYS: CHORDS &amp; ACCOMPANIMENT</span>
           </div>
           <div className="flex items-center gap-1.5 text-sky-400">
             <span className="w-2.5 h-2.5 rounded-xs bg-cyan-400 inline-block shadow-[0_0_8px_rgba(6,182,212,0.8)]" />
-            <span>UPPER ZONE: RIGHT 1 (LEAD) &amp; RIGHT 2 (LAYER)</span>
+            <span>RIGHT KEYS: MELODY &amp; SOLO</span>
           </div>
         </div>
 

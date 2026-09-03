@@ -1035,10 +1035,10 @@ export const WorkstationSidebar: React.FC<WorkstationSidebarProps> = ({
                           <Disc className="w-4 h-4 text-amber-400" />
                           <span className="font-bold text-xs text-amber-300">Lark Media Player</span>
                         </div>
-                        <span className="text-[9px] font-mono uppercase px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-bold">ALL CODECS</span>
+                        <span className="text-[9px] font-mono uppercase px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-bold">ALL FILES</span>
                       </div>
                       <p className="text-[11px] text-zinc-400 leading-tight">
-                        MP3, WAV, FLAC, M4A, MP4, MKV with real-time audio visualizers, lyrics, and queues.
+                        Play songs and videos (MP3, WAV, FLAC, MP4) with music visualizer and lyrics.
                       </p>
                       <button
                         id="btn-sidebar-open-media-player"
@@ -1057,12 +1057,12 @@ export const WorkstationSidebar: React.FC<WorkstationSidebarProps> = ({
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <BookOpen className="w-4 h-4 text-amber-400" />
-                          <span className="font-bold text-xs text-amber-300">Worship Companion Guide</span>
+                          <span className="font-bold text-xs text-amber-300">Worship &amp; User Guide</span>
                         </div>
-                        <span className="text-[9px] font-mono uppercase px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-bold">24 SEC</span>
+                        <span className="text-[9px] font-mono uppercase px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-bold">GUIDE</span>
                       </div>
                       <p className="text-[11px] text-zinc-400 leading-tight">
-                        Complete manual with prayer stages, arrangement levels (Main A–D), BPM, chords, &amp; quick reference.
+                        Complete guide with rhythm variations (A–D), chords, and tips.
                       </p>
                       <button
                         id="btn-sidebar-open-worship-guide"
@@ -1081,12 +1081,12 @@ export const WorkstationSidebar: React.FC<WorkstationSidebarProps> = ({
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <Coffee className="w-4 h-4 text-amber-400" />
-                          <span className="font-bold text-xs text-zinc-200">Message from the Creator</span>
+                          <span className="font-bold text-xs text-zinc-200">Support the Creator</span>
                         </div>
                         <span className="text-[9px] font-mono uppercase px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-bold">☕ SUPPORT</span>
                       </div>
                       <p className="text-[11px] text-zinc-400 leading-tight">
-                        Read the creator's vision for worship technology, sound design, and how to buy a coffee.
+                        Read a note from the creator and learn how to support the project.
                       </p>
                       <button
                         id="btn-sidebar-open-creator-message"
@@ -1094,7 +1094,7 @@ export const WorkstationSidebar: React.FC<WorkstationSidebarProps> = ({
                         className="w-full py-1.5 px-2.5 rounded-lg bg-zinc-800 hover:bg-amber-500/20 hover:border-amber-500/50 border border-zinc-700 text-amber-300 font-semibold text-xs flex items-center justify-center gap-1.5 transition-all shadow-sm active:scale-95 cursor-pointer"
                       >
                         <Coffee className="w-3.5 h-3.5 text-amber-400" />
-                        <span>Read Vision &amp; Support Channels</span>
+                        <span>Read Message &amp; Support</span>
                       </button>
                     </div>
                   )}
@@ -1105,12 +1105,12 @@ export const WorkstationSidebar: React.FC<WorkstationSidebarProps> = ({
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <Key className="w-4 h-4 text-amber-400" />
-                          <span className="font-bold text-xs text-zinc-200">Gemini AI API Key</span>
+                          <span className="font-bold text-xs text-zinc-200">Gemini AI Key</span>
                         </div>
                         <span className="text-[9px] font-mono uppercase px-1.5 py-0.5 rounded bg-emerald-950/80 text-emerald-300 border border-emerald-500/30 font-bold">BROWSER ONLY</span>
                       </div>
                       <p className="text-[11px] text-zinc-400 leading-tight">
-                        Provide your own Google Gemini API key to enable live Arranger Styles, Chord Reharmonizations, and Synth generation. Saved exclusively in your browser localStorage.
+                        Add your Google Gemini API key to create new styles and chords with AI. Saved only in your browser.
                       </p>
                       <button
                         id="btn-sidebar-tools-api-key"
@@ -1118,7 +1118,7 @@ export const WorkstationSidebar: React.FC<WorkstationSidebarProps> = ({
                         className="w-full py-1.5 px-2.5 rounded-lg bg-zinc-800 hover:bg-amber-500/20 hover:border-amber-500/50 border border-zinc-700 text-amber-300 font-semibold text-xs flex items-center justify-center gap-1.5 transition-all shadow-sm active:scale-95 cursor-pointer"
                       >
                         <Key className="w-3.5 h-3.5 text-amber-400" />
-                        <span>Manage Gemini API Key</span>
+                        <span>Manage Gemini Key</span>
                       </button>
                     </div>
                   )}
@@ -1129,12 +1129,12 @@ export const WorkstationSidebar: React.FC<WorkstationSidebarProps> = ({
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
                           <Settings2 className="w-4 h-4 text-amber-400" />
-                          <span className="font-bold text-xs text-zinc-200">Workstation Settings</span>
+                          <span className="font-bold text-xs text-zinc-200">Settings</span>
                         </div>
                         <span className="text-[9px] font-mono uppercase px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-300 font-bold">SYSTEM</span>
                       </div>
                       <p className="text-[11px] text-zinc-400 leading-tight">
-                        Configure keyboard split presets, chord recognition modes, audio buffer &amp; engine backup JSON.
+                        Set sound quality, chord recognition, keyboard split, and backup options.
                       </p>
                       <button
                         id="btn-sidebar-open-settings"
@@ -1142,7 +1142,7 @@ export const WorkstationSidebar: React.FC<WorkstationSidebarProps> = ({
                         className="w-full py-1.5 px-2.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-zinc-200 hover:text-amber-300 font-semibold text-xs flex items-center justify-center gap-1.5 transition-all shadow-sm active:scale-95 cursor-pointer"
                       >
                         <Settings2 className="w-3.5 h-3.5 text-amber-400" />
-                        <span>Open Settings Page</span>
+                        <span>Open Settings</span>
                       </button>
                     </div>
                   )}
@@ -1153,7 +1153,7 @@ export const WorkstationSidebar: React.FC<WorkstationSidebarProps> = ({
                     className="w-full py-2 px-3 rounded-lg bg-cyan-950/50 hover:bg-cyan-900/60 text-cyan-300 border border-cyan-500/40 text-xs font-semibold flex items-center justify-center gap-2 transition-colors shadow-xs"
                   >
                     <Layers className="w-3.5 h-3.5 text-cyan-400" />
-                    <span>Chord Progression Sequencer</span>
+                    <span>Chord Sequencer (Auto Chords)</span>
                   </button>
 
                   {/* Quick Action Shortcuts */}
