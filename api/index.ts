@@ -5,9 +5,8 @@ const app = express();
 
 app.use(express.json({ limit: '500kb' }));
 
-// Mount routes on both root and /api for maximum compatibility with Vercel rewrites
+// Cleanly mount API routes under /api
 app.use('/api', aiRouter);
-app.use('/', aiRouter);
 
 export default function handler(req: Request, res: Response) {
   return app(req, res);

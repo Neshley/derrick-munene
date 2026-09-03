@@ -108,15 +108,21 @@ export class AudioEngine {
 
   public init() {
     this._isDisposed = false;
-    if (this.ctx) {
+    if (this.ctx && this.ctx.state !== 'closed' && this.masterGain && this.compressor) {
       if (this.ctx.state === 'suspended') {
-        this.ctx.resume();
+        this.ctx.resume().catch((e) => console.warn('AudioContext resume failed', e));
       }
       return;
     }
 
+    if (this.ctx && this.ctx.state === 'closed') {
+      this.ctx = null;
+    }
+
     const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-    this.ctx = new AudioContextClass();
+    if (!this.ctx) {
+      this.ctx = new AudioContextClass();
+    }
 
     // Master bus chain
     this.masterGain = this.ctx.createGain();

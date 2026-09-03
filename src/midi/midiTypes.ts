@@ -95,6 +95,14 @@ export interface MidiDeviceInfo {
   connection: 'open' | 'closed' | 'pending';
 }
 
+// Strongly typed Web MIDI API browser interfaces using official DOM types
+export type WebMidiAccess = MIDIAccess;
+export type WebMidiInput = MIDIInput;
+export type WebMidiOutput = MIDIOutput;
+export type WebMidiMessageEvent = MIDIMessageEvent;
+export type WebMidiConnectionEvent = MIDIConnectionEvent;
+export type WebMidiPort = MIDIPort;
+
 export interface MidiChannelMapping {
   r1: number;      // 1-16 (default 1)
   r2: number;      // 1-16 (default 2)

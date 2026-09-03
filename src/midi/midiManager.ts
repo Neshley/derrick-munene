@@ -17,6 +17,10 @@ import {
   MidiManagerListeners,
   MidiPitchBendEvent,
   MidiState,
+  WebMidiAccess,
+  WebMidiConnectionEvent,
+  WebMidiInput,
+  WebMidiMessageEvent,
 } from './midiTypes';
 
 export interface LiveVoicesConfig {
@@ -33,7 +37,7 @@ export interface LiveVoicesConfig {
 export class MidiManager {
   private static instance: MidiManager | null = null;
 
-  private midiAccess: any = null;
+  private midiAccess: WebMidiAccess | null = null;
   private isInitialized: boolean = false;
   private isInitializing: boolean = false;
 
@@ -126,7 +130,7 @@ export class MidiManager {
       this.isInitializing = false;
 
       // Handle hot-plugging / unplugging of MIDI devices
-      midiAccess.onstatechange = (e: any) => {
+      midiAccess.onstatechange = (e: WebMidiConnectionEvent) => {
         this.handleDeviceStateChange(e);
       };
 
@@ -139,9 +143,9 @@ export class MidiManager {
       });
 
       return true;
-    } catch (err: any) {
+    } catch (err: unknown) {
       this.isInitializing = false;
-      const errorMsg = err?.message || 'MIDI access request denied or failed.';
+      const errorMsg = err instanceof Error ? err.message : 'MIDI access request denied or failed.';
       this.updateState({
         permissionGranted: false,
         error: errorMsg,
@@ -159,7 +163,7 @@ export class MidiManager {
     const devices: MidiDeviceInfo[] = [];
     const inputs = Array.from(this.midiAccess.inputs.values());
 
-    inputs.forEach((input: any) => {
+    inputs.forEach((input: WebMidiInput) => {
       devices.push({
         id: input.id,
         name: input.name || 'Generic MIDI Device',
@@ -202,14 +206,16 @@ export class MidiManager {
   private bindInputListeners() {
     if (!this.midiAccess) return;
 
-    this.midiAccess.inputs.forEach((input: any) => {
-      input.onmidimessage = (event: any) => {
+    this.midiAccess.inputs.forEach((input: WebMidiInput) => {
+      input.onmidimessage = (event: WebMidiMessageEvent) => {
         // Filter by selected device if configured
         if (this.selectedDeviceId && input.id !== this.selectedDeviceId) {
           return;
         }
 
-        this.processRawMidiData(event.data, event.timeStamp);
+        if (event.data) {
+          this.processRawMidiData(event.data, event.timeStamp);
+        }
       };
     });
   }
@@ -217,7 +223,7 @@ export class MidiManager {
   /**
    * Handles device connection/disconnection event.
    */
-  private handleDeviceStateChange(event: any) {
+  private handleDeviceStateChange(event: WebMidiConnectionEvent) {
     const port = event.port;
     const isInput = port.type === 'input';
 
@@ -830,7 +836,7 @@ export class MidiManager {
     this.panic();
     if (this.midiAccess) {
       this.midiAccess.onstatechange = null;
-      this.midiAccess.inputs.forEach((input: any) => {
+      this.midiAccess.inputs.forEach((input: WebMidiInput) => {
         input.onmidimessage = null;
       });
     }

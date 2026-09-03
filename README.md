@@ -1,195 +1,103 @@
 # DM ARRANGIA 🎹✨
+### Professional Web-Based Arranger Workstation & Live Performance Engine
 
-A feature-packed, professional interactive arranger keyboard built with **React**, **TypeScript**, **Web Audio API**, and **Web MIDI API**. It brings the authentic feel and power of high-end hardware arranger keyboards (such as Yamaha Genos, Tyros, and PSR-S/SX series) right into your browser with zero latency and full offline PWA capabilities.
+A feature-packed, professional interactive arranger workstation built with **React 19**, **TypeScript**, **Web Audio API**, and the **Web MIDI API**. Inspired by high-end hardware arranger keyboards (such as Yamaha Genos, Tyros, and PSR-S/SX series), DM ARRANGIA brings real-time chord detection, multi-track accompaniment styles, dual right voice layering, vocal processing, and AI musical assistance directly to your browser.
 
 ---
 
-## 🌟 Key Features
+## 🏗️ Architecture & Technology Breakdown
 
-### 1. Yamaha `.STY` Style & Accompaniment Engine
-- **Full Arranger Control**: Main Variations (A, B, C, D), Fill-Ins (A, B, C, D), Break, Intros (1–3), and Endings (1–3).
-- **Interactive Timing**: Real-time Synchro Start, Synchro Stop, Fade In/Out, and Tap Tempo.
-- **Factory & Custom Styles**: Ships with pre-loaded styles across Pop, Rock, African Worship, Highlife, Gospel, Jazz, Latin, and Ballads, with support for uploading custom Yamaha `.sty` and `.sff` accompaniment files.
-- **CASM / NTT Harmony Voicing**: Real-time chord harmonization and chord transposition for accompaniment tracks (Drums, Percussion, Bass, Chord 1, Chord 2, Pad, Phrase 1, Phrase 2).
+To ensure transparency and musical accuracy, DM ARRANGIA cleanly delineates its core subsystems:
 
-### 2. Multi-Part Sound Engine & Dual Right Voices
-- **Multi-Part Layering**: Independent sound generation and control for **Right 1 (R1)**, **Right 2 (R2)**, and **Left (L)** keyboard split zones.
-- **Dual Voice Blending**: Layer pianos with warm string pads, brass sections, electric pianos, organs, or synth leads.
-- **Custom Sound Synthesizers**: High-fidelity algorithmic sound engines including Acoustic Grand Piano, Rhodes EP, FM Electric Piano, Drawbar Gospel Organ, Church Pipe Organ, Warm Analog Pad, String Ensemble, Slap & Fingered Basses, Brass Sections, and Synth Leads.
-- **Adjustable Split Point**: Freely position the keyboard split point between chord accompaniment and solo performance keys.
+### 1. Real Web Audio Synthesis Engine
+- **Algorithmic Sound Generation**: 100% native Web Audio nodes (`OscillatorNode`, `BiquadFilterNode`, `GainNode`, `ConvolverNode`, `DelayNode`, `DynamicsCompressorNode`).
+- **No Mock or Prerecorded Loops for Synth Voices**: Voices such as *Concert Grand Piano*, *Warm EP*, *DX7 FM EP*, *Drawbar Gospel Organ*, *Church Pipe Organ*, *Warm Analog Pad*, *String Ensemble*, *Slap/Fingered Basses*, and *Gospel Brass* are synthesized using multi-oscillator detuning, filter envelopes, and waveshaping.
+- **DSP Master Effects Rack**: Studio-grade Convolver Reverb with impulse simulation, Stereo Tempo-Synced Delay with lowpass feedback damping, 3-Voice Modulation Chorus, and Master 3-Band Parametric EQ with real-time spectrum analysis.
+- **AudioEngine Lifecycle**: Managed through explicit `init()`, `disconnect()`, and `dispose()` cycles to ensure clean resource reclamation and zero audio node leaks.
 
-### 3. Advanced Real-Time Chord Detection
-- **Comprehensive Chord Vocabulary**: Full recognition for Major, Minor, 7th, Maj7, Min7, Sus2, Sus4, Add9, 6th, Min6, Diminished, Augmented, 9th, and Slash Chords (`C/E`, `G/B`, `F/A`).
-- **Flexible Play Modes**: Switch between **Fingered Chord Mode** (multi-finger chord recognition with inversion and bass-note detection) and **Single-Finger Mode**.
-- **Chord Sequencer**: Pre-program or paste progression text strings (e.g. `Cmaj7 | Am7 | Fmaj7 | Gsus4`) with automated beat-synchronized chord advancement.
+### 2. Multi-Track Arranger & Accompaniment Sequencer
+- **Yamaha `.STY` / SFF Format Compatibility**: Binary parser and engine for Yamaha style files.
+- **8 Accompaniment Parts**: Rhythm 1, Rhythm 2, Bass, Chord 1, Chord 2, Pad, Phrase 1, and Phrase 2.
+- **Yamaha Dynamic Sections**: Intros (1–3), Main Variations (A–D), Fill-Ins (AA, BB, CC, DD), Break, and Endings (1–3).
+- **CASM / NTT Harmony Voicing**: Harmonizes accompaniment parts in real time according to chord roots and chord types with chord inversions and voice-leading rules.
+- **Precise Lookahead Scheduling**: Uses a 25ms timer interval that schedules note events ahead in `AudioContext.currentTime` space, ensuring jitter-free timing immune to UI thread load.
 
-### 4. 🕊️ Continuous Prayer Atmosphere & Ambient Worship Pad
-- **Ambient Drone Generator**: Sustained atmospheric sound bed for prayer meetings, Scripture meditation, and altar ministry.
-- **Instant 12-Key Modulation**: Seamless crossfade between any root key without audio drops.
-- **Curated Atmosphere Presets**: *Deep Intimacy*, *Holy Presence*, *Still Waters*, *Revival Fire*, *Soaking Glory*, and *Shalom Peace* with built-in session timer.
+### 3. Web MIDI API Hardware Integration
+- **Plug-and-Play Hardware Connectivity**: Supports USB and Bluetooth MIDI keyboards and controller surfaces via native DOM `MIDIAccess`.
+- **Full Message Decoding**: High-resolution parsing for Note On, Note Off (including Note On with velocity 0), Pitch Bend (with semitone range configuration), Program Change, and Control Change messages.
+- **Continuous Controller Automation**: Supports Sustain Pedal (CC 64), Modulation Wheel (CC 1), Expression (CC 11), Channel Volume (CC 7), Pan (CC 10), and Filter Res/Cutoff (CC 71/74).
+- **Emergency MIDI Panic**: One-click zeroing of all sounding voices and CC controllers.
 
-### 5. 🎤 Vocal Workstation & Studio Microphone Strip
-- **Live Mic Input**: Low-latency microphone monitoring with dedicated input gain.
-- **Vocal DSP Chain**: 3-band parametric EQ, dynamic compressor, and independent studio Reverb and Delay FX sends.
+### 4. Server-Side AI Assistance & Security
+- **Strict Server-Side Proxy**: All Gemini AI interactions are routed exclusively through `/api/gemini/*` Express backend endpoints.
+- **Zero Client-Side Secret Leakage**: The client browser never touches or stores API keys. The server accesses `process.env.GEMINI_API_KEY`.
+- **Validation Schemas & Fallbacks**: Every AI request is validated with strict Zod schemas (`ArrangerStyleResponseSchema`, `MusicDirectorResponseSchema`, `SongbookAiResponseSchema`, `VoiceAiResponseSchema`) with robust fallbacks in case of unexpected AI formatting.
 
-### 6. 🎛️ Studio DSP Effects Rack & 10-Track Mixer
-- **DSP Rack**: Master Reverb (Room, Hall, Cathedral, Plate), Stereo Delay with feedback control, Multi-Voice Chorus, and Master 3-Band Parametric EQ.
-- **10-Track Console**: Independent volume faders, mute, solo, and stereo pan controls for every accompaniment part and keyboard voice.
+---
 
-### 7. 📖 Worship & Gospel Setbooks & Songbook Studio
-- **Full Setbook / Setlist Management**:
-  - **Create & Add Setbooks**: Organize songs into curated service setlists (e.g. *Sunday Morning Service*, *African Praise Night*, *Communion Set*) with custom themes, dates, and flow notes.
-  - **Edit & Reorder Setbooks**: Easily drag or use up/down controls to arrange the service song order and sequence.
-  - **Delete Setbooks**: Safely manage and remove old setlists.
-- **Custom Song Creator & Editor**:
-  - **+ Add New Songs**: Custom chord progressions, key selector, BPM, time signatures, category tags, lyrics, and arranger style mapping.
-  - **Edit Any Song**: Full editing capabilities for chords, sections (Verse, Chorus, Bridge, Vamp), and band performance cues.
-  - **Delete Songs**: Delete custom songs with confirmation prompts.
-  - **Local Persistence & JSON Backup**: All songs and setlists automatically save to browser storage; export and import JSON for band backups.
-- **Live Performance & Transposer Engine**:
-  - **Real-Time Key Transposition**: On-the-fly transposition (+/- semitones) with dynamic chord progression roadmap re-calculation.
-  - **Interactive Section Triggers**: Direct 1-click jumps to arranger sections (Verse -> Main A, Chorus -> Main B, Bridge -> Main C).
-  - **1-Click Arranger Setup**: Auto-selects appropriate style, tempo, starting section, and initial harmony in the transposed key.
-  - **Live Setbook Stepper**: Navigate sequentially through songs during live services with Previous and Next controls.
+## 🎶 Worship Songbook & Copyright Compliance
 
-### 8. 🔴 Master Audio Recording & MIDI CC Automation Studio
-- **Lossless Audio Capture**: Record complete workstation sessions directly to high-fidelity `.wav` or `.webm` audio files with accompaniment and vocals.
-- **Live MIDI CC Automation**: Record real-time continuous control changes during performances:
-  - **CC 1 (Modulation Wheel)**: Vibrato and modulation depth
-  - **CC 7 (Channel Volume)** & **CC 11 (Expression)**: Smooth volume dynamics and swell sweeps
-  - **CC 10 (Pan)**: Stereo image panning
-  - **CC 12 (Delay Send)**: Real-time echo wet mix
-  - **CC 64 (Sustain Pedal)**: Authentic piano and pad damper hold
-  - **CC 71 (Filter Resonance)** & **CC 74 (Filter Cutoff Frequency)**: Dynamic synth sweeps and brightness
-  - **CC 91 (Reverb Send)**: Master space and ambience depth
-  - **CC 93 (Chorus Send)**: Stereo chorus modulation
-- **Automation Curve Visualizer & Playback Engine**: Real-time oscilloscope curve display with scrubbable playback and overdubbing.
-- **Export Standards**: Export takes as Standard MIDI files (`.mid`) with Type 0/1 CC tracks for importing directly into Logic Pro, Pro Tools, Ableton Live, FL Studio, or Studio One, alongside raw JSON takes and formatted chord sheets.
+DM ARRANGIA is designed for church ministry, personal devotion, and live worship bands with strict adherence to copyright laws:
 
-### 9. 🔌 Plug-and-Play USB/Bluetooth MIDI Support
-- Connect any class-compliant MIDI keyboard or controller.
-- Auto-detects input devices, sustain pedals, pitch-bend wheels, modulation sliders, and knobs.
-- Full MIDI clock synchronization, channel routing, and emergency MIDI Panic feature.
+- **Factory Public Domain Hymns**: All built-in factory repertoire songs (*Amazing Grace*, *Holy, Holy, Holy*, *It Is Well With My Soul*, *Crown Him With Many Crowns*, *Blessed Assurance*, *Great Is Thy Faithfulness*, *How Great Thou Art*, etc.) are strictly in the public domain.
+- **Deprecation of Copyrighted Content**: Legacy references to copyrighted contemporary worship songs have been audited and purged.
+- **Custom User Song Engine**: Worship teams can create, edit, categorize, and transpose their own licensed songs, original chord progressions, and setlists. Custom songs are stored in browser `localStorage` and can be exported/imported as portable JSON backup files.
 
 ---
 
 ## 🚀 Getting Started
 
 ### Prerequisites
-- [Node.js](https://nodejs.org/) (version 18 or higher recommended)
-- npm or yarn
+- **Node.js**: v18.0.0 or higher
+- **npm**: v9.0.0 or higher
 
-### Installation & Local Development
+### Environment Variables
+Configure your environment variables in `.env` (refer to `.env.example`):
+```env
+# Server-side Gemini API key for AI Music Director & Style generation
+GEMINI_API_KEY=your_gemini_api_key_here
+```
 
-1. **Clone the repository**:
-   ```bash
-   git clone <repository-url>
-   cd dm-arrangia
-   ```
+### Installation & Run
 
-2. **Install dependencies**:
+1. **Install dependencies**:
    ```bash
    npm install
    ```
 
-3. **Start the development server**:
+2. **Run in Development Mode**:
    ```bash
    npm run dev
    ```
-   Open your browser and navigate to `http://localhost:3000`.
+   Open `http://localhost:3000` in your browser.
 
-4. **Build for production**:
+3. **Run Test Suite**:
+   ```bash
+   npm test
+   ```
+   Executes unit and integration tests for AudioEngine lifecycle, Chord detection, MIDI parsing, StylePlayer sequencing, and AI schemas.
+
+4. **Production Build**:
    ```bash
    npm run build
    ```
-   The production-ready static bundle will be generated in the `dist/` directory.
+
+5. **Production Start**:
+   ```bash
+   npm start
+   ```
 
 ---
 
-## 📦 Compiling / Packaging to Native Platforms
+## 🧪 Test Coverage
 
-The application is completely self-contained with pure Web Audio synthesis and runs 100% client-side. You can easily package it into native applications:
-
-### 1. Progressive Web App (PWA)
-- The app includes offline service workers and a web manifest.
-- Open in any modern browser (Chrome, Edge, Safari) and click **"Install App"** to run as a standalone desktop/mobile application with offline support.
-
-### 2. Native Desktop App (Windows / macOS / Linux with Electron or Tauri)
-- **Tauri**:
-  ```bash
-  npm install --save-dev @tauri-apps/cli
-  npx tauri init
-  npx tauri build
-  ```
-- **Electron**:
-  ```bash
-  npm install --save-dev electron electron-builder
-  ```
-  Point Electron's `main.js` to `dist/index.html` and compile with `electron-builder`.
-
-### 3. Native Mobile App (Android / iOS with Capacitor)
-```bash
-npm install @capacitor/core @capacitor/cli @capacitor/android @capacitor/ios
-npx cap init "DM ARRANGIA" com.dmarrangia.app
-npm run build
-npx cap add android
-npx cap open android
-```
-
----
-
-## 📂 Project Structure
-
-```
-├── public/                  # Static assets & PWA manifest
-├── src/
-│   ├── audio/               # Web Audio synthesis & playback engine
-│   │   ├── builtInStyles.ts # Factory accompaniment styles (.STY definitions)
-│   │   ├── chordEngine.ts   # Polyphonic chord analysis & inversion detection
-│   │   ├── chordSequencer.ts# Progression step sequencer logic
-│   │   ├── dspEffects.ts    # Reverb, Delay, Chorus & Master EQ
-│   │   ├── midiManager.ts   # Web MIDI API controller integration
-│   │   ├── prayerPadEngine.ts # Continuous prayer atmosphere drone engine
-│   │   ├── soundEngine.ts   # Voice synthesizers & sound generators
-│   │   ├── styleParser.ts   # Yamaha .STY file binary parser
-│   │   ├── stylePlayer.ts   # Arranger accompaniment sequencer & clock
-│   │   └── vocalEngine.ts   # Microphone processing & vocal FX strip
-│   ├── components/          # React UI components & modal dialogs
-│   │   ├── ArrangerControlBar.tsx # Style variation & fill buttons
-│   │   ├── AudioRecordingModal.tsx # Master recording modal
-│   │   ├── ChordDisplay.tsx       # Live chord detection & breadcrumb strip
-│   │   ├── ChordSequencerModal.tsx # Step sequencer & text progression parser
-│   │   ├── EffectsRackModal.tsx   # Studio DSP effect controls
-│   │   ├── InteractiveKeyboard.tsx # Visual 61/88-key touch/click keyboard
-│   │   ├── MultiTrackMixerModal.tsx # Accompaniment & voice track mixer
-│   │   ├── PrayerAtmosphereModal.tsx # Ambient prayer drone pad modal
-│   │   ├── VocalWorkstationModal.tsx # Live mic monitoring & vocal FX
-│   │   ├── WorkstationSidebar.tsx    # Slide-out quick controls & settings
-│   │   └── WorshipSongbookModal.tsx  # Interactive song repertoire
-│   ├── types/               # Global TypeScript interfaces and enums
-│   │   └── arranger.ts
-│   ├── App.tsx              # Main arranger workstation application layout
-│   ├── index.css            # Tailwind CSS styling
-│   └── main.tsx             # Application bootstrap entry point
-├── metadata.json            # Application metadata & permissions
-├── package.json             # NPM dependencies & scripts
-├── tsconfig.json            # TypeScript configuration
-└── vite.config.ts           # Vite build configuration
-```
-
----
-
-## 🎹 Keyboard Shortcuts & Interactive Controls
-
-| Control | Description |
-| :--- | :--- |
-| **Virtual Piano Keys** | Click or touch keys to trigger voices. Keys below the Split Point trigger accompaniment chords; keys above trigger solo/melody voices. |
-| **Spacebar** | Start / Stop Arranger Style Playback |
-| **Main A / B / C / D** | Switch accompaniment dynamic intensity variation |
-| **Fill A / B / C / D** | Trigger fill-in transitions synchronized to the next downbeat |
-| **Synchro Start** | Automatically starts accompaniment playback upon playing a chord |
-| **Tap Tempo** | Tap rhythmically 4 times to set BPM instantly |
-| **Registration Memories (1-8)**| Instant 1-touch recall of favorite style, tempo, voice layering, and split setups |
+The test suite covers critical music and engineering workflows using **Vitest**:
+- `tests/audioEngine.test.ts`: AudioEngine initialization, context recreation, node cleanup, and disposal states.
+- `tests/chordEngine.test.ts`: Multi-finger chord detection, single-finger mode, note/progression transposition.
+- `tests/midiParser.test.ts`: MIDI byte decoding, note on/off, sustain pedal CC 64, modulation CC 1, pitch bend normalization, and program change.
+- `tests/stylePlayer.test.ts`: Tempo bounds clamping, tap-tempo calculations, dynamic fill decisions, section transitions.
+- `tests/songbookStorage.test.ts`: Factory hymn loading, legacy copyrighted ID purging, custom song CRUD, and JSON import/export.
+- `tests/apiSecurity.test.ts`: Zod schema validation for server-side AI payloads.
 
 ---
 

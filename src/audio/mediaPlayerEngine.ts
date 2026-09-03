@@ -506,39 +506,47 @@ class MediaPlayerEngine {
     this.synthStep = 0;
     this.state.duration = track.duration || 240;
 
-    // Harmonic chord map based on song
+    // Harmonic chord map based on public domain hymn / ambient stem
     let chordProgression: number[][] = [];
-    if (track.url.includes('way_maker')) {
-      // E Major: E -> B -> C#m -> A
-      chordProgression = [
-        [52, 56, 59, 64], // E
-        [47, 51, 54, 59], // B
-        [49, 52, 56, 61], // C#m
-        [45, 49, 52, 57], // A
-      ];
-    } else if (track.url.includes('goodness_of_god')) {
-      // G Major: G -> G/B -> C -> D
+    if (track.url.includes('amazing_grace')) {
+      // G Major: G -> G/B -> C -> G
       chordProgression = [
         [43, 47, 50, 55], // G
         [47, 50, 55, 59], // G/B
         [48, 52, 55, 60], // C
-        [50, 53, 57, 62], // D
+        [43, 47, 50, 55], // G
       ];
-    } else if (track.url.includes('reckless_love')) {
-      // F#m -> E -> D -> A
+    } else if (track.url.includes('holy_holy')) {
+      // D Major: D -> Bm -> A -> D
       chordProgression = [
-        [42, 45, 49, 54], // F#m
-        [40, 44, 47, 52], // E
-        [38, 42, 45, 50], // D
+        [50, 54, 57, 62], // D
+        [47, 50, 54, 59], // Bm
+        [45, 49, 52, 57], // A
+        [50, 54, 57, 62], // D
+      ];
+    } else if (track.url.includes('it_is_well')) {
+      // C Major: C -> F -> G -> C
+      chordProgression = [
+        [48, 52, 55, 60], // C
+        [41, 45, 48, 53], // F
+        [43, 47, 50, 55], // G
+        [48, 52, 55, 60], // C
+      ];
+    } else if (track.url.includes('blessed_assurance') || track.url.includes('crown_him')) {
+      // D Major: D -> G -> D -> A
+      chordProgression = [
+        [50, 54, 57, 62], // D
+        [43, 47, 50, 55], // G
+        [50, 54, 57, 62], // D
         [45, 49, 52, 57], // A
       ];
-    } else if (track.url.includes('here_i_am')) {
-      // E -> B -> F#m -> A
+    } else if (track.url.includes('joyful_joyful')) {
+      // G Major: G -> D -> G -> C
       chordProgression = [
-        [52, 56, 59, 64],
-        [47, 51, 54, 59],
-        [42, 45, 49, 54],
-        [45, 49, 52, 57],
+        [43, 47, 50, 55], // G
+        [50, 54, 57, 62], // D
+        [43, 47, 50, 55], // G
+        [48, 52, 55, 60], // C
       ];
     } else {
       // Ambient atmospheric D Major flow

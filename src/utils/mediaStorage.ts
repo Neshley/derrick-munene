@@ -191,27 +191,32 @@ export const BUILT_IN_TRACKS: MediaTrack[] = [
   },
   {
     id: 'track-builtin-7',
-    title: 'Holy Forever (Matroska HD Video)',
-    artist: 'Church Live Production',
-    album: 'Live Broadcast Master',
+    title: 'Crown Him With Many Crowns (Symphonic Live Video)',
+    artist: 'Cathedral Brass & Choir (Public Domain, 1851)',
+    album: 'Anthems of the Ages',
     duration: 310,
-    url: 'builtin:video_holy_forever',
+    url: 'builtin:video_crown_him',
     format: 'mkv',
     isVideo: true,
     artworkGradient: 'from-amber-500 via-purple-700 to-rose-900',
-    lyrics: `[00:00.00] (Symphonic Video Stream & Live Drum Roll)
-[00:15.00] A thousand generations falling down in worship
-[00:24.00] To sing the song of ages to the Lamb
-[00:32.50] And all who've gone before us and all who will believe
-[00:41.00] Will sing the song of ages to the Lamb
-[00:50.00] Your name is the highest, Your name is the greatest
-[00:58.50] Your name stands above them all
-[01:07.00] All thrones and dominions, all powers and positions
-[01:15.50] Your name stands above them all
-[01:23.00] And the angels cry: Holy!
-[01:29.00] All creation cries: Holy!
-[01:36.00] You are lifted high: Holy!
-[01:42.50] Holy forever!`,
+    lyrics: `[00:00.00] (Symphonic Brass Fanfare & Live Timpani Roll)
+[00:15.00] Crown Him with many crowns
+[00:22.00] The Lamb upon His throne
+[00:29.00] Hark! How the heavenly anthem drowns
+[00:36.00] All music but its own!
+[00:44.00] Awake, my soul, and sing
+[00:51.00] Of Him who died for thee
+[00:58.00] And hail Him as thy matchless King
+[01:06.00] Through all eternity
+[01:16.00] Crown Him the Lord of life
+[01:23.00] Who triumphed o'er the grave
+[01:30.00] And rose victorious in the strife
+[01:38.00] For those He came to save!
+[01:48.00] (Grand Organ & Orchestral Interlude)
+[02:08.00] His glories now we sing
+[02:15.00] Who died and rose on high
+[02:22.00] Who came eternal life to bring
+[02:30.00] And lives that death may die!`,
     dateAdded: Date.now(),
     playCount: 15,
     isFavorite: true,

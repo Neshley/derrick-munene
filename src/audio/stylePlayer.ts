@@ -37,6 +37,7 @@ export class StylePlayer {
 
   // Timing & scheduling loop
   private timerId: number | null = null;
+  private endingTimeoutId: number | null = null;
   private nextStepTime: number = 0;
   private currentStep: number = 0; // absolute 16th steps elapsed
   private lookaheadMs: number = 25;
@@ -387,6 +388,10 @@ export class StylePlayer {
   }
 
   public async start() {
+    if (this.endingTimeoutId !== null) {
+      clearTimeout(this.endingTimeoutId);
+      this.endingTimeoutId = null;
+    }
     audioEngine.init();
     const ctx = audioEngine.getContext();
     if (!ctx) return;
@@ -413,6 +418,10 @@ export class StylePlayer {
     if (this.timerId !== null) {
       clearTimeout(this.timerId);
       this.timerId = null;
+    }
+    if (this.endingTimeoutId !== null) {
+      clearTimeout(this.endingTimeoutId);
+      this.endingTimeoutId = null;
     }
     audioEngine.stopAllNotes();
     this.listeners.forEach(l => l.onPlaybackStateChanged?.(false));
@@ -475,7 +484,11 @@ export class StylePlayer {
         this.currentSection = 'main_a';
         this.notifySectionChanged(this.currentSection);
       } else if (this.currentSection.startsWith('ending_') && measure >= measures) {
-        setTimeout(() => this.stop(), 500);
+        if (this.endingTimeoutId !== null) clearTimeout(this.endingTimeoutId);
+        this.endingTimeoutId = window.setTimeout(() => {
+          this.stop();
+          this.endingTimeoutId = null;
+        }, 500);
       }
     }
 
