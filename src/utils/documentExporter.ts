@@ -296,7 +296,7 @@ export async function downloadWordDocx(): Promise<void> {
   zip.file('word/document.xml', documentXml);
 
   const content = await zip.generateAsync({ type: 'blob' });
-  triggerDownload(content, 'Genos_Worship_Arranger_User_Guide.docx');
+  triggerDownload(content, 'DM_Arrangia_User_Guide.docx');
 }
 
 /**
@@ -332,7 +332,7 @@ export function downloadPdf(): void {
       doc.setTextColor(140, 140, 140);
       
       // Top runner
-      doc.text('Genos Worship Arranger — User Guide & Worship Companion', margin, 10);
+      doc.text('DM ARRANGIA — User Guide & Worship Companion', margin, 10);
       doc.setDrawColor(220, 220, 220);
       doc.line(margin, 12, pageWidth - margin, 12);
 
@@ -473,7 +473,7 @@ export function downloadPdf(): void {
   // Draw header and footers with accurate total page count
   drawHeaderFooter();
 
-  doc.save('Genos_Worship_Arranger_User_Guide.pdf');
+  doc.save('DM_Arrangia_User_Guide.pdf');
 }
 
 /**
@@ -481,7 +481,7 @@ export function downloadPdf(): void {
  */
 export function downloadMarkdown(): void {
   const blob = new Blob([RAW_MARKDOWN_GUIDE], { type: 'text/markdown;charset=utf-8' });
-  triggerDownload(blob, 'Genos_Worship_Arranger_User_Guide.md');
+  triggerDownload(blob, 'DM_Arrangia_User_Guide.md');
 }
 
 /**

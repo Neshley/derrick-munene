@@ -348,7 +348,7 @@ export const AiStudioModal: React.FC<AiStudioModalProps> = ({
     };
     if (onApplyStyle) {
       onApplyStyle(fullStyle);
-      showToast(`⚡ Loaded "${fullStyle.name}" into Genos Deck!`);
+      showToast(`⚡ Loaded "${fullStyle.name}" into Arrangia Deck!`);
     }
   };
 
@@ -415,7 +415,7 @@ export const AiStudioModal: React.FC<AiStudioModalProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-base sm:text-lg font-bold font-mono uppercase tracking-wider text-zinc-100 flex items-center gap-2">
-                  <span>Genos AI Co-Producer &amp; Studio</span>
+                  <span>ARRANGIA STUDIO • AI MUSIC DIRECTOR</span>
                 </h2>
                 <span className="flex items-center gap-1 text-[11px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-950/80 text-emerald-300 border border-emerald-500/40">
                   <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
@@ -645,7 +645,7 @@ export const AiStudioModal: React.FC<AiStudioModalProps> = ({
                         className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-zinc-950 font-mono font-bold text-xs flex items-center gap-1.5 transition-all shadow-md shadow-amber-500/30 cursor-pointer active:scale-95"
                       >
                         <Zap className="w-4 h-4 fill-current" />
-                        <span>Load Style into Genos Deck</span>
+                        <span>Load Style into Arrangia Deck</span>
                       </button>
                     </div>
                   </div>

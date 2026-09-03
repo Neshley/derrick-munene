@@ -102,7 +102,7 @@ export const ApiKeyModal: React.FC<ApiKeyModalProps> = ({ isOpen, onClose }) => 
                 </span>
               </h2>
               <p className="text-xs text-zinc-400">
-                Configure your Gemini API key for all AI Arranger features
+                Configure your Gemini API key for all ARRANGIA AI features
               </p>
             </div>
           </div>

@@ -1,7 +1,11 @@
 {
-  "name": "Derrick Munene Arranger Workstation",
-  "description": "Flagship digital arranger keyboard and music workstation with integrated AI Music Director, Yamaha .STY playback, real-time accompaniment engine, multi-track digital mixer, synthesizers, and media center.",
-  "requestFramePermissions": ["microphone"],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "name": "DM Arrangia — AI Arranger Workstation",
+  "description": "DM Arrangia is a professional AI-powered arranger workstation and worship studio for musicians, performers and creators.",
+  "requestFramePermissions": [
+    "microphone"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }
 

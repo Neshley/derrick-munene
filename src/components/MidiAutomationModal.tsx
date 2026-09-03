@@ -584,7 +584,7 @@ export const MidiAutomationModal: React.FC<MidiAutomationModalProps> = ({ isOpen
 
         {/* Footer */}
         <div className="p-4 border-t border-zinc-800 bg-zinc-950 flex items-center justify-between text-xs text-zinc-500 font-mono">
-          <span>MIDI CC Automation Engine v1.0 • Genos Pro Audio Architecture</span>
+          <span>MIDI CC Automation Engine v1.0 • DM ARRANGIA Audio Architecture</span>
           <button
             onClick={onClose}
             className="px-4 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-semibold"

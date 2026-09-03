@@ -233,10 +233,15 @@ export const AiMusicDirectorPanel: React.FC<AiMusicDirectorPanelProps> = ({
       {/* 1. Header with dynamic AI visual state */}
       <div className="flex items-center justify-between border-b border-zinc-800/80 pb-2.5">
         <div className="flex items-center gap-2">
-          <Sparkles className="w-4 h-4 text-amber-400" />
-          <h2 className="text-xs sm:text-sm font-black uppercase tracking-wider text-zinc-200 font-['Chakra_Petch']">
-            AI MUSIC DIRECTOR
-          </h2>
+          <Sparkles className="w-4 h-4 text-amber-400 shrink-0" />
+          <div className="flex flex-col">
+            <h2 className="text-xs sm:text-sm font-black uppercase tracking-wider text-zinc-100 font-['Chakra_Petch'] leading-tight">
+              ARRANGIA AI
+            </h2>
+            <span className="text-[9px] font-mono text-amber-400/90 font-bold tracking-wider uppercase">
+              AI MUSIC DIRECTOR
+            </span>
+          </div>
         </div>
 
         {/* Dynamic Status Indicator */}
@@ -244,7 +249,7 @@ export const AiMusicDirectorPanel: React.FC<AiMusicDirectorPanelProps> = ({
           {aiState === 'ready' && (
             <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-950/60 border border-emerald-500/40 text-emerald-300 text-[10px] font-mono font-bold">
               <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,1)] animate-pulse" />
-              <span>AI READY</span>
+              <span>READY</span>
             </div>
           )}
           {aiState === 'listening' && (
@@ -262,13 +267,13 @@ export const AiMusicDirectorPanel: React.FC<AiMusicDirectorPanelProps> = ({
           {aiState === 'suggestion' && (
             <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-amber-500/20 border border-amber-400 text-amber-300 text-[10px] font-mono font-bold">
               <span className="text-amber-400 font-black">✦</span>
-              <span>SUGGESTION READY</span>
+              <span>SUGGESTION</span>
             </div>
           )}
           {aiState === 'offline' && (
             <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-red-950/60 border border-red-500/40 text-red-300 text-[10px] font-mono font-bold">
               <span className="w-2 h-2 rounded-full bg-red-500" />
-              <span>AI OFFLINE</span>
+              <span>OFFLINE</span>
             </div>
           )}
 
@@ -426,7 +431,7 @@ export const AiMusicDirectorPanel: React.FC<AiMusicDirectorPanelProps> = ({
             type="text"
             value={userInput}
             onChange={(e) => setUserInput(e.target.value)}
-            placeholder="Ask your AI Music Director..."
+            placeholder="Ask Arrangia..."
             className="w-full pl-3 pr-8 py-2 rounded-xl bg-zinc-950 border border-zinc-800 focus:border-amber-500/80 text-xs text-zinc-100 placeholder-zinc-500 outline-none transition-all shadow-inner font-sans"
           />
           <button
@@ -445,7 +450,7 @@ export const AiMusicDirectorPanel: React.FC<AiMusicDirectorPanelProps> = ({
           type="submit"
           disabled={!userInput.trim()}
           className="p-2 rounded-xl bg-amber-500 hover:bg-amber-400 disabled:opacity-30 disabled:hover:bg-amber-500 text-zinc-950 transition-all cursor-pointer shadow-xs active:scale-95"
-          title="Send query to AI Music Director"
+          title="Send query to Arrangia AI"
         >
           <Send className="w-4 h-4" />
         </button>

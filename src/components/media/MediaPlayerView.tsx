@@ -388,10 +388,10 @@ export const MediaPlayerView: React.FC<MediaPlayerViewProps> = ({
             type="button"
             onClick={onSwitchToWorkstation}
             className="px-2.5 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-zinc-300 hover:text-amber-300 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-xs active:scale-95"
-            title="Switch back to Arranger Keyboard Workstation"
+            title="Switch back to DM Arrangia Workstation"
           >
             <ArrowLeft className="w-4 h-4 text-amber-400" />
-            <span className="hidden sm:inline">Arranger Workstation</span>
+            <span className="hidden sm:inline">DM Arrangia Workstation</span>
           </button>
 
           <div className="h-4 w-px bg-zinc-800 hidden sm:block" />

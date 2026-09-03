@@ -1,7 +1,7 @@
 {
-  "short_name": "Arranger Keyboard",
-  "name": "Arranger Keyboard Workstation",
-  "description": "Interactive arranger workstation keyboard with Yamaha .STY playback, real-time chord engine, sound synthesizers, multi-track mixer, and offline capabilities.",
+  "short_name": "DM Arrangia",
+  "name": "DM Arrangia — AI Arranger Workstation",
+  "description": "DM Arrangia is a professional AI-powered arranger workstation and worship studio for musicians, performers and creators.",
   "id": "/?source=pwa",
   "start_url": "/",
   "scope": "/",

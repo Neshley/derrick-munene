@@ -30,7 +30,9 @@ import {
   ChevronRight,
   ShieldAlert,
   Headphones,
-  Gauge
+  Gauge,
+  BookOpen,
+  Coffee
 } from 'lucide-react';
 import { midiManager } from '../midi/midiManager';
 import { audioEngine } from '../audio/audioEngine';
@@ -84,7 +86,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
   masterVolume,
   onMasterVolumeChange,
 }) => {
-  const [activeTab, setActiveTab] = useState<'arranger' | 'sound' | 'midi' | 'ai' | 'display' | 'backup'>('arranger');
+  const [activeTab, setActiveTab] = useState<'arranger' | 'sound' | 'midi' | 'ai' | 'display' | 'backup' | 'about'>('arranger');
   const [hasApiKey, setHasApiKey] = useState<boolean>(false);
   const [customStyleCount, setCustomStyleCount] = useState<number>(0);
   const [songbookCount, setSongbookCount] = useState<number>(0);
@@ -266,11 +268,11 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                   Workstation Master Settings &amp; Preferences
                 </h2>
                 <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-mono font-bold border border-amber-500/30">
-                  GENOS PRO SYSTEM
+                  DM ARRANGIA SYSTEM
                 </span>
               </div>
               <p className="text-xs text-zinc-400">
-                Configure arranger engine, 5-band master EQ, DSP reverb, MIDI matrix routing, AI Co-Producer &amp; backups
+                Configure arranger engine, 5-band master EQ, DSP reverb, MIDI matrix routing, ARRANGIA AI &amp; backups
               </p>
             </div>
           </div>
@@ -332,7 +334,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
             }`}
           >
             <Sparkles className="w-4 h-4" />
-            <span>AI Co-Producer Engine</span>
+            <span>ARRANGIA AI Director</span>
           </button>
 
           <button
@@ -357,6 +359,18 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
           >
             <Database className="w-4 h-4" />
             <span>Data &amp; Cloud Backup</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('about')}
+            className={`px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all whitespace-nowrap cursor-pointer ${
+              activeTab === 'about'
+                ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-xs'
+                : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/60'
+            }`}
+          >
+            <Info className="w-4 h-4" />
+            <span>About DM Arrangia</span>
           </button>
         </div>
 
@@ -1073,12 +1087,87 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
             </div>
           )}
 
+          {/* TAB 7: ABOUT */}
+          {activeTab === 'about' && (
+            <div className="space-y-6">
+              <div className="p-6 rounded-2xl bg-gradient-to-br from-zinc-900 via-zinc-950 to-zinc-900 border border-amber-500/30 space-y-5 text-center sm:text-left">
+                <div className="flex flex-col sm:flex-row items-center gap-4">
+                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-zinc-800 via-zinc-900 to-black flex items-center justify-center shadow-xl border border-amber-500/50 text-amber-400 font-black text-2xl tracking-tighter shrink-0">
+                    DM
+                  </div>
+                  <div>
+                    <h1 className="text-xl sm:text-2xl font-black tracking-wider text-zinc-100 font-['Chakra_Petch'] uppercase">
+                      DM ARRANGIA
+                    </h1>
+                    <p className="text-xs font-mono font-bold tracking-widest text-amber-400 uppercase">
+                      AI ARRANGER WORKSTATION
+                    </p>
+                    <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 mt-2">
+                      <span className="px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-300 text-xs font-mono border border-zinc-700">
+                        Version: v2.5 Pro System
+                      </span>
+                      <span className="px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-300 text-xs font-mono border border-amber-500/30">
+                        Developed by Derrick Munene
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="h-px bg-zinc-800" />
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs text-zinc-300">
+                  <div className="p-4 rounded-xl bg-zinc-950/80 border border-zinc-800 space-y-2">
+                    <div className="font-bold text-amber-400 font-mono text-[11px] uppercase">
+                      The Architecture
+                    </div>
+                    <p className="text-zinc-400 leading-relaxed">
+                      DM ARRANGIA brings the feel, expressiveness, and depth of flagship hardware arranger keyboards into the modern browser. Built on low-latency Web Audio API synthesis, polyphonic CASM style playback, and seamless Web MIDI integration.
+                    </p>
+                  </div>
+
+                  <div className="p-4 rounded-xl bg-zinc-950/80 border border-zinc-800 space-y-2">
+                    <div className="font-bold text-cyan-400 font-mono text-[11px] uppercase">
+                      ARRANGIA AI Co-Pilot
+                    </div>
+                    <p className="text-zinc-400 leading-relaxed">
+                      ARRANGIA AI serves as your dedicated musical director and co-producer—generating accompaniment styles, harmonizing chord progressions, modeling synth voices, and automatically balancing mixes.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Quick actions in About */}
+                <div className="flex flex-wrap items-center gap-3 pt-2">
+                  <button
+                    onClick={() => {
+                      onClose();
+                      onOpenUserGuide();
+                    }}
+                    className="px-4 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-bold transition-all border border-zinc-700 flex items-center gap-2 cursor-pointer"
+                  >
+                    <BookOpen className="w-4 h-4 text-amber-400" />
+                    <span>Worship Companion User Guide</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      onClose();
+                      onOpenCreatorMessage();
+                    }}
+                    className="px-4 py-2 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 text-xs font-bold transition-all border border-amber-500/40 flex items-center gap-2 cursor-pointer"
+                  >
+                    <Coffee className="w-4 h-4 text-amber-400" />
+                    <span>Message from Derrick Munene &amp; Support ☕</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
         </div>
 
         {/* Modal Footer */}
         <div className="p-3.5 bg-zinc-900 border-t border-zinc-800 flex items-center justify-between">
           <div className="text-xs text-zinc-400 font-mono">
-            Genos Pro Worship Workstation • v2.5 Pro System
+            DM ARRANGIA • AI ARRANGER WORKSTATION • v2.5 Pro System • Developed by Derrick Munene
           </div>
           <button
             onClick={onClose}

@@ -240,7 +240,7 @@ export const HardwareMidiDropdown: React.FC<HardwareMidiDropdownProps> = ({
                     )}
                   </div>
                   <p className="text-[11px] sm:text-xs text-zinc-400 mt-0.5">
-                    Ultra low-latency Web MIDI routing for Yamaha Genos arranger keys, pitch bend, CC &amp; 24 PPQN sync
+                    Ultra low-latency Web MIDI routing for DM ARRANGIA keys, pitch bend, CC &amp; 24 PPQN sync
                   </p>
                 </div>
               </div>
@@ -589,13 +589,13 @@ export const HardwareMidiDropdown: React.FC<HardwareMidiDropdownProps> = ({
             </div>
           </div>
 
-          {/* Section 3: Expandable Genos Arranger MIDI Channel Mapping Matrix */}
+          {/* Section 3: Expandable Arranger MIDI Channel Mapping Matrix */}
           {isChannelMapOpen && (
             <div className="p-3.5 bg-zinc-900/90 border border-zinc-800 rounded-xl flex flex-col gap-2.5 animate-in fade-in duration-150">
               <div className="flex items-center justify-between text-xs font-bold text-zinc-300 uppercase tracking-wider font-mono">
                 <span className="flex items-center gap-1.5 text-zinc-200">
                   <Layers className="w-3.5 h-3.5 text-amber-400" />
-                  Yamaha Genos Standard Arranger Channel Routing
+                  DM ARRANGIA Standard Arranger Channel Routing
                 </span>
                 <span className="text-[10px] font-normal text-zinc-400 px-2 py-0.5 rounded bg-zinc-950 border border-zinc-800">
                   GM2 / XG Spec

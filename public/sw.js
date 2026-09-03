@@ -72,10 +72,23 @@ self.addEventListener('fetch', (event) => {
 
   // Static Assets, Fonts, Scripts, Styles & Media
   const url = new URL(request.url);
-  const isFont = url.hostname.includes('fonts.gstatic.com') || url.hostname.includes('fonts.googleapis.com');
-  const isStatic = url.pathname.match(/\.(js|css|svg|png|jpg|jpeg|gif|webp|woff2|woff|ttf|eot|ico|json)$/);
 
-  if (isFont || isStatic || url.origin === self.location.origin) {
+  // NEVER cache API, Vite internal dev server requests, or modules with version tags
+  if (
+    url.pathname.startsWith('/api') ||
+    url.pathname.startsWith('/@') ||
+    url.pathname.startsWith('/src/') ||
+    url.pathname.startsWith('/node_modules/') ||
+    url.searchParams.has('v') ||
+    url.searchParams.has('t')
+  ) {
+    return;
+  }
+
+  const isFont = url.hostname.includes('fonts.gstatic.com') || url.hostname.includes('fonts.googleapis.com');
+  const isStatic = url.pathname.match(/\.(css|svg|png|jpg|jpeg|gif|webp|woff2|woff|ttf|eot|ico|json)$/);
+
+  if (isFont || isStatic) {
     event.respondWith(
       caches.match(request).then((cachedResponse) => {
         // Fetch from network to update cache in background (Stale-While-Revalidate)

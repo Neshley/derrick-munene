@@ -129,7 +129,7 @@ export const MidiPanel: React.FC<MidiPanelProps> = ({
               )}
             </div>
             <p className="text-xs text-zinc-400">
-              Low-latency Web MIDI routing for Genos arranger keys, pitch bend, modulation, &amp; clock sync
+              Low-latency Web MIDI routing for DM ARRANGIA keyboard, pitch bend, modulation, &amp; clock sync
             </p>
           </div>
         </div>
@@ -370,7 +370,7 @@ export const MidiPanel: React.FC<MidiPanelProps> = ({
       {isChannelMapOpen && (
         <div className="p-3 bg-zinc-900/80 border border-zinc-800 rounded-xl flex flex-col gap-2">
           <div className="flex items-center justify-between text-xs font-bold text-zinc-300 uppercase tracking-wider">
-            <span>Genos Standard Arranger MIDI Channel Mapping</span>
+            <span>Standard Arranger MIDI Channel Mapping (16-CH Matrix)</span>
             <span className="text-[10px] font-normal text-zinc-400">Default GM/XG Arrangement</span>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 text-xs font-mono">

@@ -252,18 +252,18 @@ export const WorkstationHeader: React.FC<WorkstationHeaderProps> = ({
                 </button>
               )}
 
-              {/* Derrick Munene Arranger Workstation Branding */}
+              {/* DM ARRANGIA Branding */}
               <div className="flex items-center gap-2 shrink-0">
                 <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-zinc-800 via-zinc-900 to-black flex items-center justify-center shadow-md text-amber-400 font-black text-xs tracking-tighter shrink-0 border border-amber-500/40">
                   DM
                 </div>
                 <div className="flex flex-col justify-center shrink-0">
                   <h1 className="font-black text-xs sm:text-sm tracking-wider text-zinc-100 font-['Chakra_Petch'] leading-tight whitespace-nowrap">
-                    DERRICK MUNENE
+                    DM ARRANGIA
                   </h1>
                   <div className="flex items-center gap-1.5 whitespace-nowrap">
                     <span className="text-[9px] uppercase font-bold tracking-widest text-amber-400 font-mono">
-                      ARRANGER WORKSTATION
+                      AI ARRANGER WORKSTATION
                     </span>
                     <span className="text-[8px] font-mono px-1 rounded bg-zinc-800 text-zinc-400 border border-zinc-700">
                       PRO
@@ -315,7 +315,7 @@ export const WorkstationHeader: React.FC<WorkstationHeaderProps> = ({
                 type="button"
                 onClick={onOpenAiStudio}
                 className="flex items-center gap-1 px-2 py-1 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 transition-colors cursor-pointer shrink-0 touch-manipulation min-h-[32px]"
-                title="AI Music Director Status (Click to open AI Studio)"
+                title="ARRANGIA AI Status (Click to open AI Studio)"
               >
                 <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse shadow-[0_0_4px_rgba(251,191,36,0.8)] shrink-0" />
                 <span className="text-[10px] font-bold whitespace-nowrap">AI READY</span>
@@ -347,7 +347,7 @@ export const WorkstationHeader: React.FC<WorkstationHeaderProps> = ({
                       ? 'bg-amber-500 text-zinc-950 font-black shadow-sm'
                       : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
                   }`}
-                  title="Switch to Studio / Edit Mode (Expose Digital Mixer, MultiPads, Registration & AI Director)"
+                  title="Switch to Arrangia Studio / Edit Mode (Expose Digital Mixer, MultiPads, Registration & Arrangia AI)"
                 >
                   STUDIO
                 </button>
@@ -366,7 +366,7 @@ export const WorkstationHeader: React.FC<WorkstationHeaderProps> = ({
                       ? 'bg-amber-500 text-zinc-950 shadow-sm font-extrabold'
                       : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
                   }`}
-                  title="Switch to Arranger Keyboard Workstation"
+                  title="Switch to DM Arrangia Workstation"
                 >
                   <Piano className="w-3.5 h-3.5 shrink-0" />
                   <span>WORKSTATION</span>
@@ -531,7 +531,7 @@ export const WorkstationHeader: React.FC<WorkstationHeaderProps> = ({
                 title={
                   !pwaStatus.isOnline
                     ? 'Offline Mode Active: Internal synthesis and accompaniment engine are fully operational.'
-                    : 'PWA Ready: Arranger Workstation cached for instant zero-latency offline performance.'
+                    : 'PWA Ready: DM Arrangia cached for instant zero-latency offline performance.'
                 }
               >
                 {!pwaStatus.isOnline ? (
@@ -959,7 +959,7 @@ export const WorkstationHeader: React.FC<WorkstationHeaderProps> = ({
             <div className="p-3 sm:p-4 bg-zinc-900/90 border-t border-zinc-800/80 flex items-center justify-between text-xs font-mono text-zinc-400 shrink-0">
               <div className="flex items-center gap-2">
                 <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_#34d399]" />
-                <span>Web Audio Arranger Synthesizer v2.5</span>
+                <span>DM ARRANGIA • Web Audio Arranger Synthesizer v2.5</span>
               </div>
               <button
                 type="button"

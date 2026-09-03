@@ -108,7 +108,7 @@ aiRouter.post('/ai/generate-style', async (req: Request, res: Response) => {
       });
     }
 
-    const systemPrompt = `You are a Yamaha Genos master arranger programmer.
+    const systemPrompt = `You are ARRANGIA AI, master arranger programmer for the DM ARRANGIA AI Arranger Workstation (Yamaha-compatible style architecture).
 The user wants an arranger accompaniment style based on this prompt: "${prompt}".
 Generate a structured JSON configuration for this style.
 Return ONLY raw JSON with:
@@ -368,7 +368,7 @@ aiRouter.post('/ai/generate-voice', async (req: Request, res: Response) => {
       });
     }
 
-    const systemPrompt = `You are a Yamaha Genos / FM / Analog Sound Designer.
+    const systemPrompt = `You are ARRANGIA AI, sound designer and synthesis programmer for the DM ARRANGIA AI Arranger Workstation.
 Create a rich instrument voice synthesis preset based on this request: "${prompt}".
 Return ONLY raw JSON with:
 {
@@ -449,7 +449,7 @@ aiRouter.post('/ai/generate-mix', async (req: Request, res: Response) => {
       });
     }
 
-    const prompt = `You are a world-class live front-of-house and studio mixing engineer for Yamaha Genos arrangers.
+    const prompt = `You are ARRANGIA AI, world-class front-of-house and studio mixing engineer for the DM ARRANGIA AI Arranger Workstation.
 Optimize an 8-track accompaniment mix and master bus for target: "${presetTarget}", active style: "${currentStyle}".
 Return ONLY raw JSON with:
 {
@@ -555,7 +555,7 @@ aiRouter.post('/ai/generate-multipads', async (req: Request, res: Response) => {
       });
     }
 
-    const prompt = `You are a Yamaha Genos Multi-Pad phrase programmer.
+    const prompt = `You are ARRANGIA AI, multi-pad phrase programmer for the DM ARRANGIA AI Arranger Workstation.
 Generate a 4-pad interactive Multi-Pad phrase set for theme: "${theme}" in root key "${key}".
 Return ONLY raw JSON with:
 {
@@ -669,7 +669,7 @@ aiRouter.post('/ai/director-suggestion', async (req: Request, res: Response) => 
       return res.json({ success: true, source: 'fallback', suggestion });
     }
 
-    const prompt = `You are a Yamaha Genos2 & Korg Pa5X AI Music Director integrated into a flagship arranger keyboard.
+    const prompt = `You are ARRANGIA AI (AI Music Director) integrated into the DM ARRANGIA AI Arranger Workstation.
 Live performance state:
 - Key: ${safeContext.key}
 - Tempo: ${safeContext.tempo} BPM
@@ -735,7 +735,7 @@ aiRouter.post('/ai/director-chat', async (req: Request, res: Response) => {
       return res.json({ success: true, source: 'fallback', answer });
     }
 
-    const prompt = `You are a professional Arranger Keyboard AI Music Director (like a musical co-producer in Yamaha Genos2).
+    const prompt = `You are ARRANGIA AI (AI Music Director), the intelligent co-producer for the DM ARRANGIA AI Arranger Workstation.
 Musician is performing live:
 - Key: ${safeContext.key}
 - Tempo: ${safeContext.tempo} BPM

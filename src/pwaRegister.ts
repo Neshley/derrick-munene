@@ -96,34 +96,50 @@ export function initPwa() {
     notifyListeners();
   });
 
-  // Register Service Worker in production / supported environments
+  // Register Service Worker only in production to prevent caching Vite dev modules
   if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker
-        .register('/sw.js')
-        .then((registration) => {
-          currentStatus.isServiceWorkerReady = true;
-          notifyListeners();
+    if (import.meta.env.PROD) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker
+          .register('/sw.js')
+          .then((registration) => {
+            currentStatus.isServiceWorkerReady = true;
+            notifyListeners();
 
-          // Check for updates
-          registration.addEventListener('updatefound', () => {
-            const installingWorker = registration.installing;
-            if (installingWorker) {
-              installingWorker.addEventListener('statechange', () => {
-                if (installingWorker.state === 'installed') {
-                  if (navigator.serviceWorker.controller) {
-                    console.log('[PWA] New content is available and ready for offline use.');
-                  } else {
-                    console.log('[PWA] Content is cached for offline use.');
+            // Check for updates
+            registration.addEventListener('updatefound', () => {
+              const installingWorker = registration.installing;
+              if (installingWorker) {
+                installingWorker.addEventListener('statechange', () => {
+                  if (installingWorker.state === 'installed') {
+                    if (navigator.serviceWorker.controller) {
+                      console.log('[PWA] New content is available and ready for offline use.');
+                    } else {
+                      console.log('[PWA] Content is cached for offline use.');
+                    }
                   }
-                }
-              });
-            }
+                });
+              }
+            });
+          })
+          .catch((error) => {
+            console.warn('[PWA] ServiceWorker registration failed: ', error);
           });
-        })
-        .catch((error) => {
-          console.warn('[PWA] ServiceWorker registration failed: ', error);
+      });
+    } else {
+      // In development mode, unregister any active service workers and clear caches
+      navigator.serviceWorker.getRegistrations().then((registrations) => {
+        for (const registration of registrations) {
+          registration.unregister();
+        }
+      });
+      if ('caches' in window) {
+        caches.keys().then((keys) => {
+          for (const key of keys) {
+            caches.delete(key);
+          }
         });
-    });
+      }
+    }
   }
 }
