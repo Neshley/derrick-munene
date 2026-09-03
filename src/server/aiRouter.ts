@@ -623,3 +623,143 @@ Return ONLY raw JSON with:
     res.status(500).json({ success: false, error: error.message || 'Multipads generation failed' });
   }
 });
+
+// 8. AI Director Suggestion API
+aiRouter.post('/ai/director-suggestion', async (req: Request, res: Response) => {
+  try {
+    const { context, mode = 'harmony' } = req.body || {};
+    const safeContext = context || {
+      key: 'C',
+      tempo: 120,
+      currentChord: 'C',
+      currentSection: 'main_a',
+      styleName: 'Worship Ballad',
+    };
+    const ai = getGenAI(extractApiKey(req));
+
+    if (!ai) {
+      const root = safeContext.key.replace(/m.*/, '').trim() || 'C';
+      let suggestion: any;
+      if (mode === 'voice') {
+        suggestion = {
+          recommendationType: 'voice_layer',
+          title: 'Layer Warm Analog Strings (R2)',
+          description: 'Blend Warm Strings underneath Grand Piano with +15% Reverb Send to widen stereo imagery.',
+          suggestedVoice: { part: 'r2', voiceId: 'slow_strings', voiceName: 'Warm Lush Strings' },
+          reasoning: 'Smooth acoustic sustain complements transient-heavy piano chords in ballads and praise.',
+        };
+      } else if (mode === 'arrange') {
+        const nextSection = safeContext.currentSection === 'main_a' ? 'main_b' : safeContext.currentSection === 'main_b' ? 'main_c' : 'main_d';
+        suggestion = {
+          recommendationType: 'transition',
+          title: `Build Dynamic Energy -> ${nextSection.toUpperCase()}`,
+          description: `Trigger Auto-Fill and advance to ${nextSection.toUpperCase()} as chorus approaches to double the rhythm drive.`,
+          suggestedSection: nextSection,
+          reasoning: 'Gradual multi-stage variation keeps congregation/audience engaged throughout song progression.',
+        };
+      } else {
+        suggestion = {
+          recommendationType: 'progression',
+          title: `Anthem Worship Flow in ${root}`,
+          description: `Try: ${root} → ${root}/B → Am7 → Fmaj7 (1 - 7/3 - 6 - 4)`,
+          progression: [root, `${root}/B`, 'Am7', 'Fmaj7'],
+          reasoning: 'Descending stepwise bassline evokes deep reverence and emotional release.',
+        };
+      }
+      return res.json({ success: true, source: 'fallback', suggestion });
+    }
+
+    const prompt = `You are a Yamaha Genos2 & Korg Pa5X AI Music Director integrated into a flagship arranger keyboard.
+Live performance state:
+- Key: ${safeContext.key}
+- Tempo: ${safeContext.tempo} BPM
+- Current Chord: ${safeContext.currentChord}
+- Active Section: ${safeContext.currentSection}
+- Style: ${safeContext.styleName}
+Mode requested: ${mode}
+
+Provide an actionable, musical recommendation for the performer.
+Return ONLY valid raw JSON:
+{
+  "recommendationType": "${mode === 'voice' ? 'voice_layer' : mode === 'arrange' ? 'transition' : 'progression'}",
+  "title": "Short punchy title (max 32 chars)",
+  "description": "Clear musical suggestion",
+  "progression": ["Chord1", "Chord2", "Chord3", "Chord4"],
+  "suggestedSection": "main_b",
+  "reasoning": "1 sentence theory justification"
+}`;
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: prompt,
+      config: {
+        responseMimeType: 'application/json',
+      },
+    });
+
+    const parsed = JSON.parse(response.text || '{}');
+    return res.json({
+      success: true,
+      source: 'gemini',
+      suggestion: parsed,
+    });
+  } catch (error: any) {
+    console.error('Error generating director suggestion:', error);
+    res.status(500).json({ success: false, error: error.message || 'Director suggestion failed' });
+  }
+});
+
+// 9. AI Director Chat API
+aiRouter.post('/ai/director-chat', async (req: Request, res: Response) => {
+  try {
+    const { question = '', context } = req.body || {};
+    const safeContext = context || {
+      key: 'C',
+      tempo: 120,
+      currentChord: 'C',
+      currentSection: 'main_a',
+      styleName: 'Worship Ballad',
+    };
+    const ai = getGenAI(extractApiKey(req));
+
+    if (!ai) {
+      const q = question.toLowerCase();
+      let answer = `In ${safeContext.key} at ${safeContext.tempo} BPM, try transitioning from ${safeContext.currentChord} to the IV chord (${safeContext.key === 'C' ? 'Fmaj7' : 'IV'}) before resolving back to ${safeContext.key}.`;
+      if (q.includes('worship') || q.includes('ballad')) {
+        answer = `For a deep worship atmosphere, hold a soft prayer pad in the Left hand, voice a rootless 9th chord on ${safeContext.currentChord}, and trigger FILL B at measure 4 to lift the congregation.`;
+      } else if (q.includes('praise') || q.includes('fast') || q.includes('groove')) {
+        answer = `Advance the style to MAIN C with Brass stabs, tighten the bassline, and keep a steady 2-and-4 snare pocket at ${safeContext.tempo} BPM.`;
+      } else if (q.includes('chord') || q.includes('next')) {
+        answer = `From ${safeContext.currentChord}, a soulful resolution is: Fmaj7 → G → Em7 → Am7, or substitute a Dm9 to G13 turnaround.`;
+      }
+      return res.json({ success: true, source: 'fallback', answer });
+    }
+
+    const prompt = `You are a professional Arranger Keyboard AI Music Director (like a musical co-producer in Yamaha Genos2).
+Musician is performing live:
+- Key: ${safeContext.key}
+- Tempo: ${safeContext.tempo} BPM
+- Chord: ${safeContext.currentChord}
+- Section: ${safeContext.currentSection}
+- Style: ${safeContext.styleName}
+
+Musician asks: "${question}"
+
+Provide a concise, highly practical musical response (2-3 sentences max) with concrete chords or registration advice if appropriate.`;
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: prompt,
+    });
+
+    return res.json({
+      success: true,
+      source: 'gemini',
+      answer: (response.text || '').replace(/[{}"]/g, '').trim(),
+    });
+  } catch (error: any) {
+    console.error('Error generating director chat:', error);
+    res.status(500).json({ success: false, error: error.message || 'Director chat failed' });
+  }
+});
+
