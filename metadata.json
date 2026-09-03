@@ -1,6 +1,6 @@
 {
-  "name": "Arranger Keyboard Workstation",
-  "description": "A feature-rich interactive arranger workstation keyboard with .sty Yamaha style file playback, accompaniment engine, real-time chord detection, multi-track mixer, sound synthesizers, and full offline PWA capabilities.",
+  "name": "Derrick Munene Arranger Workstation",
+  "description": "Flagship digital arranger keyboard and music workstation with integrated AI Music Director, Yamaha .STY playback, real-time accompaniment engine, multi-track digital mixer, synthesizers, and media center.",
   "requestFramePermissions": ["microphone"],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

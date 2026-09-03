@@ -511,3 +511,216 @@ export async function generateAiMultiPads(params: { theme?: string; key?: string
     ],
   };
 }
+
+export interface AiDirectorContext {
+  key: string;
+  tempo: number;
+  currentChord: string;
+  currentSection: string;
+  styleName: string;
+  category?: string;
+}
+
+export interface AiDirectorSuggestion {
+  recommendationType: 'progression' | 'transition' | 'voice_layer' | 'dynamics' | 'groove';
+  title: string;
+  description: string;
+  progression?: string[];
+  suggestedSection?: string;
+  suggestedVoice?: { part: 'r1' | 'r2' | 'left'; voiceId: string; voiceName: string };
+  suggestedTempo?: number;
+  reasoning: string;
+}
+
+/**
+ * Intelligent AI Music Director suggestion generator:
+ * Suggests harmonically rich chord sequences, section transitions, or voice blends based on live performance context.
+ */
+export async function generateAiDirectorSuggestion(
+  context: AiDirectorContext,
+  mode: 'harmony' | 'style' | 'voice' | 'arrange' | 'worship' | 'analyze' | 'practice' = 'harmony'
+): Promise<{ success: boolean; suggestion: AiDirectorSuggestion; source: string }> {
+  // Try server first
+  try {
+    const res = await fetch('/api/ai/director-suggestion', {
+      method: 'POST',
+      headers: getAiFetchHeaders(),
+      body: JSON.stringify({ context, mode }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.success && data.suggestion) return data;
+    }
+  } catch {
+    // Proceed to client fallback
+  }
+
+  // Client direct Gemini fallback
+  const clientKey = getStoredApiKey();
+  if (clientKey) {
+    try {
+      const prompt = `You are a Yamaha Genos2 & Korg Pa5X AI Music Director integrated into a flagship arranger keyboard.
+Live performance state:
+- Key: ${context.key}
+- Tempo: ${context.tempo} BPM
+- Current Chord: ${context.currentChord}
+- Active Section: ${context.currentSection}
+- Style: ${context.styleName}
+Mode requested: ${mode}
+
+Provide an actionable, musical recommendation for the performer.
+Return ONLY valid raw JSON:
+{
+  "recommendationType": "${mode === 'voice' ? 'voice_layer' : mode === 'arrange' ? 'transition' : 'progression'}",
+  "title": "Short punchy title (max 32 chars)",
+  "description": "Clear musical suggestion",
+  "progression": ["Chord1", "Chord2", "Chord3", "Chord4"],
+  "suggestedSection": "main_b",
+  "reasoning": "1 sentence theory justification"
+}`;
+      const text = await callDirectGemini(prompt, clientKey);
+      const parsed = JSON.parse(text);
+      return {
+        success: true,
+        source: 'gemini-client',
+        suggestion: parsed,
+      };
+    } catch (e) {
+      console.warn('Gemini director suggestion error, falling back to algorithmic rules', e);
+    }
+  }
+
+  // Algorithmic Music-Theory Fallback based on Key & Section
+  const root = context.key.replace(/m.*/, '').trim() || 'C';
+  const chord = context.currentChord || root;
+  
+  let suggestion: AiDirectorSuggestion;
+
+  if (mode === 'voice') {
+    suggestion = {
+      recommendationType: 'voice_layer',
+      title: 'Layer Warm Analog Strings (R2)',
+      description: 'Blend Warm Strings underneath Grand Piano with +15% Reverb Send to widen stereo imagery during worship builds.',
+      suggestedVoice: { part: 'r2', voiceId: 'slow_strings', voiceName: 'Warm Lush Strings' },
+      reasoning: 'Smooth acoustic sustain complements transient-heavy piano chords in ballads and praise.',
+    };
+  } else if (mode === 'arrange') {
+    const nextSection = context.currentSection === 'main_a' ? 'main_b' : context.currentSection === 'main_b' ? 'main_c' : 'main_d';
+    suggestion = {
+      recommendationType: 'transition',
+      title: `Build Dynamic Energy -> ${nextSection.toUpperCase()}`,
+      description: `Trigger Auto-Fill and advance to ${nextSection.toUpperCase()} as chorus approaches to double the rhythm drive.`,
+      suggestedSection: nextSection,
+      reasoning: 'Gradual multi-stage variation keeps congregation/audience engaged throughout song progression.',
+    };
+  } else if (mode === 'worship') {
+    suggestion = {
+      recommendationType: 'progression',
+      title: `Anthem Worship Flow in ${root}`,
+      description: `Try: ${root} → ${root}/B → Am7 → Fmaj7 (1 - 7/3 - 6 - 4)`,
+      progression: [root, `${root}/B`, 'Am7', 'Fmaj7'],
+      reasoning: 'Descending stepwise bassline evokes deep reverence and emotional release.',
+    };
+  } else if (mode === 'analyze') {
+    suggestion = {
+      recommendationType: 'progression',
+      title: `Harmonic Analysis: ${chord}`,
+      description: `Current chord ${chord} provides strong tonal stability. Resolve to 2-5-1 before bridge.`,
+      progression: ['Dm7', 'G7sus4', 'G7', `${root}maj7`],
+      reasoning: 'Suspended dominant preparation creates anticipation before a triumphant resolution.',
+    };
+  } else if (mode === 'practice') {
+    suggestion = {
+      recommendationType: 'progression',
+      title: 'Secondary Dominant Drill',
+      description: `Practice leading into 6-minor: ${root} → E7 → Am7 → F`,
+      progression: [root, 'E7', 'Am7', 'F'],
+      reasoning: 'Secondary dominants (V7 of vi) inject contemporary gospel and neo-soul tension.',
+    };
+  } else {
+    // Default harmony progression
+    suggestion = {
+      recommendationType: 'progression',
+      title: `Gospel 2-5-1 Turnaround in ${root}`,
+      description: `Try: Fmaj7 → G → Em7 → Am7`,
+      progression: ['Fmaj7', 'G', 'Em7', 'Am7'],
+      reasoning: 'Subdominant to relative minor cycle sustains continuous harmonic motion.',
+    };
+  }
+
+  return {
+    success: true,
+    source: 'music-theory-engine',
+    suggestion,
+  };
+}
+
+/**
+ * Ask AI Music Director directly with conversational question:
+ */
+export async function askAiMusicDirector(params: {
+  question: string;
+  context: AiDirectorContext;
+}): Promise<{ success: boolean; answer: string; suggestion?: AiDirectorSuggestion; source: string }> {
+  const { question, context } = params;
+
+  // Try server first
+  try {
+    const res = await fetch('/api/ai/director-chat', {
+      method: 'POST',
+      headers: getAiFetchHeaders(),
+      body: JSON.stringify(params),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      if (data.success && data.answer) return data;
+    }
+  } catch {
+    // Fallback
+  }
+
+  // Client direct Gemini fallback
+  const clientKey = getStoredApiKey();
+  if (clientKey) {
+    try {
+      const prompt = `You are a professional Arranger Keyboard AI Music Director (like a musical co-producer in Yamaha Genos2).
+Musician is performing live:
+- Key: ${context.key}
+- Tempo: ${context.tempo} BPM
+- Chord: ${context.currentChord}
+- Section: ${context.currentSection}
+- Style: ${context.styleName}
+
+Musician asks: "${question}"
+
+Provide a concise, highly practical musical response (2-3 sentences max) with concrete chords or registration advice if appropriate.`;
+      const text = await callDirectGemini(prompt, clientKey);
+      return {
+        success: true,
+        source: 'gemini-client',
+        answer: text.replace(/[{}"]/g, '').trim(),
+      };
+    } catch (e) {
+      console.warn('Gemini chat error', e);
+    }
+  }
+
+  // Rule-based musical conversational answer
+  const q = question.toLowerCase();
+  let answer = `In ${context.key} at ${context.tempo} BPM, try transitioning from ${context.currentChord} to the IV chord (${context.key === 'C' ? 'Fmaj7' : 'IV'}) before resolving back to ${context.key}. Increase R2 strings volume slightly during the chorus.`;
+
+  if (q.includes('worship') || q.includes('ballad')) {
+    answer = `For a deep worship atmosphere, hold a soft prayer pad in the Left hand, voice a rootless 9th chord on ${context.currentChord}, and trigger FILL B at measure 4 to lift the congregation.`;
+  } else if (q.includes('praise') || q.includes('fast') || q.includes('groove')) {
+    answer = `Advance the style to MAIN C with Brass stabs, tighten the bassline, and keep a steady 2-and-4 snare pocket at ${context.tempo} BPM.`;
+  } else if (q.includes('chord') || q.includes('next')) {
+    answer = `From ${context.currentChord}, a soulful resolution is: Fmaj7 → G → Em7 → Am7, or substitute a Dm9 to G13 turnaround.`;
+  }
+
+  return {
+    success: true,
+    source: 'local-director-engine',
+    answer,
+  };
+}
+

@@ -18,6 +18,9 @@ import { InteractiveKeyboard } from './components/InteractiveKeyboard';
 import { MixerSection } from './components/MixerSection';
 import { MultiPadsSection } from './components/MultiPadsSection';
 import { RegistrationMemory } from './components/RegistrationMemory';
+import { ChordHeroDisplay } from './components/ChordHeroDisplay';
+import { VoiceSection } from './components/VoiceSection';
+import { AiMusicDirectorPanel } from './components/AiMusicDirectorPanel';
 import { StyleBrowserModal } from './components/StyleBrowserModal';
 import { VoiceSelectModal } from './components/VoiceSelectModal';
 import { ChordSequencerModal } from './components/ChordSequencerModal';
@@ -35,9 +38,16 @@ import { AiStudioModal } from './components/AiStudioModal';
 import { ApiKeyModal } from './components/ApiKeyModal';
 import { SettingsPage } from './components/SettingsPage';
 import { StyleCreatorModal } from './components/StyleCreatorModal';
+import { MediaPlayerView } from './components/media/MediaPlayerView';
 import { addMultiPadBank } from './audio/multiPads';
 
 export default function App() {
+  // --- Active App Mode: WORKSTATION <-> MEDIA PLAYER ---
+  const [appMode, setAppMode] = useState<'workstation' | 'media_player'>('workstation');
+
+  // --- View Mode: Performance Mode vs Studio / Edit Mode ---
+  const [viewMode, setViewMode] = useState<'performance' | 'studio'>('studio');
+
   // --- Workstation Engine States ---
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(() => {
     try {
@@ -174,6 +184,8 @@ export default function App() {
   const [isApiKeyModalOpen, setIsApiKeyModalOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [styleNotification, setStyleNotification] = useState<{ name: string; fills: string[]; mains: string[] } | null>(null);
+  const [isStyleLoading, setIsStyleLoading] = useState<boolean>(false);
+  const [styleLoadingProgress, setStyleLoadingProgress] = useState<number>(0);
 
   // Keep MidiManager live performance configuration synchronized
   useEffect(() => {
@@ -289,12 +301,22 @@ export default function App() {
 
   // Style change
   const handleSelectStyle = (style: ArrangerStyle) => {
-    setCurrentStyle(style);
-    stylePlayer.setStyle(style);
-    setTempo(style.tempo);
+    setIsStyleLoading(true);
+    setStyleLoadingProgress(22);
 
-    // Apply OTS 1 by default
-    applyOtsPreset(style, 1);
+    const t1 = setTimeout(() => setStyleLoadingProgress(62), 80);
+    const t2 = setTimeout(() => setStyleLoadingProgress(92), 170);
+    const t3 = setTimeout(() => {
+      setStyleLoadingProgress(100);
+      setCurrentStyle(style);
+      stylePlayer.setStyle(style);
+      setTempo(style.tempo);
+      applyOtsPreset(style, 1);
+    }, 270);
+    const t4 = setTimeout(() => {
+      setIsStyleLoading(false);
+      setStyleLoadingProgress(0);
+    }, 520);
 
     // Compute available fills & mains for immediate feedback
     const fills: string[] = (['fill_aa', 'fill_bb', 'fill_cc', 'fill_dd'] as const)
@@ -452,14 +474,54 @@ export default function App() {
     });
   };
 
+  const handleLiveVoiceVolumeChange = (part: 'r1' | 'r2' | 'left', vol: number) => {
+    if (part === 'r1') {
+      setR1Volume(vol);
+      audioEngine.setTrackVolume('r1', vol / 100);
+    } else if (part === 'r2') {
+      setR2Volume(vol);
+      audioEngine.setTrackVolume('r2', vol / 100);
+    } else if (part === 'left') {
+      setLVolume(vol);
+      audioEngine.setTrackVolume('left', vol / 100);
+    }
+  };
+
+  const handleApplyProgression = (chords: string[]) => {
+    if (chords && chords.length > 0) {
+      const parsed = ChordEngine.parseProgressionString(chords[0]);
+      if (parsed.length > 0) {
+        stylePlayer.setChord(parsed[0]);
+      }
+    }
+  };
+
+  const handleSwitchMode = (mode: 'workstation' | 'media_player') => {
+    if (mode === 'media_player' && isPlaying) {
+      stylePlayer.stop();
+    }
+    setAppMode(mode);
+  };
+
   return (
     <div className="h-screen w-screen max-h-screen overflow-hidden bg-zinc-950 text-zinc-100 flex flex-col selection:bg-amber-500 selection:text-black">
       {/* Top Workstation Header (Fixed) */}
       <WorkstationHeader
+        appMode={appMode}
+        onSwitchMode={handleSwitchMode}
+        onOpenMediaPlayer={() => handleSwitchMode('media_player')}
         midiConnected={midiConnected}
         midiDeviceName={midiDeviceName}
         onToggleSidebar={() => setIsSidebarCollapsed(prev => !prev)}
         isSidebarCollapsed={isSidebarCollapsed}
+        viewMode={viewMode}
+        onToggleViewMode={setViewMode}
+        currentStyleName={currentStyle.name}
+        currentStyleCategory={currentStyle.category}
+        currentTempo={tempo}
+        currentKey={currentChord.root || 'C'}
+        timeSignature={currentStyle.timeSignature}
+        onOpenStyleBrowser={() => setIsStyleModalOpen(true)}
         onOpenStyleCreator={() => {
           setStyleToEditInCreator(undefined);
           setIsStyleCreatorModalOpen(true);
@@ -480,34 +542,41 @@ export default function App() {
         onSplitPointChange={(newSplit) => setSplitPoint(newSplit)}
       />
 
-      {/* Main Console + Fixed Sidebar Body */}
-      <div className="flex-1 flex overflow-hidden min-h-0 relative">
-        {/* Collapsible Fixed Sidebar */}
-        <WorkstationSidebar
-          isCollapsed={isSidebarCollapsed}
-          onToggleCollapse={() => setIsSidebarCollapsed(prev => !prev)}
-          currentStyle={currentStyle}
-          onSelectStyle={handleSelectStyle}
-          customStyles={customStyles}
-          onOpenStyleBrowser={() => setIsStyleModalOpen(true)}
-          onOpenStyleCreator={() => {
-            setStyleToEditInCreator(undefined);
-            setIsStyleCreatorModalOpen(true);
-          }}
-          onOpenVoiceSelect={handleOpenVoiceSelect}
-          onOpenChordSequencer={() => setIsChordSeqModalOpen(true)}
-          onOpenMidiHelp={() => setIsMidiHelpModalOpen(true)}
-          onOpenUserGuide={() => setIsUserGuideModalOpen(true)}
-          onOpenCreatorMessage={() => setIsCreatorModalOpen(true)}
-          onOpenPrayerAtmosphere={() => setIsPrayerModalOpen(true)}
-          onOpenEffectsRack={() => setIsEffectsModalOpen(true)}
-          onOpenVocalWorkstation={() => setIsVocalModalOpen(true)}
-          onOpenWorshipSongbook={() => setIsSongbookModalOpen(true)}
-          onOpenAudioRecording={() => setIsAudioRecordModalOpen(true)}
-          onOpenMidiAutomation={() => setIsMidiAutomationOpen(true)}
-          onOpenAiStudio={() => setIsAiStudioModalOpen(true)}
-          onOpenApiKeyModal={() => setIsApiKeyModalOpen(true)}
-          onOpenSettings={() => setIsSettingsModalOpen(true)}
+      {/* Main Mode View: LARK MEDIA PLAYER vs WORKSTATION CONSOLE */}
+      {appMode === 'media_player' ? (
+        <div className="flex-1 flex overflow-hidden min-h-0 relative">
+          <MediaPlayerView onSwitchToWorkstation={() => handleSwitchMode('workstation')} />
+        </div>
+      ) : (
+        /* Main Console + Fixed Sidebar Body */
+        <div className="flex-1 flex overflow-hidden min-h-0 relative">
+          {/* Collapsible Fixed Sidebar */}
+          <WorkstationSidebar
+            isCollapsed={isSidebarCollapsed}
+            onToggleCollapse={() => setIsSidebarCollapsed(prev => !prev)}
+            currentStyle={currentStyle}
+            onSelectStyle={handleSelectStyle}
+            customStyles={customStyles}
+            onOpenStyleBrowser={() => setIsStyleModalOpen(true)}
+            onOpenStyleCreator={() => {
+              setStyleToEditInCreator(undefined);
+              setIsStyleCreatorModalOpen(true);
+            }}
+            onOpenVoiceSelect={handleOpenVoiceSelect}
+            onOpenChordSequencer={() => setIsChordSeqModalOpen(true)}
+            onOpenMidiHelp={() => setIsMidiHelpModalOpen(true)}
+            onOpenUserGuide={() => setIsUserGuideModalOpen(true)}
+            onOpenCreatorMessage={() => setIsCreatorModalOpen(true)}
+            onOpenPrayerAtmosphere={() => setIsPrayerModalOpen(true)}
+            onOpenEffectsRack={() => setIsEffectsModalOpen(true)}
+            onOpenVocalWorkstation={() => setIsVocalModalOpen(true)}
+            onOpenWorshipSongbook={() => setIsSongbookModalOpen(true)}
+            onOpenAudioRecording={() => setIsAudioRecordModalOpen(true)}
+            onOpenMidiAutomation={() => setIsMidiAutomationOpen(true)}
+            onOpenAiStudio={() => setIsAiStudioModalOpen(true)}
+            onOpenApiKeyModal={() => setIsApiKeyModalOpen(true)}
+            onOpenSettings={() => setIsSettingsModalOpen(true)}
+            onOpenMediaPlayer={() => handleSwitchMode('media_player')}
           r1Voice={r1Voice}
           r2Voice={r2Voice}
           lVoice={lVoice}
@@ -558,6 +627,8 @@ export default function App() {
               onOpenVoiceSelect={handleOpenVoiceSelect}
               syncStart={syncStart}
               onToggleSyncStart={handleToggleSyncStart}
+              isStyleLoading={isStyleLoading}
+              styleLoadingProgress={styleLoadingProgress}
             />
 
             {/* Style & Fill Capability Notification Banner */}
@@ -581,6 +652,14 @@ export default function App() {
                 </button>
               </div>
             )}
+
+            {/* Hero Chord Display (Prompt Section 9) */}
+            <ChordHeroDisplay
+              currentChord={currentChord}
+              acmpEnabled={acmpEnabled}
+              chordMode={chordMode}
+              currentKey={currentChord.root || 'C'}
+            />
 
             {/* Section Matrix & Arranger Controls */}
             <ArrangerControls
@@ -610,75 +689,148 @@ export default function App() {
               currentTrackVolumeIntensity={stylePlayer.getTrackVolumeIntensity()}
             />
 
-            {/* Mid-tier Module: Registration Memory & Multi-Pads */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-3">
-              <div className="lg:col-span-6">
-                <RegistrationMemory
-                  currentStyleId={currentStyle.id}
-                  currentTempo={tempo}
-                  currentSection={currentSection}
+            {/* In PERFORMANCE MODE: Clean, uncluttered layout for live stage playing */}
+            {viewMode === 'performance' ? (
+              <>
+                {/* Dedicated Hardware Voice Section */}
+                <VoiceSection
+                  r1Voice={r1Voice}
+                  r2Voice={r2Voice}
+                  lVoice={lVoice}
+                  r1Volume={r1Volume}
+                  r2Volume={r2Volume}
+                  lVolume={lVolume}
+                  r2Enabled={r2Enabled}
+                  lEnabled={lEnabled}
+                  onToggleR2={() => setR2Enabled(prev => !prev)}
+                  onToggleL={() => setLEnabled(prev => !prev)}
+                  onVoiceVolumeChange={handleLiveVoiceVolumeChange}
+                  onOpenVoiceSelect={handleOpenVoiceSelect}
+                  activeOtsIndex={activeOtsIndex}
+                  onSelectOts={(idx) => applyOtsPreset(currentStyle, idx)}
+                />
+
+                {/* Interactive Piano Keyboard with Split Zones */}
+                <InteractiveKeyboard
+                  splitPoint={splitPoint}
+                  onSplitPointChange={(newSplit) => setSplitPoint(newSplit)}
                   r1Voice={r1Voice}
                   r2Voice={r2Voice}
                   lVoice={lVoice}
                   r2Enabled={r2Enabled}
                   lEnabled={lEnabled}
-                  splitPoint={splitPoint}
                   acmpEnabled={acmpEnabled}
-                  onRecallPreset={handleRecallPreset}
+                  chordMode={chordMode}
+                  onChordDetected={(chord) => stylePlayer.setChord(chord)}
+                  activeNotes={activeMidiNotes}
+                  onNoteOn={handleLiveNoteOn}
+                  onNoteOff={handleLiveNoteOff}
+                  syncStart={syncStart}
+                  onToggleSyncStart={handleToggleSyncStart}
                 />
-              </div>
-              <div className="lg:col-span-6">
-                <MultiPadsSection />
-              </div>
-            </div>
+              </>
+            ) : (
+              /* In STUDIO / EDIT MODE: Expose AI Music Director, Voices, MultiPads, Registration & Digital Mixer */
+              <>
+                {/* 2-Column Workstation Center Console: Hardware Voices + AI Music Director */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5">
+                  <div className="lg:col-span-7">
+                    <VoiceSection
+                      r1Voice={r1Voice}
+                      r2Voice={r2Voice}
+                      lVoice={lVoice}
+                      r1Volume={r1Volume}
+                      r2Volume={r2Volume}
+                      lVolume={lVolume}
+                      r2Enabled={r2Enabled}
+                      lEnabled={lEnabled}
+                      onToggleR2={() => setR2Enabled(prev => !prev)}
+                      onToggleL={() => setLEnabled(prev => !prev)}
+                      onVoiceVolumeChange={handleLiveVoiceVolumeChange}
+                      onOpenVoiceSelect={handleOpenVoiceSelect}
+                      activeOtsIndex={activeOtsIndex}
+                      onSelectOts={(idx) => applyOtsPreset(currentStyle, idx)}
+                    />
+                  </div>
 
-            {/* Interactive Piano Keyboard with Split Zones */}
-            <InteractiveKeyboard
-              splitPoint={splitPoint}
-              onSplitPointChange={(newSplit) => setSplitPoint(newSplit)}
-              r1Voice={r1Voice}
-              r2Voice={r2Voice}
-              lVoice={lVoice}
-              r2Enabled={r2Enabled}
-              lEnabled={lEnabled}
-              acmpEnabled={acmpEnabled}
-              chordMode={chordMode}
-              onChordDetected={(chord) => stylePlayer.setChord(chord)}
-              activeNotes={activeMidiNotes}
-              onNoteOn={handleLiveNoteOn}
-              onNoteOff={handleLiveNoteOff}
-              syncStart={syncStart}
-              onToggleSyncStart={handleToggleSyncStart}
-            />
+                  <div className="lg:col-span-5">
+                    <AiMusicDirectorPanel
+                      currentChord={currentChord}
+                      currentTempo={tempo}
+                      currentSection={currentSection}
+                      currentStyle={currentStyle}
+                      onApplyProgression={handleApplyProgression}
+                      onApplySection={(sec) => stylePlayer.triggerSection(sec)}
+                      onOpenAiStudioModal={() => setIsAiStudioModalOpen(true)}
+                      onOpenStyleCreator={() => {
+                        setStyleToEditInCreator(undefined);
+                        setIsStyleCreatorModalOpen(true);
+                      }}
+                      onOpenWorshipSongbook={() => setIsSongbookModalOpen(true)}
+                    />
+                  </div>
+                </div>
 
-            {/* Multi-Track Mixer Console */}
-            <MixerSection
-              trackSettings={trackSettings}
-              onTrackSettingChange={handleTrackSettingChange}
-              r1Voice={r1Voice}
-              r2Voice={r2Voice}
-              lVoice={lVoice}
-              r1Volume={r1Volume}
-              r2Volume={r2Volume}
-              lVolume={lVolume}
-              masterVolume={masterVolume}
-              onMasterVolumeChange={(vol) => {
-                setMasterVolume(vol);
-                audioEngine.setMasterVolume(vol);
-              }}
-              onLiveVoiceVolumeChange={(part, vol) => {
-                if (part === 'r1') {
-                  setR1Volume(vol);
-                  audioEngine.setTrackVolume('r1', vol / 100);
-                } else if (part === 'r2') {
-                  setR2Volume(vol);
-                  audioEngine.setTrackVolume('r2', vol / 100);
-                } else if (part === 'left') {
-                  setLVolume(vol);
-                  audioEngine.setTrackVolume('left', vol / 100);
-                }
-              }}
-            />
+                {/* Mid-tier Module: Registration Memory & Multi-Pads */}
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-3">
+                  <div className="lg:col-span-6">
+                    <RegistrationMemory
+                      currentStyleId={currentStyle.id}
+                      currentTempo={tempo}
+                      currentSection={currentSection}
+                      r1Voice={r1Voice}
+                      r2Voice={r2Voice}
+                      lVoice={lVoice}
+                      r2Enabled={r2Enabled}
+                      lEnabled={lEnabled}
+                      splitPoint={splitPoint}
+                      acmpEnabled={acmpEnabled}
+                      onRecallPreset={handleRecallPreset}
+                    />
+                  </div>
+                  <div className="lg:col-span-6">
+                    <MultiPadsSection />
+                  </div>
+                </div>
+
+                {/* Interactive Piano Keyboard with Split Zones */}
+                <InteractiveKeyboard
+                  splitPoint={splitPoint}
+                  onSplitPointChange={(newSplit) => setSplitPoint(newSplit)}
+                  r1Voice={r1Voice}
+                  r2Voice={r2Voice}
+                  lVoice={lVoice}
+                  r2Enabled={r2Enabled}
+                  lEnabled={lEnabled}
+                  acmpEnabled={acmpEnabled}
+                  chordMode={chordMode}
+                  onChordDetected={(chord) => stylePlayer.setChord(chord)}
+                  activeNotes={activeMidiNotes}
+                  onNoteOn={handleLiveNoteOn}
+                  onNoteOff={handleLiveNoteOff}
+                  syncStart={syncStart}
+                  onToggleSyncStart={handleToggleSyncStart}
+                />
+
+                {/* Multi-Track Mixer Console */}
+                <MixerSection
+                  trackSettings={trackSettings}
+                  onTrackSettingChange={handleTrackSettingChange}
+                  r1Voice={r1Voice}
+                  r2Voice={r2Voice}
+                  lVoice={lVoice}
+                  r1Volume={r1Volume}
+                  r2Volume={r2Volume}
+                  lVolume={lVolume}
+                  masterVolume={masterVolume}
+                  onMasterVolumeChange={(vol) => {
+                    setMasterVolume(vol);
+                    audioEngine.setMasterVolume(vol);
+                  }}
+                  onLiveVoiceVolumeChange={handleLiveVoiceVolumeChange}
+                />
+              </>
+            )}
 
           </main>
           {/* Footer Branding */}
@@ -687,6 +839,7 @@ export default function App() {
           </footer>
         </div>
       </div>
+      )}
 
       {/* --- Modals --- */}
       {/* Style Browser & .STY Loader Modal */}

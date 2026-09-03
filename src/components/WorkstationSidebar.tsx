@@ -88,6 +88,7 @@ interface WorkstationSidebarProps {
   onOpenAiStudio?: () => void;
   onOpenApiKeyModal?: () => void;
   onOpenSettings?: () => void;
+  onOpenMediaPlayer?: () => void;
 }
 
 export const WorkstationSidebar: React.FC<WorkstationSidebarProps> = ({
@@ -112,6 +113,7 @@ export const WorkstationSidebar: React.FC<WorkstationSidebarProps> = ({
   onOpenAiStudio,
   onOpenApiKeyModal,
   onOpenSettings,
+  onOpenMediaPlayer,
   r1Voice,
   r2Voice,
   lVoice,
@@ -1024,6 +1026,30 @@ export const WorkstationSidebar: React.FC<WorkstationSidebarProps> = ({
                       <span>C5 (72)</span>
                     </div>
                   </div>
+
+                  {/* Lark Media Player Quick Launcher */}
+                  {onOpenMediaPlayer && (
+                    <div className="p-3 rounded-xl bg-gradient-to-r from-amber-950/40 via-zinc-900 to-zinc-900 border border-amber-500/40 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Disc className="w-4 h-4 text-amber-400" />
+                          <span className="font-bold text-xs text-amber-300">Lark Media Player</span>
+                        </div>
+                        <span className="text-[9px] font-mono uppercase px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 font-bold">ALL CODECS</span>
+                      </div>
+                      <p className="text-[11px] text-zinc-400 leading-tight">
+                        MP3, WAV, FLAC, M4A, MP4, MKV with real-time audio visualizers, lyrics, and queues.
+                      </p>
+                      <button
+                        id="btn-sidebar-open-media-player"
+                        onClick={onOpenMediaPlayer}
+                        className="w-full py-1.5 px-2.5 rounded-lg bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-zinc-950 font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-sm active:scale-95 cursor-pointer"
+                      >
+                        <Disc className="w-3.5 h-3.5" />
+                        <span>Open Media Player</span>
+                      </button>
+                    </div>
+                  )}
 
                   {/* Worship Companion & User Guide Quick Launcher */}
                   {onOpenUserGuide && (

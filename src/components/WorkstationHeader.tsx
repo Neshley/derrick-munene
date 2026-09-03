@@ -22,12 +22,18 @@ import {
   ChevronDown,
   ExternalLink,
   Flame,
-  Volume2
+  Volume2,
+  Piano,
+  Disc,
+  Film
 } from 'lucide-react';
 import { subscribePwaStatus, PwaStatus } from '../pwaRegister';
 import { HardwareMidiDropdown } from './HardwareMidiDropdown';
 
 interface WorkstationHeaderProps {
+  appMode?: 'workstation' | 'media_player';
+  onSwitchMode?: (mode: 'workstation' | 'media_player') => void;
+  onOpenMediaPlayer?: () => void;
   midiConnected: boolean;
   midiDeviceName: string;
   onToggleSidebar?: () => void;
@@ -47,9 +53,20 @@ interface WorkstationHeaderProps {
   onOpenApiKeyModal?: () => void;
   splitPoint?: number;
   onSplitPointChange?: (note: number) => void;
+  currentStyleName?: string;
+  currentStyleCategory?: string;
+  currentTempo?: number;
+  currentKey?: string;
+  timeSignature?: [number, number];
+  viewMode?: 'performance' | 'studio';
+  onToggleViewMode?: (mode: 'performance' | 'studio') => void;
+  onOpenStyleBrowser?: () => void;
 }
 
 export const WorkstationHeader: React.FC<WorkstationHeaderProps> = ({
+  appMode = 'workstation',
+  onSwitchMode,
+  onOpenMediaPlayer,
   midiConnected,
   midiDeviceName,
   onToggleSidebar,
@@ -69,6 +86,14 @@ export const WorkstationHeader: React.FC<WorkstationHeaderProps> = ({
   onOpenApiKeyModal,
   splitPoint = 54,
   onSplitPointChange,
+  currentStyleName = 'Modern Worship',
+  currentStyleCategory = 'Gospel',
+  currentTempo = 72,
+  currentKey = 'C',
+  timeSignature = [4, 4],
+  viewMode = 'studio',
+  onToggleViewMode,
+  onOpenStyleBrowser,
 }) => {
   const [pwaStatus, setPwaStatus] = useState<PwaStatus>({
     isInstalled: false,
@@ -128,23 +153,141 @@ export const WorkstationHeader: React.FC<WorkstationHeaderProps> = ({
             </button>
           )}
 
-          {/* Arranger Model Badge */}
+          {/* Derrick Munene Arranger Workstation Branding */}
           <div className="flex items-center gap-2 min-w-0">
-            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-gradient-to-br from-amber-500 via-amber-600 to-amber-700 flex items-center justify-center shadow-md shadow-amber-500/20 text-zinc-950 font-black text-xs sm:text-sm tracking-tighter shrink-0 border border-amber-400/40">
-              STY
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-zinc-800 via-zinc-900 to-black flex items-center justify-center shadow-md text-amber-400 font-black text-xs tracking-tighter shrink-0 border border-amber-500/40">
+              DM
             </div>
             <div className="min-w-0 flex flex-col justify-center">
+              <h1 className="font-black text-xs sm:text-sm tracking-wider text-zinc-100 font-['Chakra_Petch'] leading-tight truncate">
+                DERRICK MUNENE
+              </h1>
               <div className="flex items-center gap-1.5">
-                <h1 className="font-extrabold text-sm sm:text-base tracking-wide text-zinc-100 font-['Chakra_Petch'] leading-tight truncate">
-                  GENOS<span className="text-amber-400">·PRO</span>
-                </h1>
-                <span className="text-[9px] uppercase font-bold tracking-wider px-1.5 py-0.2 rounded bg-amber-500/15 text-amber-300 border border-amber-500/30 hidden xs:inline-block">
-                  Workstation
+                <span className="text-[9px] uppercase font-bold tracking-widest text-amber-400 font-mono">
+                  ARRANGER WORKSTATION
+                </span>
+                <span className="text-[8px] font-mono px-1 rounded bg-zinc-800 text-zinc-400 border border-zinc-700 hidden sm:inline">
+                  PRO
                 </span>
               </div>
             </div>
           </div>
         </div>
+
+        {/* Center Section: Performance Telemetry Readouts (Prompt 4) */}
+        <div className="hidden lg:flex items-center gap-1.5 font-mono text-[11px] bg-zinc-950/90 px-2 py-1 rounded-xl border border-zinc-800 shadow-inner">
+          {/* Style */}
+          <button
+            type="button"
+            onClick={onOpenStyleBrowser}
+            className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-200 border border-zinc-800 hover:border-amber-500/40 transition-colors cursor-pointer"
+            title="Current Accompaniment Style (Click to open Style Browser)"
+          >
+            <span className="text-zinc-500 text-[9px] uppercase font-bold">STYLE:</span>
+            <span className="font-bold text-amber-300 truncate max-w-[100px] xl:max-w-[130px]">{currentStyleName}</span>
+          </button>
+
+          {/* Tempo */}
+          <div className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-zinc-900 text-zinc-200 border border-zinc-800" title="Style Tempo in Beats Per Minute">
+            <span className="text-zinc-500 text-[9px] uppercase font-bold">BPM:</span>
+            <span className="font-bold text-amber-400">{currentTempo}</span>
+          </div>
+
+          {/* Key */}
+          <div className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-zinc-900 text-zinc-200 border border-zinc-800" title="Key Signature">
+            <span className="text-zinc-500 text-[9px] uppercase font-bold">KEY:</span>
+            <span className="font-bold text-cyan-300">{currentKey}</span>
+          </div>
+
+          {/* Time Signature */}
+          <div className="hidden xl:flex items-center gap-1 px-2 py-0.5 rounded-lg bg-zinc-900 text-zinc-200 border border-zinc-800" title="Meter / Time Signature">
+            <span className="text-zinc-500 text-[9px] uppercase font-bold">TIME:</span>
+            <span className="font-bold text-zinc-300">{timeSignature[0]}/{timeSignature[1]}</span>
+          </div>
+
+          {/* Audio Engine */}
+          <div className="hidden 2xl:flex items-center gap-1 px-2 py-0.5 rounded-lg bg-zinc-900 text-zinc-400 border border-zinc-800" title="DSP Audio Engine: 48kHz High-Definition Web Audio Synthesizer">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+            <span className="text-[10px]">48kHz HD</span>
+          </div>
+
+          {/* AI Director Indicator */}
+          <button
+            type="button"
+            onClick={onOpenAiStudio}
+            className="flex items-center gap-1 px-2 py-0.5 rounded-lg bg-amber-500/10 hover:bg-amber-500/20 text-amber-300 border border-amber-500/30 transition-colors cursor-pointer"
+            title="AI Music Director Status (Click to open AI Studio)"
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse shadow-[0_0_4px_rgba(251,191,36,0.8)]" />
+            <span className="text-[10px] font-bold">AI READY</span>
+          </button>
+        </div>
+
+        {/* View Mode Switcher: Performance Mode vs Studio / Edit Mode (Prompts 13 & 14) */}
+        {onToggleViewMode && (
+          <div className="hidden sm:flex items-center bg-zinc-950/90 p-1 rounded-xl border border-zinc-800 shadow-inner">
+            <button
+              id="btn-view-performance"
+              type="button"
+              onClick={() => onToggleViewMode('performance')}
+              className={`px-2.5 py-1 rounded-lg text-xs font-mono font-bold tracking-wide transition-all cursor-pointer ${
+                viewMode === 'performance'
+                  ? 'bg-amber-500 text-zinc-950 font-black shadow-sm'
+                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
+              }`}
+              title="Switch to Performance Mode (Clean, focused stage view with large chord display)"
+            >
+              PERF
+            </button>
+            <button
+              id="btn-view-studio"
+              type="button"
+              onClick={() => onToggleViewMode('studio')}
+              className={`px-2.5 py-1 rounded-lg text-xs font-mono font-bold tracking-wide transition-all cursor-pointer ${
+                viewMode === 'studio'
+                  ? 'bg-amber-500 text-zinc-950 font-black shadow-sm'
+                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
+              }`}
+              title="Switch to Studio / Edit Mode (Expose Digital Mixer, MultiPads, Registration & AI Director)"
+            >
+              STUDIO
+            </button>
+          </div>
+        )}
+
+        {/* WORKSTATION <-> MEDIA PLAYER Mode Switcher */}
+        {onSwitchMode && (
+          <div className="flex items-center bg-zinc-950/90 p-1 rounded-xl border border-zinc-800 shadow-inner">
+            <button
+              id="btn-mode-workstation"
+              type="button"
+              onClick={() => onSwitchMode('workstation')}
+              className={`px-2.5 sm:px-3 py-1 rounded-lg text-xs font-mono font-bold tracking-wide flex items-center gap-1.5 transition-all cursor-pointer ${
+                appMode === 'workstation'
+                  ? 'bg-amber-500 text-zinc-950 shadow-sm font-extrabold'
+                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
+              }`}
+              title="Switch to Arranger Keyboard Workstation"
+            >
+              <Piano className="w-3.5 h-3.5" />
+              <span className="hidden md:inline">WORKSTATION</span>
+            </button>
+            <button
+              id="btn-mode-media-player"
+              type="button"
+              onClick={() => onSwitchMode('media_player')}
+              className={`px-2.5 sm:px-3 py-1 rounded-lg text-xs font-mono font-bold tracking-wide flex items-center gap-1.5 transition-all cursor-pointer ${
+                appMode === 'media_player'
+                  ? 'bg-gradient-to-r from-amber-500 to-amber-400 text-zinc-950 shadow-sm font-extrabold'
+                  : 'text-zinc-400 hover:text-amber-300 hover:bg-zinc-900'
+              }`}
+              title="Switch to Lark Universal Media Player (MP3, WAV, FLAC, M4A, MP4, MKV)"
+            >
+              <Disc className="w-3.5 h-3.5" />
+              <span className="hidden md:inline">MEDIA PLAYER</span>
+            </button>
+          </div>
+        )}
 
         {/* Center Quick Shortcuts: Shown on Large/Desktop Viewports */}
         <div className="hidden xl:flex items-center gap-1.5 bg-zinc-950/80 p-1 rounded-xl border border-zinc-800/80">
@@ -366,6 +509,34 @@ export const WorkstationHeader: React.FC<WorkstationHeaderProps> = ({
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5">
                   
+                  {/* Universal Media Player */}
+                  {(onSwitchMode || onOpenMediaPlayer) && (
+                    <button
+                      id="btn-modal-open-media-player"
+                      type="button"
+                      onClick={() => handleOpenTool(() => {
+                        if (onSwitchMode) onSwitchMode('media_player');
+                        else if (onOpenMediaPlayer) onOpenMediaPlayer();
+                      })}
+                      className="p-3 rounded-xl bg-gradient-to-br from-amber-950/40 via-zinc-900 to-zinc-900 hover:from-amber-900/60 hover:to-zinc-850 border border-amber-500/50 text-left transition-all group cursor-pointer flex flex-col gap-1.5 shadow-md shadow-amber-950/30"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="p-2 rounded-lg bg-gradient-to-br from-amber-500 to-amber-600 text-zinc-950 font-bold group-hover:scale-105 transition-transform shadow-xs">
+                          <Disc className="w-4 h-4" />
+                        </div>
+                        <span className="text-[10px] font-mono font-bold text-amber-300 bg-amber-950/90 px-2 py-0.5 rounded border border-amber-500/60 animate-pulse">
+                          ALL CODECS
+                        </span>
+                      </div>
+                      <div className="font-bold text-sm text-zinc-100 group-hover:text-amber-300 transition-colors">
+                        Lark Media Player
+                      </div>
+                      <p className="text-[11px] text-zinc-400 line-clamp-2">
+                        Universal media player supporting MP3, WAV, FLAC, M4A, MP4, MKV with synced lyrics, queue, &amp; visualizer.
+                      </p>
+                    </button>
+                  )}
+
                   {/* Style Creator */}
                   {onOpenStyleCreator && (
                     <button

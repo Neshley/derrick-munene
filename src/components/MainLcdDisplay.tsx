@@ -43,6 +43,8 @@ interface MainLcdDisplayProps {
   onOpenVoiceSelect: (part: 'r1' | 'r2' | 'left') => void;
   syncStart?: boolean;
   onToggleSyncStart?: () => void;
+  isStyleLoading?: boolean;
+  styleLoadingProgress?: number;
 }
 
 export const MainLcdDisplay: React.FC<MainLcdDisplayProps> = ({
@@ -67,12 +69,47 @@ export const MainLcdDisplay: React.FC<MainLcdDisplayProps> = ({
   onOpenVoiceSelect,
   syncStart = false,
   onToggleSyncStart,
+  isStyleLoading,
+  styleLoadingProgress,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [tempoInput, setTempoInput] = useState<string>(String(tempo));
   const [isEditingBpm, setIsEditingBpm] = useState<boolean>(false);
   const [showKeypad, setShowKeypad] = useState<boolean>(false);
   const keypadRef = useRef<HTMLDivElement | null>(null);
+
+  // Subtle style loading indicator tracker (supports internal style transition & external prop)
+  const [internalLoading, setInternalLoading] = useState<boolean>(false);
+  const [internalProgress, setInternalProgress] = useState<number>(0);
+  const prevStyleIdRef = useRef<string>(style.id);
+
+  useEffect(() => {
+    if (prevStyleIdRef.current !== style.id) {
+      prevStyleIdRef.current = style.id;
+      setInternalLoading(true);
+      setInternalProgress(18);
+
+      const step1 = setTimeout(() => setInternalProgress(58), 90);
+      const step2 = setTimeout(() => setInternalProgress(88), 180);
+      const step3 = setTimeout(() => setInternalProgress(100), 280);
+      const step4 = setTimeout(() => {
+        setInternalLoading(false);
+        setInternalProgress(0);
+      }, 500);
+
+      return () => {
+        clearTimeout(step1);
+        clearTimeout(step2);
+        clearTimeout(step3);
+        clearTimeout(step4);
+      };
+    }
+  }, [style.id]);
+
+  const isLoading = isStyleLoading ?? internalLoading;
+  const progressValue = styleLoadingProgress !== undefined && styleLoadingProgress > 0 
+    ? styleLoadingProgress 
+    : internalProgress;
 
   // Synchronize tempo input when tempo prop changes (if not actively editing)
   useEffect(() => {
@@ -202,6 +239,46 @@ export const MainLcdDisplay: React.FC<MainLcdDisplayProps> = ({
 
   return (
     <div className="relative rounded-2xl bg-zinc-950 p-3 sm:p-4 border-2 border-zinc-800 shadow-[inset_0_2px_12px_rgba(0,0,0,0.8),0_8px_24px_rgba(0,0,0,0.6)] text-zinc-100 overflow-hidden font-sans">
+      {/* Subtle, Slim Progress Bar Indicator at the top of LCD Display */}
+      <div
+        id="lcd-style-loading-bar-wrapper"
+        aria-hidden={!isLoading}
+        className={`absolute top-0 left-0 right-0 z-30 transition-all duration-300 pointer-events-none ${
+          isLoading ? 'opacity-100' : 'opacity-0'
+        }`}
+      >
+        {/* Slim Progress Rail (2.5px height) */}
+        <div className="w-full h-[2.5px] bg-zinc-900/90 relative overflow-hidden">
+          {/* Glowing Animated Bar Fill */}
+          <div
+            id="lcd-style-loading-bar-fill"
+            className="h-full bg-gradient-to-r from-amber-500 via-amber-300 to-cyan-400 shadow-[0_0_8px_rgba(251,191,36,0.95)] transition-all duration-150 ease-out"
+            style={{ width: `${Math.min(100, Math.max(0, progressValue))}%` }}
+          />
+          {/* Subtle Leading Edge Pulse Pip */}
+          {progressValue > 0 && progressValue < 100 && (
+            <div
+              className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-white shadow-[0_0_6px_rgba(255,255,255,1)]"
+              style={{ left: `${progressValue}%` }}
+            />
+          )}
+        </div>
+
+        {/* Microscopic Hardware Telemetry Readout Strip during style loading */}
+        {isLoading && (
+          <div className="flex items-center justify-between px-3 py-0.5 text-[8px] sm:text-[9px] font-mono tracking-widest font-bold text-amber-400/95 bg-zinc-950/85 border-b border-amber-500/20 backdrop-blur-xs">
+            <div className="flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping" />
+              <span className="uppercase">LOADING STYLE: {style.name}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-zinc-500 text-[8px] uppercase hidden sm:inline">DSP BUFFER & VOICING</span>
+              <span className="text-amber-300">{Math.round(progressValue)}%</span>
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* LCD Screen Glow Overlay */}
       <div className="absolute inset-0 bg-gradient-to-b from-sky-500/[0.04] via-transparent to-amber-500/[0.03] pointer-events-none" />
 
@@ -213,12 +290,18 @@ export const MainLcdDisplay: React.FC<MainLcdDisplayProps> = ({
           <div>
             <div className="flex items-center justify-between gap-2 mb-2">
               <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 flex items-center gap-1">
-                <Disc3 className="w-3.5 h-3.5 text-amber-400 animate-spin-slow" />
+                <Disc3 className={`w-3.5 h-3.5 text-amber-400 ${isLoading ? 'animate-spin' : 'animate-spin-slow'}`} />
                 ACMP STYLE
               </span>
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-zinc-800 text-amber-300 border border-zinc-700">
-                {style.category}
-              </span>
+              {isLoading ? (
+                <span className="text-[9px] font-mono px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 animate-pulse font-bold">
+                  LOADING...
+                </span>
+              ) : (
+                <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-zinc-800 text-amber-300 border border-zinc-700">
+                  {style.category}
+                </span>
+              )}
             </div>
 
             <button
