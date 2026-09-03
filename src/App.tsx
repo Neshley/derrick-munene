@@ -835,7 +835,7 @@ export default function App() {
           </main>
           {/* Footer Branding */}
           <footer className="border-t border-zinc-900 bg-zinc-950/80 px-4 py-2.5 text-center text-[11px] text-zinc-500 font-mono shrink-0">
-            Arranger Workstation Engine • Yamaha .STY Parser • Web Audio FM &amp; Subtractive Synthesizer • Web MIDI Compatible
+            DM ARRANGIA • Yamaha .STY Parser • Web Audio FM &amp; Subtractive Synthesizer • Web MIDI Compatible
           </footer>
         </div>
       </div>

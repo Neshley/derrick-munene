@@ -261,14 +261,6 @@ export const WorkstationHeader: React.FC<WorkstationHeaderProps> = ({
                   <h1 className="font-black text-xs sm:text-sm tracking-wider text-zinc-100 font-['Chakra_Petch'] leading-tight whitespace-nowrap">
                     DM ARRANGIA
                   </h1>
-                  <div className="flex items-center gap-1.5 whitespace-nowrap">
-                    <span className="text-[9px] uppercase font-bold tracking-widest text-amber-400 font-mono">
-                      AI ARRANGER WORKSTATION
-                    </span>
-                    <span className="text-[8px] font-mono px-1 rounded bg-zinc-800 text-zinc-400 border border-zinc-700">
-                      PRO
-                    </span>
-                  </div>
                 </div>
               </div>
             </div>
@@ -771,10 +763,10 @@ export const WorkstationHeader: React.FC<WorkstationHeaderProps> = ({
                         <span className="text-[10px] font-mono text-violet-400 font-bold">AI GEMINI</span>
                       </div>
                       <div className="font-bold text-sm text-zinc-100 group-hover:text-violet-300 transition-colors">
-                        AI Arranger Studio
+                        ARRANGIA AI
                       </div>
                       <p className="text-[11px] text-zinc-400 line-clamp-2">
-                        Generate custom worship styles, rhythm patterns, multi-pads, and harmonic arrangements with Gemini AI.
+                        Generate custom worship styles, rhythm patterns, multi-pads, and harmonic arrangements with ARRANGIA AI.
                       </p>
                     </button>
                   )}

@@ -15,7 +15,7 @@ export interface GuideSection {
   };
 }
 
-export const WORSHIP_GUIDE_TITLE = "GENOS WORSHIP ARRANGER";
+export const WORSHIP_GUIDE_TITLE = "DM ARRANGIA";
 export const WORSHIP_GUIDE_SUBTITLE = "User Guide & Worship Companion";
 
 export const WORSHIP_GUIDE_SECTIONS: GuideSection[] = [
@@ -24,7 +24,7 @@ export const WORSHIP_GUIDE_SECTIONS: GuideSection[] = [
     title: "1. Welcome",
     level: 3,
     content: [
-      "Welcome to DM ARRANGIA, an AI arranger workstation designed for musicians who want to create a rich, expressive worship and performance atmosphere using their keyboard or computer.",
+      "Welcome to DM ARRANGIA, designed for musicians who want to create a rich, expressive worship and performance atmosphere using their keyboard or computer.",
       "The application combines:",
       "• Real-time chord recognition\n• Automatic accompaniment\n• Piano, organ, bass and pad sounds\n• Drum and percussion patterns\n• Style/beat playback\n• Yamaha-style .STY style support\n• Intro, Main, Fill and Ending sections\n• MIDI keyboard support\n• Registration memory\n• Custom worship arrangements",
       "The goal is simple:",
@@ -350,12 +350,11 @@ export const WORSHIP_GUIDE_SECTIONS: GuideSection[] = [
 
 export const RAW_MARKDOWN_GUIDE = `# DM ARRANGIA
 
-## AI ARRANGER WORKSTATION
 ### User Guide & Worship Companion
 
 ### 1. Welcome
 
-Welcome to **DM ARRANGIA**, an AI arranger workstation designed for musicians who want to create a rich, expressive worship and performance atmosphere using their keyboard or computer.
+Welcome to **DM ARRANGIA**, designed for musicians who want to create a rich, expressive worship and performance atmosphere using their keyboard or computer.
 
 The application combines:
 

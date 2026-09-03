@@ -58,7 +58,7 @@ export const CreatorMessageModal: React.FC<CreatorMessageModalProps> = ({ isOpen
                 </span>
               </div>
               <p className="text-xs text-zinc-400 font-medium">
-                The heart, vision, technology, and story behind Genos Worship Arranger
+                The heart, vision, technology, and story behind DM ARRANGIA
               </p>
             </div>
           </div>
@@ -261,7 +261,7 @@ export const CreatorMessageModal: React.FC<CreatorMessageModalProps> = ({ isOpen
                   </button>
                 </div>
                 <a
-                  href={`mailto:${paypalEmail}?subject=Genos%20Worship%20Arranger%20Feedback%20%26%20Support`}
+                  href={`mailto:${paypalEmail}?subject=DM%20ARRANGIA%20Feedback%20%26%20Support`}
                   className="text-[11px] text-amber-400/90 hover:text-amber-300 hover:underline flex items-center gap-1 font-medium"
                 >
                   <Send className="w-3 h-3" /> Send an Email / Message

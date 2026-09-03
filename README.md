@@ -1,6 +1,6 @@
-# Arranger Keyboard Workstation & Worship Studio 🎹✨
+# DM ARRANGIA 🎹✨
 
-A feature-packed, professional interactive arranger workstation keyboard built with **React**, **TypeScript**, **Web Audio API**, and **Web MIDI API**. It brings the authentic feel and power of high-end hardware arranger keyboards (such as Yamaha Genos, Tyros, and PSR-S/SX series) right into your browser with zero latency and full offline PWA capabilities.
+A feature-packed, professional interactive arranger keyboard built with **React**, **TypeScript**, **Web Audio API**, and **Web MIDI API**. It brings the authentic feel and power of high-end hardware arranger keyboards (such as Yamaha Genos, Tyros, and PSR-S/SX series) right into your browser with zero latency and full offline PWA capabilities.
 
 ---
 
@@ -84,7 +84,7 @@ A feature-packed, professional interactive arranger workstation keyboard built w
 1. **Clone the repository**:
    ```bash
    git clone <repository-url>
-   cd arranger-keyboard-workstation
+   cd dm-arrangia
    ```
 
 2. **Install dependencies**:
@@ -130,7 +130,7 @@ The application is completely self-contained with pure Web Audio synthesis and r
 ### 3. Native Mobile App (Android / iOS with Capacitor)
 ```bash
 npm install @capacitor/core @capacitor/cli @capacitor/android @capacitor/ios
-npx cap init "Arranger Workstation" com.arranger.workstation
+npx cap init "DM ARRANGIA" com.dmarrangia.app
 npm run build
 npx cap add android
 npx cap open android

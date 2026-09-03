@@ -8,7 +8,7 @@ import { getStoredApiKey, getAiFetchHeaders } from './apiKeyManager';
  */
 
 async function callDirectGemini(prompt: string, apiKey: string): Promise<string> {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(apiKey)}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key=${encodeURIComponent(apiKey)}`;
   const res = await fetch(url, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -132,7 +132,7 @@ Return ONLY raw JSON with:
   }
 
   // Fallback preset
-  const styleName = prompt ? prompt.slice(0, 24) : 'AI Arranger Style';
+  const styleName = prompt ? prompt.slice(0, 24) : 'ARRANGIA Style';
   return {
     success: true,
     source: 'fallback',

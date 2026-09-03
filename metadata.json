@@ -1,6 +1,6 @@
 {
-  "name": "DM Arrangia — AI Arranger Workstation",
-  "description": "DM Arrangia is a professional AI-powered arranger workstation and worship studio for musicians, performers and creators.",
+  "name": "DM ARRANGIA",
+  "description": "DM ARRANGIA is a professional keyboard and worship studio for musicians, performers and creators.",
   "requestFramePermissions": [
     "microphone"
   ],

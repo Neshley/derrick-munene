@@ -915,7 +915,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                     </div>
                     <div>
                       <div className="text-sm font-bold text-zinc-100 flex items-center gap-2">
-                        <span>Gemini Arranger AI Intelligence</span>
+                        <span>ARRANGIA AI Intelligence</span>
                         <span className="text-[9px] px-1.5 py-0.2 bg-amber-500 text-zinc-950 rounded-full font-bold">
                           AI CO-PRODUCER
                         </span>
@@ -1099,9 +1099,6 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                     <h1 className="text-xl sm:text-2xl font-black tracking-wider text-zinc-100 font-['Chakra_Petch'] uppercase">
                       DM ARRANGIA
                     </h1>
-                    <p className="text-xs font-mono font-bold tracking-widest text-amber-400 uppercase">
-                      AI ARRANGER WORKSTATION
-                    </p>
                     <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 mt-2">
                       <span className="px-2 py-0.5 rounded-full bg-zinc-800 text-zinc-300 text-xs font-mono border border-zinc-700">
                         Version: v2.5 Pro System
@@ -1167,7 +1164,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
         {/* Modal Footer */}
         <div className="p-3.5 bg-zinc-900 border-t border-zinc-800 flex items-center justify-between">
           <div className="text-xs text-zinc-400 font-mono">
-            DM ARRANGIA • AI ARRANGER WORKSTATION • v2.5 Pro System • Developed by Derrick Munene
+            DM ARRANGIA • v2.5 Pro System • Developed by Derrick Munene
           </div>
           <button
             onClick={onClose}

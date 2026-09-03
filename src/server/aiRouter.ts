@@ -57,7 +57,7 @@ aiRouter.post('/ai/validate-key', async (req: Request, res: Response) => {
       return res.status(400).json({ success: false, error: 'No API key provided or configured.' });
     }
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3.8-flash',
       contents: 'Respond with JSON {"status": "ok", "message": "Key is valid"}',
       config: {
         responseMimeType: 'application/json',
@@ -78,7 +78,7 @@ aiRouter.post('/ai/generate-style', async (req: Request, res: Response) => {
 
     if (!ai) {
       // Return smart programmatic preset style if key is not provided
-      const styleName = prompt ? prompt.slice(0, 24) : 'AI Arranger Style';
+      const styleName = prompt ? prompt.slice(0, 24) : 'ARRANGIA Style';
       return res.json({
         success: true,
         source: 'fallback',
@@ -108,7 +108,7 @@ aiRouter.post('/ai/generate-style', async (req: Request, res: Response) => {
       });
     }
 
-    const systemPrompt = `You are ARRANGIA AI, master arranger programmer for the DM ARRANGIA AI Arranger Workstation (Yamaha-compatible style architecture).
+    const systemPrompt = `You are ARRANGIA AI, master style programmer for DM ARRANGIA (Yamaha-compatible style architecture).
 The user wants an arranger accompaniment style based on this prompt: "${prompt}".
 Generate a structured JSON configuration for this style.
 Return ONLY raw JSON with:
@@ -135,7 +135,7 @@ Return ONLY raw JSON with:
 }`;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3.8-flash',
       contents: systemPrompt,
       config: {
         responseMimeType: 'application/json',
@@ -223,7 +223,7 @@ Return ONLY raw JSON with:
 }`;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3.8-flash',
       contents: prompt,
       config: {
         responseMimeType: 'application/json',
@@ -308,7 +308,7 @@ Return ONLY raw JSON with:
 }`;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3.8-flash',
       contents: prompt,
       config: {
         responseMimeType: 'application/json',
@@ -368,7 +368,7 @@ aiRouter.post('/ai/generate-voice', async (req: Request, res: Response) => {
       });
     }
 
-    const systemPrompt = `You are ARRANGIA AI, sound designer and synthesis programmer for the DM ARRANGIA AI Arranger Workstation.
+    const systemPrompt = `You are ARRANGIA AI, sound designer and synthesis programmer for DM ARRANGIA.
 Create a rich instrument voice synthesis preset based on this request: "${prompt}".
 Return ONLY raw JSON with:
 {
@@ -396,7 +396,7 @@ Return ONLY raw JSON with:
 }`;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3.8-flash',
       contents: systemPrompt,
       config: {
         responseMimeType: 'application/json',
@@ -449,7 +449,7 @@ aiRouter.post('/ai/generate-mix', async (req: Request, res: Response) => {
       });
     }
 
-    const prompt = `You are ARRANGIA AI, world-class front-of-house and studio mixing engineer for the DM ARRANGIA AI Arranger Workstation.
+    const prompt = `You are ARRANGIA AI, world-class front-of-house and studio mixing engineer for DM ARRANGIA.
 Optimize an 8-track accompaniment mix and master bus for target: "${presetTarget}", active style: "${currentStyle}".
 Return ONLY raw JSON with:
 {
@@ -472,7 +472,7 @@ Return ONLY raw JSON with:
 }`;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3.8-flash',
       contents: prompt,
       config: {
         responseMimeType: 'application/json',
@@ -555,7 +555,7 @@ aiRouter.post('/ai/generate-multipads', async (req: Request, res: Response) => {
       });
     }
 
-    const prompt = `You are ARRANGIA AI, multi-pad phrase programmer for the DM ARRANGIA AI Arranger Workstation.
+    const prompt = `You are ARRANGIA AI, multi-pad phrase programmer for DM ARRANGIA.
 Generate a 4-pad interactive Multi-Pad phrase set for theme: "${theme}" in root key "${key}".
 Return ONLY raw JSON with:
 {
@@ -601,7 +601,7 @@ Return ONLY raw JSON with:
 }`;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3.8-flash',
       contents: prompt,
       config: {
         responseMimeType: 'application/json',
@@ -669,7 +669,7 @@ aiRouter.post('/ai/director-suggestion', async (req: Request, res: Response) => 
       return res.json({ success: true, source: 'fallback', suggestion });
     }
 
-    const prompt = `You are ARRANGIA AI (AI Music Director) integrated into the DM ARRANGIA AI Arranger Workstation.
+    const prompt = `You are ARRANGIA AI integrated into DM ARRANGIA.
 Live performance state:
 - Key: ${safeContext.key}
 - Tempo: ${safeContext.tempo} BPM
@@ -690,7 +690,7 @@ Return ONLY valid raw JSON:
 }`;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3.8-flash',
       contents: prompt,
       config: {
         responseMimeType: 'application/json',
@@ -735,7 +735,7 @@ aiRouter.post('/ai/director-chat', async (req: Request, res: Response) => {
       return res.json({ success: true, source: 'fallback', answer });
     }
 
-    const prompt = `You are ARRANGIA AI (AI Music Director), the intelligent co-producer for the DM ARRANGIA AI Arranger Workstation.
+    const prompt = `You are ARRANGIA AI, the intelligent co-producer for DM ARRANGIA.
 Musician is performing live:
 - Key: ${safeContext.key}
 - Tempo: ${safeContext.tempo} BPM
@@ -748,7 +748,7 @@ Musician asks: "${question}"
 Provide a concise, highly practical musical response (2-3 sentences max) with concrete chords or registration advice if appropriate.`;
 
     const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3.8-flash',
       contents: prompt,
     });
 

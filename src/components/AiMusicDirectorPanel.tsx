@@ -238,9 +238,6 @@ export const AiMusicDirectorPanel: React.FC<AiMusicDirectorPanelProps> = ({
             <h2 className="text-xs sm:text-sm font-black uppercase tracking-wider text-zinc-100 font-['Chakra_Petch'] leading-tight">
               ARRANGIA AI
             </h2>
-            <span className="text-[9px] font-mono text-amber-400/90 font-bold tracking-wider uppercase">
-              AI MUSIC DIRECTOR
-            </span>
           </div>
         </div>
 

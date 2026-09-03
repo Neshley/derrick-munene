@@ -204,7 +204,7 @@ export const AiStudioModal: React.FC<AiStudioModalProps> = ({
   // --- API CALL 1: GENERATE ARRANGER STYLE ---
   const handleGenerateStyle = async () => {
     setIsLoading(true);
-    setStatusMessage('Consulting Gemini AI Arranger Programmer...');
+    setStatusMessage('Consulting ARRANGIA AI...');
     try {
       const data = await generateAiStyle({
         prompt: stylePrompt,
@@ -342,7 +342,7 @@ export const AiStudioModal: React.FC<AiStudioModalProps> = ({
       name: generatedStyle.name || 'AI Style',
       category: generatedStyle.category || 'Custom',
       tempo: generatedStyle.tempo || 120,
-      description: generatedStyle.description || 'AI Arranger Style',
+      description: generatedStyle.description || 'ARRANGIA Style',
       sourceType: 'user-created',
       otsVoices: generatedStyle.otsVoices || baseStyle.otsVoices,
     };
@@ -415,7 +415,7 @@ export const AiStudioModal: React.FC<AiStudioModalProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-base sm:text-lg font-bold font-mono uppercase tracking-wider text-zinc-100 flex items-center gap-2">
-                  <span>ARRANGIA STUDIO • AI MUSIC DIRECTOR</span>
+                  <span>ARRANGIA AI</span>
                 </h2>
                 <span className="flex items-center gap-1 text-[11px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-950/80 text-emerald-300 border border-emerald-500/40">
                   <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
@@ -541,7 +541,7 @@ export const AiStudioModal: React.FC<AiStudioModalProps> = ({
                     <Disc className="w-4 h-4" />
                     Describe Arranger Accompaniment Style
                   </label>
-                  <span className="text-[11px] text-zinc-400">Prompt-to-Style AI Arranger</span>
+                  <span className="text-[11px] text-zinc-400">Prompt-to-Style ARRANGIA AI</span>
                 </div>
 
                 <div className="flex gap-2">
