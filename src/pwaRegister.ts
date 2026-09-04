@@ -96,9 +96,14 @@ export function initPwa() {
     notifyListeners();
   });
 
-  // Register Service Worker only in production to prevent caching Vite dev modules
+  // Register Service Worker in production, HTTPS, or preview environments for offline capability
   if ('serviceWorker' in navigator) {
-    if (import.meta.env.PROD) {
+    const shouldRegister =
+      import.meta.env.PROD ||
+      window.location.protocol === 'https:' ||
+      window.location.hostname !== 'localhost';
+
+    if (shouldRegister) {
       window.addEventListener('load', () => {
         navigator.serviceWorker
           .register('/sw.js')
@@ -123,23 +128,16 @@ export function initPwa() {
             });
           })
           .catch((error) => {
-            console.warn('[PWA] ServiceWorker registration failed: ', error);
+            console.warn('[PWA] ServiceWorker registration notice: ', error);
           });
       });
     } else {
-      // In development mode, unregister any active service workers and clear caches
+      // In local non-HTTPS development, clear stale service workers
       navigator.serviceWorker.getRegistrations().then((registrations) => {
         for (const registration of registrations) {
           registration.unregister();
         }
       });
-      if ('caches' in window) {
-        caches.keys().then((keys) => {
-          for (const key of keys) {
-            caches.delete(key);
-          }
-        });
-      }
     }
   }
 }

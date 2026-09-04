@@ -7,7 +7,18 @@ import { getAiFetchHeaders, checkServerAiStatus } from './apiKeyManager';
  * In offline mode or when unconfigured, seamlessly falls back to high-grade local algorithmic presets.
  */
 
+// Helper to detect offline status
+function isClientOffline(): boolean {
+  return typeof navigator !== 'undefined' && !navigator.onLine;
+}
+
 export async function validateGeminiKey(_key?: string): Promise<{ success: boolean; message: string; error?: string }> {
+  if (isClientOffline()) {
+    return {
+      success: false,
+      message: 'Offline Mode: Local algorithmic intelligence and preset engines active.',
+    };
+  }
   // Queries server status safely without exposing keys
   const status = await checkServerAiStatus();
   if (status.active || status.configured) {
@@ -25,18 +36,20 @@ export async function validateGeminiKey(_key?: string): Promise<{ success: boole
 export async function generateAiStyle(params: { prompt: string; category?: string; currentTempo?: number }): Promise<any> {
   const { prompt, category = 'African Gospel', currentTempo = 118 } = params;
 
-  try {
-    const res = await fetch('/api/ai/generate-style', {
-      method: 'POST',
-      headers: getAiFetchHeaders(),
-      body: JSON.stringify(params),
-    });
-    if (res.ok) {
-      const data = await res.json();
-      if (data.success && data.style) return data;
+  if (!isClientOffline()) {
+    try {
+      const res = await fetch('/api/ai/generate-style', {
+        method: 'POST',
+        headers: getAiFetchHeaders(),
+        body: JSON.stringify(params),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && data.style) return data;
+      }
+    } catch (err) {
+      console.warn('Server style generation request failed, using algorithmic fallback', err);
     }
-  } catch (err) {
-    console.warn('Server style generation request failed, using algorithmic fallback', err);
   }
 
   // High-fidelity local algorithmic preset
@@ -73,18 +86,20 @@ export async function generateAiStyle(params: { prompt: string; category?: strin
 export async function generateAiChords(params: { rootKey?: string; chordStyle?: string; mood?: string; currentChords?: string }): Promise<any> {
   const { rootKey = 'C', chordStyle = 'Gospel 2-5-1' } = params;
 
-  try {
-    const res = await fetch('/api/ai/generate-chords', {
-      method: 'POST',
-      headers: getAiFetchHeaders(),
-      body: JSON.stringify(params),
-    });
-    if (res.ok) {
-      const data = await res.json();
-      if (data.success) return data;
+  if (!isClientOffline()) {
+    try {
+      const res = await fetch('/api/ai/generate-chords', {
+        method: 'POST',
+        headers: getAiFetchHeaders(),
+        body: JSON.stringify(params),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success) return data;
+      }
+    } catch (err) {
+      console.warn('Server chord progression request failed, using algorithmic fallback', err);
     }
-  } catch (err) {
-    console.warn('Server chord progression request failed, using algorithmic fallback', err);
   }
 
   return {
@@ -108,18 +123,20 @@ export async function generateAiChords(params: { rootKey?: string; chordStyle?: 
 export async function generateAiSong(params: { songQuery?: string; key?: string; category?: string }): Promise<any> {
   const { songQuery = '', key = 'D', category = 'Worship' } = params;
 
-  try {
-    const res = await fetch('/api/ai/generate-song', {
-      method: 'POST',
-      headers: getAiFetchHeaders(),
-      body: JSON.stringify(params),
-    });
-    if (res.ok) {
-      const data = await res.json();
-      if (data.success && data.song) return data;
+  if (!isClientOffline()) {
+    try {
+      const res = await fetch('/api/ai/generate-song', {
+        method: 'POST',
+        headers: getAiFetchHeaders(),
+        body: JSON.stringify(params),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && data.song) return data;
+      }
+    } catch (err) {
+      console.warn('Server song chart request failed, using algorithmic fallback', err);
     }
-  } catch (err) {
-    console.warn('Server song chart request failed, using algorithmic fallback', err);
   }
 
   return {
@@ -147,18 +164,20 @@ export async function generateAiSong(params: { songQuery?: string; key?: string;
 export async function generateAiVoice(params: { prompt?: string; targetPart?: string }): Promise<any> {
   const { prompt = '80s Warm Lush Silk Pad with Chorus' } = params;
 
-  try {
-    const res = await fetch('/api/ai/generate-voice', {
-      method: 'POST',
-      headers: getAiFetchHeaders(),
-      body: JSON.stringify(params),
-    });
-    if (res.ok) {
-      const data = await res.json();
-      if (data.success && data.voice) return data;
+  if (!isClientOffline()) {
+    try {
+      const res = await fetch('/api/ai/generate-voice', {
+        method: 'POST',
+        headers: getAiFetchHeaders(),
+        body: JSON.stringify(params),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && data.voice) return data;
+      }
+    } catch (err) {
+      console.warn('Server voice generation request failed, using fallback', err);
     }
-  } catch (err) {
-    console.warn('Server voice generation request failed, using fallback', err);
   }
 
   return {
@@ -195,18 +214,20 @@ export async function generateAiVoice(params: { prompt?: string; targetPart?: st
 export async function generateAiMix(params: { presetTarget?: string; currentStyle?: string }): Promise<any> {
   const { presetTarget = 'Sanctuary Worship (Warm & Reverb)' } = params;
 
-  try {
-    const res = await fetch('/api/ai/generate-mix', {
-      method: 'POST',
-      headers: getAiFetchHeaders(),
-      body: JSON.stringify(params),
-    });
-    if (res.ok) {
-      const data = await res.json();
-      if (data.success && data.mix) return data;
+  if (!isClientOffline()) {
+    try {
+      const res = await fetch('/api/ai/generate-mix', {
+        method: 'POST',
+        headers: getAiFetchHeaders(),
+        body: JSON.stringify(params),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && data.mix) return data;
+      }
+    } catch (err) {
+      console.warn('Server mix request failed, using fallback', err);
     }
-  } catch (err) {
-    console.warn('Server mix request failed, using fallback', err);
   }
 
   return {
@@ -236,18 +257,20 @@ export async function generateAiMix(params: { presetTarget?: string; currentStyl
 export async function generateAiMultiPads(params: { theme?: string; key?: string }): Promise<any> {
   const { theme = 'Gospel & Worship Hits' } = params;
 
-  try {
-    const res = await fetch('/api/ai/generate-multipads', {
-      method: 'POST',
-      headers: getAiFetchHeaders(),
-      body: JSON.stringify(params),
-    });
-    if (res.ok) {
-      const data = await res.json();
-      if (data.success && data.pads) return data;
+  if (!isClientOffline()) {
+    try {
+      const res = await fetch('/api/ai/generate-multipads', {
+        method: 'POST',
+        headers: getAiFetchHeaders(),
+        body: JSON.stringify(params),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && data.pads) return data;
+      }
+    } catch (err) {
+      console.warn('Server multipad request failed, using fallback', err);
     }
-  } catch (err) {
-    console.warn('Server multipad request failed, using fallback', err);
   }
 
   return {
@@ -331,18 +354,20 @@ export async function generateAiDirectorSuggestion(
   context: AiDirectorContext,
   mode: 'harmony' | 'style' | 'voice' | 'arrange' | 'worship' | 'analyze' | 'practice' = 'harmony'
 ): Promise<{ success: boolean; suggestion: AiDirectorSuggestion; source: string }> {
-  try {
-    const res = await fetch('/api/ai/director-suggestion', {
-      method: 'POST',
-      headers: getAiFetchHeaders(),
-      body: JSON.stringify({ context, mode }),
-    });
-    if (res.ok) {
-      const data = await res.json();
-      if (data.success && data.suggestion) return data;
+  if (!isClientOffline()) {
+    try {
+      const res = await fetch('/api/ai/director-suggestion', {
+        method: 'POST',
+        headers: getAiFetchHeaders(),
+        body: JSON.stringify({ context, mode }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && data.suggestion) return data;
+      }
+    } catch (err) {
+      console.warn('Server director suggestion failed, using algorithmic fallback', err);
     }
-  } catch (err) {
-    console.warn('Server director suggestion failed, using algorithmic fallback', err);
   }
 
   // Algorithmic Music-Theory Fallback based on Key & Section
@@ -415,18 +440,20 @@ export async function askAiMusicDirector(params: {
 }): Promise<{ success: boolean; answer: string; suggestion?: AiDirectorSuggestion; source: string }> {
   const { question, context } = params;
 
-  try {
-    const res = await fetch('/api/ai/director-chat', {
-      method: 'POST',
-      headers: getAiFetchHeaders(),
-      body: JSON.stringify(params),
-    });
-    if (res.ok) {
-      const data = await res.json();
-      if (data.success && data.answer) return data;
+  if (!isClientOffline()) {
+    try {
+      const res = await fetch('/api/ai/director-chat', {
+        method: 'POST',
+        headers: getAiFetchHeaders(),
+        body: JSON.stringify(params),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && data.answer) return data;
+      }
+    } catch (err) {
+      console.warn('Server director chat failed, using algorithmic fallback', err);
     }
-  } catch (err) {
-    console.warn('Server director chat failed, using algorithmic fallback', err);
   }
 
   // Rule-based musical conversational answer
