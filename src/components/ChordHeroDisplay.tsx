@@ -1,6 +1,7 @@
 import React from 'react';
 import { DetectedChord } from '../types/arranger';
 import { Music, Sparkles, Volume2 } from 'lucide-react';
+import { formatChordNotation, useSystemSettings } from '../utils/systemSettings';
 
 interface ChordHeroDisplayProps {
   currentChord: DetectedChord;

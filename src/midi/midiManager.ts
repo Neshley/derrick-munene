@@ -8,7 +8,7 @@ import { DetectedChord } from '../types/arranger';
 import { midiAutomationRecorder } from './midiAutomationRecorder';
 import { DEFAULT_MIDI_CHANNELS, MIDI_CC, MIDI_PITCH_BEND } from './midiConstants';
 import { parseMidiMessage } from './midiParser';
-import { transformVelocity } from '../utils/systemSettings';
+import { transformVelocity, SystemSettings, getStoredSystemSettings, subscribeSystemSettings } from '../utils/systemSettings';
 import {
   ActiveMidiNote,
   MidiChannelMapping,
@@ -65,6 +65,10 @@ export class MidiManager {
   private masterTranspose: number = 0;
   private masterOctaveShift: number = 0;
   private velocityCurve: 'linear' | 'soft1' | 'soft2' | 'hard1' | 'hard2' | 'fixed100' | 'fixed127' = 'linear';
+  private sustainPolarity: 'normal' | 'inverted' = 'normal';
+  private modWheelDest: 'vibrato' | 'filter' | 'volume' = 'vibrato';
+  private expressionPedalDest: 'master_volume' | 'right_swell' | 'filter_sweep' = 'right_swell';
+  private midiChannelFilter: 'omni' | 'split_ch1_ch2' = 'omni';
 
   // Clock sync tracking
   private midiClockTicks: number = 0;
@@ -99,7 +103,22 @@ export class MidiManager {
   };
 
   private constructor() {
-    // Private constructor for singleton
+    this.applySystemSettings(getStoredSystemSettings());
+    subscribeSystemSettings((newSettings) => {
+      this.applySystemSettings(newSettings);
+    });
+  }
+
+  public applySystemSettings(settings: SystemSettings) {
+    this.velocityCurve = settings.velocityCurve;
+    this.masterTranspose = settings.masterTranspose;
+    this.masterOctaveShift = settings.masterOctaveShift;
+    this.pitchBendRange = settings.pitchBendRange;
+    this.sustainPolarity = settings.sustainPolarity;
+    this.modWheelDest = settings.modWheelDest;
+    this.expressionPedalDest = settings.expressionPedalDest;
+    this.midiChannelFilter = settings.midiChannelFilter;
+    this.clockSource = settings.midiClockSource;
   }
 
   public static getInstance(): MidiManager {
@@ -343,7 +362,9 @@ export class MidiManager {
   public handleNoteOn(note: number, velocity: number = 100, channel: number = 1) {
     audioEngine.init();
 
-    const isLowerZone = note < this.liveConfig.splitPoint;
+    const isLowerZone = this.midiChannelFilter === 'split_ch1_ch2'
+      ? channel === 2
+      : note < this.liveConfig.splitPoint;
     const voiceHandles: AudioEngineActiveNote[] = [];
 
     // Stop existing voice handles on the same note if held
@@ -453,16 +474,25 @@ export class MidiManager {
           modulationNormalized: normalized,
           lastMessageSummary: `Modulation: ${Math.round(normalized * 100)}% (Ch: ${channel})`,
         });
-        audioEngine.setModulation(normalized, 'r1');
-        audioEngine.setModulation(normalized, 'r2');
-        audioEngine.setModulation(normalized, 'left');
+        if (this.modWheelDest === 'filter') {
+          audioEngine.setFilterCutoff(normalized);
+        } else if (this.modWheelDest === 'volume') {
+          audioEngine.setTrackVolume('r1', normalized);
+          if (this.liveConfig.r2Enabled) {
+            audioEngine.setTrackVolume('r2', normalized * 0.85);
+          }
+        } else {
+          audioEngine.setModulation(normalized, 'r1');
+          audioEngine.setModulation(normalized, 'r2');
+          audioEngine.setModulation(normalized, 'left');
+        }
         this.listeners.forEach(l => l.onModulation?.(normalized));
         break;
       }
 
-      // CC64: Sustain Pedal (>= 64 ON, < 64 OFF)
+      // CC64: Sustain Pedal (respects sustainPolarity setting)
       case MIDI_CC.SUSTAIN: {
-        const isSustainOn = value >= 64;
+        const isSustainOn = this.sustainPolarity === 'inverted' ? value < 64 : value >= 64;
         this.setSustain(isSustainOn);
         break;
       }
@@ -482,10 +512,18 @@ export class MidiManager {
         break;
       }
 
-      // CC11: Expression
+      // CC11: Expression Pedal (respects expressionPedalDest setting)
       case MIDI_CC.EXPRESSION: {
-        if (channel === this.channelMapping.r1) {
+        if (this.expressionPedalDest === 'master_volume') {
+          audioEngine.setMasterVolume(normalized);
+        } else if (this.expressionPedalDest === 'filter_sweep') {
+          audioEngine.setFilterCutoff(normalized);
+        } else {
+          // 'right_swell' default
           audioEngine.setTrackVolume('r1', normalized);
+          if (this.liveConfig.r2Enabled) {
+            audioEngine.setTrackVolume('r2', normalized * 0.85);
+          }
         }
         break;
       }

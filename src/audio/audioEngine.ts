@@ -1,6 +1,7 @@
 // Web Audio API Polyphonic Synthesizer and Arranger Drum Engine
 
 import { EffectsRackSettings, ReverbType, VocalWorkstationSettings } from '../types/arranger';
+import { SystemSettings, getStoredSystemSettings, subscribeSystemSettings } from '../utils/systemSettings';
 
 export interface AudioEngineActiveNote {
   stop: (releaseTime?: number) => void;
@@ -38,6 +39,11 @@ export class AudioEngine {
   private eqMid: BiquadFilterNode | null = null;
   private eqHigh: BiquadFilterNode | null = null;
   private eqSettings: { low: number; mid: number; high: number } = { low: 0, mid: 0, high: 0 };
+
+  // Stereo Width Processor Nodes (Mid/Side Matrix)
+  private stereoSplitter: ChannelSplitterNode | null = null;
+  private stereoMerger: ChannelMergerNode | null = null;
+  private stereoSideGain: GainNode | null = null;
 
   // Microphone / Vocal Processing Nodes
   private micStream: MediaStream | null = null;
@@ -96,6 +102,8 @@ export class AudioEngine {
     release: 0.15,
   };
   private masterTuning: number = 440.0;
+  private systemSettings: SystemSettings = getStoredSystemSettings();
+  private settingsSubscribed: boolean = false;
 
   private _isDisposed: boolean = false;
 
@@ -221,11 +229,57 @@ export class AudioEngine {
     this.eqHigh.frequency.value = 6500;
     this.eqHigh.gain.value = this.eqSettings.high;
 
-    // Chain: compressor -> EQ Low -> EQ Mid -> EQ High -> masterGain -> analyser -> destination
+    // Chain: compressor -> EQ Low -> EQ Mid -> EQ High -> Stereo Width Processor -> masterGain -> analyser -> destination
     this.compressor.connect(this.eqLow);
     this.eqLow.connect(this.eqMid);
     this.eqMid.connect(this.eqHigh);
-    this.eqHigh.connect(this.masterGain);
+
+    try {
+      this.stereoSplitter = this.ctx.createChannelSplitter(2);
+      this.stereoMerger = this.ctx.createChannelMerger(2);
+
+      const midSum = this.ctx.createGain();
+      midSum.gain.value = 0.5;
+
+      const sideDiffL = this.ctx.createGain();
+      sideDiffL.gain.value = 0.5;
+      const sideDiffR = this.ctx.createGain();
+      sideDiffR.gain.value = -0.5;
+
+      const sideSum = this.ctx.createGain();
+      this.stereoSideGain = this.ctx.createGain();
+      const factor = (this.systemSettings.stereoWidthPercent ?? 100) / 100;
+      this.stereoSideGain.gain.value = factor;
+
+      const sideInvert = this.ctx.createGain();
+      sideInvert.gain.value = -1.0;
+
+      // Connect splitter
+      this.stereoSplitter.connect(midSum, 0);
+      this.stereoSplitter.connect(midSum, 1);
+
+      this.stereoSplitter.connect(sideDiffL, 0);
+      this.stereoSplitter.connect(sideDiffR, 1);
+
+      sideDiffL.connect(sideSum);
+      sideDiffR.connect(sideSum);
+      sideSum.connect(this.stereoSideGain);
+
+      // Connect to merger
+      // Ch 0 (Left): Mid + Side
+      midSum.connect(this.stereoMerger, 0, 0);
+      this.stereoSideGain.connect(this.stereoMerger, 0, 0);
+
+      // Ch 1 (Right): Mid - Side
+      midSum.connect(this.stereoMerger, 0, 1);
+      this.stereoSideGain.connect(sideInvert);
+      sideInvert.connect(this.stereoMerger, 0, 1);
+
+      this.eqHigh.connect(this.stereoSplitter);
+      this.stereoMerger.connect(this.masterGain);
+    } catch {
+      this.eqHigh.connect(this.masterGain);
+    }
 
     this.masterGain.connect(this.analyser);
     this.analyser.connect(this.ctx.destination);
@@ -281,6 +335,15 @@ export class AudioEngine {
 
       this.trackGains.set(name, g);
     });
+
+    // Synchronize audio engine DSP with persisted user system settings
+    this.applySystemSettings(this.systemSettings);
+    if (!this.settingsSubscribed) {
+      this.settingsSubscribed = true;
+      subscribeSystemSettings((newSettings) => {
+        this.applySystemSettings(newSettings);
+      });
+    }
   }
 
   public getContext(): AudioContext | null {
@@ -555,7 +618,15 @@ export class AudioEngine {
 
   // --- AMBIENT WORSHIP PAD DRONE GENERATOR ---
   // Plays continuous, warm atmospheric drone in the chosen root key (e.g. C, D, E, F, G, A, B)
-  public startAmbientDrone(rootKey: string = 'C') {
+  public startAmbientDrone(
+    rootKey: string = 'C',
+    options?: {
+      voicing?: 'root_only' | 'root_fifth' | 'sus2_ambient';
+      crossfadeSec?: number;
+      octaveShimmer?: boolean;
+      volumeTrimDb?: number;
+    }
+  ) {
     this.stopAmbientDrone();
     this.init();
     if (!this.ctx) return;
@@ -566,17 +637,34 @@ export class AudioEngine {
     };
     const baseMidi = noteMap[rootKey] || 48;
     const tuning = this.masterTuning;
-    const freqs = [
+
+    const voicing = options?.voicing || this.systemSettings.prayerDroneVoicing || 'root_fifth';
+    const crossfadeSec = options?.crossfadeSec ?? this.systemSettings.prayerDroneCrossfadeSec ?? 3;
+    const octaveShimmer = options?.octaveShimmer ?? this.systemSettings.prayerDroneOctaveShimmer ?? true;
+    const volumeTrimDb = options?.volumeTrimDb ?? this.systemSettings.prayerDroneVolumeTrimDb ?? 0;
+
+    const freqs: number[] = [
       tuning * Math.pow(2, (baseMidi - 12 - 69) / 12), // Sub root
       tuning * Math.pow(2, (baseMidi - 69) / 12),      // Root
-      tuning * Math.pow(2, (baseMidi + 7 - 69) / 12),  // 5th
-      tuning * Math.pow(2, (baseMidi + 12 - 69) / 12), // Octave
-      tuning * Math.pow(2, (baseMidi + 14 - 69) / 12), // 9th shimmer
     ];
 
+    if (voicing === 'root_fifth' || voicing === 'sus2_ambient') {
+      freqs.push(tuning * Math.pow(2, (baseMidi + 7 - 69) / 12)); // 5th
+      freqs.push(tuning * Math.pow(2, (baseMidi + 12 - 69) / 12)); // Octave
+    }
+
+    if (voicing === 'sus2_ambient') {
+      freqs.push(tuning * Math.pow(2, (baseMidi + 2 - 69) / 12)); // 9th / 2nd
+    }
+
+    if (octaveShimmer) {
+      freqs.push(tuning * Math.pow(2, (baseMidi + 14 - 69) / 12)); // High shimmer
+    }
+
     this.droneGain = this.ctx.createGain();
+    const targetGain = Math.max(0.05, Math.min(0.8, 0.35 * Math.pow(10, volumeTrimDb / 20)));
     this.droneGain.gain.setValueAtTime(0.001, this.ctx.currentTime);
-    this.droneGain.gain.linearRampToValueAtTime(0.35, this.ctx.currentTime + 3.0); // 3 sec fade in
+    this.droneGain.gain.linearRampToValueAtTime(targetGain, this.ctx.currentTime + Math.max(0.5, crossfadeSec));
 
     this.droneFilter = this.ctx.createBiquadFilter();
     this.droneFilter.type = 'lowpass';
@@ -593,7 +681,7 @@ export class AudioEngine {
 
     this.droneOscs = freqs.map((f, i) => {
       const osc = this.ctx!.createOscillator();
-      osc.type = i === 0 ? 'sine' : i === 4 ? 'triangle' : 'sawtooth';
+      osc.type = i === 0 ? 'sine' : i === freqs.length - 1 ? 'triangle' : 'sawtooth';
       osc.frequency.setValueAtTime(f * (1 + (Math.random() * 0.004 - 0.002)), this.ctx!.currentTime);
       osc.connect(this.droneGain!);
       osc.start();
@@ -604,10 +692,11 @@ export class AudioEngine {
   public stopAmbientDrone() {
     if (!this.ctx || this.droneOscs.length === 0) return;
     const now = this.ctx.currentTime;
+    const fadeOutSec = Math.max(0.8, this.systemSettings.prayerDroneCrossfadeSec || 2.0);
     if (this.droneGain) {
       this.droneGain.gain.cancelScheduledValues(now);
       this.droneGain.gain.setValueAtTime(this.droneGain.gain.value, now);
-      this.droneGain.gain.linearRampToValueAtTime(0.001, now + 2.0); // 2 sec fade out
+      this.droneGain.gain.linearRampToValueAtTime(0.001, now + fadeOutSec);
     }
     const oscsToStop = [...this.droneOscs];
     this.droneOscs = [];
@@ -621,11 +710,163 @@ export class AudioEngine {
           // Ignored
         }
       });
-    }, 2200);
+    }, (fadeOutSec + 0.2) * 1000);
   }
 
   public getActiveDroneKey(): string | null {
     return this.currentDroneKey;
+  }
+
+  /**
+   * Play metronome acoustic / electronic tick with custom sound & volume
+   */
+  public playMetronomeTick(
+    isAccent: boolean = false,
+    soundOverride?: SystemSettings['metronomeSound'],
+    volumePercent?: number
+  ) {
+    this.init();
+    if (!this.ctx || !this.dryGain) return;
+
+    const sound = soundOverride || this.systemSettings.metronomeSound || 'click';
+    const vol = (volumePercent !== undefined ? volumePercent : this.systemSettings.metronomeVolume) / 100;
+    if (vol <= 0) return;
+
+    const now = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
+
+    if (sound === 'woodblock') {
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(isAccent ? 1200 : 800, now);
+      gain.gain.setValueAtTime(vol * 0.9, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.04);
+      osc.connect(gain);
+      gain.connect(this.dryGain);
+      osc.start(now);
+      osc.stop(now + 0.05);
+    } else if (sound === 'cowbell') {
+      osc.type = 'square';
+      osc.frequency.setValueAtTime(isAccent ? 840 : 580, now);
+      gain.gain.setValueAtTime(vol * 0.6, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+      osc.connect(gain);
+      gain.connect(this.dryGain);
+      osc.start(now);
+      osc.stop(now + 0.09);
+    } else if (sound === 'beep') {
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(isAccent ? 1760 : 880, now);
+      gain.gain.setValueAtTime(vol * 0.7, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
+      osc.connect(gain);
+      gain.connect(this.dryGain);
+      osc.start(now);
+      osc.stop(now + 0.06);
+    } else {
+      // Click default
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(isAccent ? 2500 : 1500, now);
+      gain.gain.setValueAtTime(vol * 0.85, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.03);
+      osc.connect(gain);
+      gain.connect(this.dryGain);
+      osc.start(now);
+      osc.stop(now + 0.04);
+    }
+  }
+
+  /**
+   * Apply live system settings across all audio engine parameters
+   */
+  public applySystemSettings(settings: SystemSettings) {
+    this.systemSettings = settings;
+
+    // Master volume
+    this.setMasterVolume(settings.masterVolume);
+
+    // Master tuning & fine tune
+    const totalHz = settings.masterTuningHz * Math.pow(2, settings.masterFineTuneCents / 1200);
+    this.masterTuning = Math.max(400, Math.min(480, totalHz));
+
+    // Master EQ mapping (5-band to 3-band filters)
+    this.setMasterEq('low', settings.eqLow);
+    const midAverage = (settings.eqLowMid + settings.eqMid + settings.eqHighMid) / 3;
+    this.setMasterEq('mid', midAverage);
+    this.setMasterEq('high', settings.eqHigh);
+
+    // Master Reverb DSP
+    this.setReverbPreset(settings.reverbType, settings.reverbDecaySeconds, settings.reverbMix);
+
+    // Dynamics Compressor DSP
+    this.setCompressorEnabled(settings.compressorEnabled);
+    this.setCompressorSettings({
+      threshold: settings.compressorThreshold,
+      ratio: settings.compressorRatio,
+      attack: settings.compressorAttack,
+      release: settings.compressorRelease,
+    });
+
+    // Stereo Width DSP
+    if (settings.stereoWidthPercent !== undefined) {
+      this.setStereoWidth(settings.stereoWidthPercent);
+    }
+  }
+
+  public setStereoWidth(widthPercent: number) {
+    if (!this.ctx) return;
+    const factor = Math.max(0, Math.min(2.0, widthPercent / 100));
+    if (this.stereoSideGain) {
+      this.stereoSideGain.gain.setTargetAtTime(factor, this.ctx.currentTime, 0.03);
+    }
+  }
+
+  public playKeyClick(isRelease: boolean = false) {
+    if (!this.systemSettings.keyClickNoise || !this.ctx || !this.dryGain) return;
+    try {
+      const now = this.ctx.currentTime;
+      const bufferSize = Math.floor(this.ctx.sampleRate * 0.006);
+      const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        data[i] = (Math.random() * 2 - 1) * Math.exp(-i / (bufferSize * 0.3));
+      }
+      const noise = this.ctx.createBufferSource();
+      noise.buffer = buffer;
+      const filter = this.ctx.createBiquadFilter();
+      filter.type = 'bandpass';
+      filter.frequency.value = isRelease ? 3200 : 4200;
+      filter.Q.value = 2.5;
+      const gain = this.ctx.createGain();
+      gain.gain.value = 0.06;
+      noise.connect(filter);
+      filter.connect(gain);
+      gain.connect(this.dryGain);
+      noise.start(now);
+    } catch {
+      // safe fallback
+    }
+  }
+
+  public playDamperPedalNoise(isDown: boolean = true) {
+    if (!this.systemSettings.damperPedalNoise || !this.ctx || !this.dryGain) return;
+    try {
+      const now = this.ctx.currentTime;
+      const dur = 0.04;
+      const osc = this.ctx.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(isDown ? 75 : 90, now);
+      osc.frequency.exponentialRampToValueAtTime(45, now + dur);
+      const gain = this.ctx.createGain();
+      gain.gain.setValueAtTime(0.08, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + dur);
+      osc.connect(gain);
+      gain.connect(this.dryGain);
+      osc.start(now);
+      osc.stop(now + dur + 0.01);
+    } catch {
+      // safe fallback
+    }
   }
 
   public setMasterVolume(vol: number) {

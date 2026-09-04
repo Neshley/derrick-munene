@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { audioEngine } from '../audio/audioEngine';
 import { ChordEngine } from '../audio/chordEngine';
 import { DetectedChord } from '../types/arranger';
+import { getStoredSystemSettings, subscribeSystemSettings, formatNoteLabel, SystemSettings } from '../utils/systemSettings';
 import { 
   Volume2, 
   Sliders, 
@@ -54,6 +55,25 @@ export const InteractiveKeyboard: React.FC<InteractiveKeyboardProps> = ({
   const [showKeyLabels, setShowKeyLabels] = useState(true);
   const [isSettingSplit, setIsSettingSplit] = useState(false);
   const [visibleKeyRange, setVisibleKeyRange] = useState<'49' | '61'>('61');
+  const [sysSettings, setSysSettings] = useState<SystemSettings>(() => getStoredSystemSettings());
+
+  useEffect(() => {
+    const initial = getStoredSystemSettings();
+    setTranspose(initial.masterTranspose);
+    setOctaveShift(initial.masterOctaveShift);
+    if (initial.virtualKeyboardOctaves <= 4) {
+      setVisibleKeyRange('49');
+    }
+
+    return subscribeSystemSettings((s) => {
+      setSysSettings(s);
+      if (s.masterTranspose !== undefined) setTranspose(s.masterTranspose);
+      if (s.masterOctaveShift !== undefined) setOctaveShift(s.masterOctaveShift);
+      if (s.virtualKeyboardOctaves !== undefined) {
+        setVisibleKeyRange(s.virtualKeyboardOctaves <= 4 ? '49' : '61');
+      }
+    });
+  }, []);
 
   // Track currently pressed keys locally for zero-latency, rock-solid UI highlighting
   const [localPressedKeys, setLocalPressedKeys] = useState<Set<number>>(new Set());

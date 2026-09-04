@@ -2,6 +2,7 @@ import { ArrangerStyle, DetectedChord, NoteEvent, StyleSection, TrackType } from
 import { audioEngine } from './audioEngine';
 import { FACTORY_STYLES } from './builtInStyles';
 import { ChordEngine } from './chordEngine';
+import { SystemSettings, getStoredSystemSettings, subscribeSystemSettings } from '../utils/systemSettings';
 
 export interface StylePlayerListener {
   onBeat?: (measure: number, beat: number, stepInMeasure: number) => void;
@@ -9,6 +10,7 @@ export interface StylePlayerListener {
   onChordChanged?: (chord: DetectedChord) => void;
   onPlaybackStateChanged?: (isPlaying: boolean) => void;
   onTempoChanged?: (bpm: number) => void;
+  onOtsLinkChanged?: (otsIndex: 1 | 2 | 3 | 4) => void;
 }
 
 export class StylePlayer {
@@ -25,6 +27,15 @@ export class StylePlayer {
   private isFilling: boolean = false;
   private fillIntensityThreshold: number = 5; // 1 to 10 scale
   private dynamicFillMode: boolean = false;
+
+  // System Settings Linkage
+  private otsLinkMode: SystemSettings['otsLinkMode'] = 'on_variation';
+  private stopStyleTiming: SystemSettings['stopStyleTiming'] = 'immediate';
+  private syncStopMode: SystemSettings['syncStopMode'] = 'delayed_measure';
+  private bassOnInversion: boolean = true;
+  private chordHold: boolean = true;
+  private chordDebounceMs: number = 40;
+  private fadeDurationSec: number = 4;
 
   private currentChord: DetectedChord = {
     root: 'C',
@@ -60,6 +71,41 @@ export class StylePlayer {
 
   constructor() {
     this.tempo = this.currentStyle.tempo;
+    this.applySystemSettings(getStoredSystemSettings());
+    subscribeSystemSettings((newSettings) => {
+      this.applySystemSettings(newSettings);
+    });
+  }
+
+  public applySystemSettings(settings: SystemSettings) {
+    this.autoFill = settings.autoFill;
+    this.dynamicFillMode = settings.dynamicFillMode;
+    this.fillIntensityThreshold = settings.fillIntensityThreshold;
+    this.otsLinkMode = settings.otsLinkMode;
+    this.stopStyleTiming = settings.stopStyleTiming;
+    this.syncStopMode = settings.syncStopMode;
+    this.bassOnInversion = settings.bassOnInversion;
+    this.chordHold = settings.chordHold;
+    this.chordDebounceMs = settings.chordDebounceMs;
+    this.fadeDurationSec = settings.fadeDurationSec;
+  }
+
+  public fadeEnding(durationSec?: number) {
+    if (!this.isPlaying) return;
+    const duration = durationSec || this.fadeDurationSec || 4;
+    const initialVolume = this.masterVolume;
+    const startTime = Date.now();
+    const interval = setInterval(() => {
+      const elapsed = (Date.now() - startTime) / 1000;
+      if (elapsed >= duration) {
+        clearInterval(interval);
+        this.stop();
+        this.setMasterVolume(initialVolume);
+      } else {
+        const factor = 1 - (elapsed / duration);
+        this.setMasterVolume(initialVolume * factor);
+      }
+    }, 50);
   }
 
   public addListener(l: StylePlayerListener) {
@@ -473,6 +519,14 @@ export class StylePlayer {
     // Notify listeners for LCD UI beat flash
     this.notifyBeat(measure, beat, stepInMeasure);
 
+    // Trigger acoustic metronome click on beat downbeats if enabled
+    if (stepInMeasure % 4 === 0) {
+      const settings = getStoredSystemSettings();
+      if (settings.metronomeVolume > 0) {
+        audioEngine.playMetronomeTick(beat === 1, settings.metronomeSound, settings.metronomeVolume);
+      }
+    }
+
     // Check for section completion / queued transitions
     if (stepInMeasure === 15) {
       if (this.nextQueuedSection) {
@@ -554,6 +608,18 @@ export class StylePlayer {
 
   private notifySectionChanged(sec: StyleSection) {
     this.listeners.forEach(l => l.onSectionChanged?.(sec));
+    if (this.otsLinkMode === 'on_variation' && sec.startsWith('main_')) {
+      const otsMap: Record<string, 1 | 2 | 3 | 4> = {
+        'main_a': 1,
+        'main_b': 2,
+        'main_c': 3,
+        'main_d': 4,
+      };
+      const idx = otsMap[sec];
+      if (idx) {
+        this.listeners.forEach(l => l.onOtsLinkChanged?.(idx));
+      }
+    }
   }
 }
 

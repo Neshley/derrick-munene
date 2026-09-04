@@ -79,3 +79,78 @@ code, kbd, samp, pre {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* =========================================================
+   HARDWARE WORKSTATION CONSOLE THEMES
+   ========================================================= */
+
+/* Default / Genos Gold Signature */
+:root,
+[data-workstation-theme="genos_gold"] {
+  --workstation-accent: #f59e0b;
+  --workstation-accent-rgb: 245, 158, 11;
+  --workstation-accent-glow: rgba(245, 158, 11, 0.4);
+}
+
+/* Montage Cyber Cyan */
+[data-workstation-theme="montage_cyan"] {
+  --workstation-accent: #06b6d4;
+  --workstation-accent-rgb: 6, 182, 212;
+  --workstation-accent-glow: rgba(6, 182, 212, 0.45);
+}
+[data-workstation-theme="montage_cyan"] .text-amber-400,
+[data-workstation-theme="montage_cyan"] .text-amber-500 {
+  color: #22d3ee !important;
+}
+[data-workstation-theme="montage_cyan"] .bg-amber-500,
+[data-workstation-theme="montage_cyan"] .bg-amber-600 {
+  background-color: #0891b2 !important;
+}
+[data-workstation-theme="montage_cyan"] .border-amber-500 {
+  border-color: #06b6d4 !important;
+}
+
+/* Nord Stage Crimson */
+[data-workstation-theme="nord_crimson"] {
+  --workstation-accent: #f43f5e;
+  --workstation-accent-rgb: 244, 63, 94;
+  --workstation-accent-glow: rgba(244, 63, 94, 0.45);
+}
+[data-workstation-theme="nord_crimson"] .text-amber-400,
+[data-workstation-theme="nord_crimson"] .text-amber-500 {
+  color: #fb7185 !important;
+}
+[data-workstation-theme="nord_crimson"] .bg-amber-500,
+[data-workstation-theme="nord_crimson"] .bg-amber-600 {
+  background-color: #e11d48 !important;
+}
+[data-workstation-theme="nord_crimson"] .border-amber-500 {
+  border-color: #f43f5e !important;
+}
+
+/* Kronos Emerald */
+[data-workstation-theme="kronos_platinum"] {
+  --workstation-accent: #10b981;
+  --workstation-accent-rgb: 16, 185, 129;
+  --workstation-accent-glow: rgba(16, 185, 129, 0.45);
+}
+[data-workstation-theme="kronos_platinum"] .text-amber-400,
+[data-workstation-theme="kronos_platinum"] .text-amber-500 {
+  color: #34d399 !important;
+}
+[data-workstation-theme="kronos_platinum"] .bg-amber-500,
+[data-workstation-theme="kronos_platinum"] .bg-amber-600 {
+  background-color: #059669 !important;
+}
+[data-workstation-theme="kronos_platinum"] .border-amber-500 {
+  border-color: #10b981 !important;
+}
+
+/* Stage Sunlight Day Mode */
+[data-workstation-theme="stage_day"] {
+  --workstation-accent: #2563eb;
+  --workstation-accent-rgb: 37, 99, 235;
+  --workstation-accent-glow: rgba(37, 99, 235, 0.35);
+  filter: contrast(108%) saturate(105%);
+}
+

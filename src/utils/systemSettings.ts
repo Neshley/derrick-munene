@@ -374,6 +374,85 @@ export function applyThemeToDom(theme: SystemSettings['themeArchetype']) {
 }
 
 /**
+ * Format a chord display name according to the selected notation preference
+ */
+export function formatChordNotation(
+  chordDisplayName: string,
+  notation: SystemSettings['chordNotation']
+): string {
+  if (!chordDisplayName) return 'C';
+  if (notation === 'standard') return chordDisplayName;
+
+  const solfegeMap: Record<string, string> = {
+    'C': 'Do',
+    'C#': 'Do#',
+    'Db': 'Reb',
+    'D': 'Re',
+    'D#': 'Re#',
+    'Eb': 'Mib',
+    'E': 'Mi',
+    'F': 'Fa',
+    'F#': 'Fa#',
+    'Gb': 'Solb',
+    'G': 'Sol',
+    'G#': 'Sol#',
+    'Ab': 'Lab',
+    'A': 'La',
+    'A#': 'La#',
+    'Bb': 'Sib',
+    'B': 'Si',
+  };
+
+  const germanMap: Record<string, string> = {
+    'B': 'H',
+    'Bb': 'B',
+  };
+
+  const nashvilleMajorRoots = ['C', 'C#', 'D', 'Eb', 'E', 'F', 'F#', 'G', 'Ab', 'A', 'Bb', 'B'];
+  const nashvilleDegrees = ['1', '#1', '2', 'b3', '3', '4', '#4', '5', 'b6', '6', 'b7', '7'];
+
+  if (notation === 'german') {
+    return chordDisplayName.replace(/^([A-G][b#]?)/, (match) => germanMap[match] || match);
+  }
+
+  if (notation === 'solfege') {
+    return chordDisplayName.replace(/^([A-G][b#]?)/, (match) => solfegeMap[match] || match);
+  }
+
+  if (notation === 'nashville') {
+    // Relative to standard C root for immediate instant numeric recognition
+    return chordDisplayName.replace(/^([A-G][b#]?)/, (match) => {
+      const idx = nashvilleMajorRoots.indexOf(match);
+      return idx >= 0 ? nashvilleDegrees[idx] : match;
+    });
+  }
+
+  return chordDisplayName;
+}
+
+/**
+ * Format a note key label for the interactive keyboard
+ */
+export function formatNoteLabel(
+  midiNote: number,
+  mode: SystemSettings['keyLabelsMode']
+): string {
+  if (mode === 'none') return '';
+  if (mode === 'midi_num') return String(midiNote);
+
+  const notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+  const solfege = ['Do', 'Do#', 'Re', 'Re#', 'Mi', 'Fa', 'Fa#', 'Sol', 'Sol#', 'La', 'La#', 'Si'];
+  const noteIndex = midiNote % 12;
+  const octave = Math.floor(midiNote / 12) - 1;
+
+  if (mode === 'solfege') {
+    return `${solfege[noteIndex]}${octave}`;
+  }
+
+  return `${notes[noteIndex]}${octave}`;
+}
+
+/**
  * Maps velocity according to selected velocity curve
  */
 export function transformVelocity(rawVelocity: number, curve: SystemSettings['velocityCurve']): number {
@@ -409,3 +488,21 @@ export function transformVelocity(rawVelocity: number, curve: SystemSettings['ve
 
   return Math.round(Math.max(1, Math.min(127, out * 127)));
 }
+
+import { useState, useEffect } from 'react';
+
+/**
+ * React Hook that subscribes to real-time system settings state
+ */
+export function useSystemSettings(): SystemSettings {
+  const [settings, setSettings] = useState<SystemSettings>(() => getStoredSystemSettings());
+
+  useEffect(() => {
+    return subscribeSystemSettings((newSettings) => {
+      setSettings(newSettings);
+    });
+  }, []);
+
+  return settings;
+}
+

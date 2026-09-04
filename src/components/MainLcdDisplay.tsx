@@ -20,6 +20,7 @@ import {
   X,
   Sparkles
 } from 'lucide-react';
+import { formatChordNotation, useSystemSettings } from '../utils/systemSettings';
 
 interface MainLcdDisplayProps {
   style: ArrangerStyle;
@@ -72,6 +73,7 @@ export const MainLcdDisplay: React.FC<MainLcdDisplayProps> = ({
   isStyleLoading,
   styleLoadingProgress,
 }) => {
+  const systemSettings = useSystemSettings();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [tempoInput, setTempoInput] = useState<string>(String(tempo));
   const [isEditingBpm, setIsEditingBpm] = useState<boolean>(false);
@@ -239,7 +241,16 @@ export const MainLcdDisplay: React.FC<MainLcdDisplayProps> = ({
   };
 
   return (
-    <div className="relative rounded-2xl bg-zinc-950 p-3 sm:p-4 border-2 border-zinc-800 shadow-[inset_0_2px_12px_rgba(0,0,0,0.8),0_8px_24px_rgba(0,0,0,0.6)] text-zinc-100 overflow-hidden font-sans">
+    <div
+      style={{
+        filter: systemSettings.lcdContrastPercent !== 100 ? `contrast(${systemSettings.lcdContrastPercent}%)` : undefined,
+      }}
+      className={`relative rounded-2xl bg-zinc-950 p-3 sm:p-4 border-2 border-zinc-800 text-zinc-100 overflow-hidden font-sans ${
+        systemSettings.displayGlow
+          ? 'shadow-[inset_0_2px_12px_rgba(0,0,0,0.8),0_8px_24px_rgba(0,0,0,0.6),0_0_20px_rgba(34,211,238,0.08)]'
+          : 'shadow-[inset_0_2px_12px_rgba(0,0,0,0.8),0_8px_24px_rgba(0,0,0,0.6)]'
+      }`}
+    >
       {/* Slim Animated Progress Bar (1px height) at the top of the LCD display area */}
       <div
         id="lcd-style-loading-bar-wrapper"
@@ -890,7 +901,7 @@ export const MainLcdDisplay: React.FC<MainLcdDisplayProps> = ({
               </div>
               <div className="flex items-baseline gap-2 mt-0.5">
                 <span className="text-2xl sm:text-3xl font-black font-['Chakra_Petch'] text-cyan-300 tracking-wide drop-shadow-[0_0_8px_rgba(34,211,238,0.4)]">
-                  {currentChord.displayName}
+                  {formatChordNotation(currentChord.displayName, systemSettings.chordNotation)}
                 </span>
                 <span className="text-xs font-mono text-zinc-400">
                   [{currentChord.type.toUpperCase()}]
