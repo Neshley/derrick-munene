@@ -8,6 +8,7 @@ import { DetectedChord } from '../types/arranger';
 import { midiAutomationRecorder } from './midiAutomationRecorder';
 import { DEFAULT_MIDI_CHANNELS, MIDI_CC, MIDI_PITCH_BEND } from './midiConstants';
 import { parseMidiMessage } from './midiParser';
+import { transformVelocity } from '../utils/systemSettings';
 import {
   ActiveMidiNote,
   MidiChannelMapping,
@@ -61,6 +62,9 @@ export class MidiManager {
   private clockSource: MidiClockSource = 'internal';
   private pitchBendRange: number = MIDI_PITCH_BEND.DEFAULT_RANGE_SEMITONES;
   private selectedDeviceId: string | null = null; // null means all connected devices
+  private masterTranspose: number = 0;
+  private masterOctaveShift: number = 0;
+  private velocityCurve: 'linear' | 'soft1' | 'soft2' | 'hard1' | 'hard2' | 'fixed100' | 'fixed127' = 'linear';
 
   // Clock sync tracking
   private midiClockTicks: number = 0;
@@ -348,10 +352,12 @@ export class MidiManager {
       existing.voiceHandles.forEach(h => h.stop());
     }
 
+    const effectiveVelocity = transformVelocity(velocity, this.velocityCurve);
+
     if (isLowerZone) {
       // 1. Lower Zone: Left Voice (if enabled)
       if (this.liveConfig.lEnabled) {
-        const handle = audioEngine.playNote(note, velocity, this.liveConfig.lVoice, 'left');
+        const handle = audioEngine.playNote(note, effectiveVelocity, this.liveConfig.lVoice, 'left');
         voiceHandles.push(handle);
       }
 
@@ -362,13 +368,14 @@ export class MidiManager {
         stylePlayer.setChord(detected);
       }
     } else {
-      // 1. Upper Zone: Right 1 (Lead Solo)
-      const h1 = audioEngine.playNote(note, velocity, this.liveConfig.r1Voice, 'r1');
+      // 1. Upper Zone: Right 1 (Lead Solo) with Transpose & Octave Shift
+      const upperNote = Math.max(0, Math.min(127, note + this.masterTranspose + this.masterOctaveShift * 12));
+      const h1 = audioEngine.playNote(upperNote, effectiveVelocity, this.liveConfig.r1Voice, 'r1');
       voiceHandles.push(h1);
 
       // 2. Upper Zone: Right 2 (Layer Voice)
       if (this.liveConfig.r2Enabled) {
-        const h2 = audioEngine.playNote(note, Math.round(velocity * 0.85), this.liveConfig.r2Voice, 'r2');
+        const h2 = audioEngine.playNote(upperNote, Math.round(effectiveVelocity * 0.85), this.liveConfig.r2Voice, 'r2');
         voiceHandles.push(h2);
       }
     }
@@ -770,6 +777,30 @@ export class MidiManager {
   public setPitchBendRange(rangeSemitones: number) {
     this.pitchBendRange = Math.max(1, Math.min(24, Math.round(rangeSemitones)));
     this.updateState({ pitchBendRange: this.pitchBendRange });
+  }
+
+  public setMasterTranspose(semitones: number) {
+    this.masterTranspose = Math.max(-12, Math.min(12, Math.round(semitones)));
+  }
+
+  public getMasterTranspose(): number {
+    return this.masterTranspose;
+  }
+
+  public setMasterOctaveShift(octaves: number) {
+    this.masterOctaveShift = Math.max(-2, Math.min(2, Math.round(octaves)));
+  }
+
+  public getMasterOctaveShift(): number {
+    return this.masterOctaveShift;
+  }
+
+  public setVelocityCurve(curve: 'linear' | 'soft1' | 'soft2' | 'hard1' | 'hard2' | 'fixed100' | 'fixed127') {
+    this.velocityCurve = curve;
+  }
+
+  public getVelocityCurve() {
+    return this.velocityCurve;
   }
 
   public setChannelMapping(mapping: Partial<MidiChannelMapping>) {

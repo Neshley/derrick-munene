@@ -95,6 +95,7 @@ export class AudioEngine {
     attack: 0.005,
     release: 0.15,
   };
+  private masterTuning: number = 440.0;
 
   private _isDisposed: boolean = false;
 
@@ -564,12 +565,13 @@ export class AudioEngine {
       C: 48, 'C#': 49, D: 50, 'D#': 51, E: 52, F: 53, 'F#': 54, G: 55, 'G#': 56, A: 57, 'A#': 58, B: 59,
     };
     const baseMidi = noteMap[rootKey] || 48;
+    const tuning = this.masterTuning;
     const freqs = [
-      440 * Math.pow(2, (baseMidi - 12 - 69) / 12), // Sub root
-      440 * Math.pow(2, (baseMidi - 69) / 12),      // Root
-      440 * Math.pow(2, (baseMidi + 7 - 69) / 12),  // 5th
-      440 * Math.pow(2, (baseMidi + 12 - 69) / 12), // Octave
-      440 * Math.pow(2, (baseMidi + 14 - 69) / 12), // 9th shimmer
+      tuning * Math.pow(2, (baseMidi - 12 - 69) / 12), // Sub root
+      tuning * Math.pow(2, (baseMidi - 69) / 12),      // Root
+      tuning * Math.pow(2, (baseMidi + 7 - 69) / 12),  // 5th
+      tuning * Math.pow(2, (baseMidi + 12 - 69) / 12), // Octave
+      tuning * Math.pow(2, (baseMidi + 14 - 69) / 12), // 9th shimmer
     ];
 
     this.droneGain = this.ctx.createGain();
@@ -1531,8 +1533,16 @@ export class AudioEngine {
   }
 
   // --- MELODIC INSTRUMENT SYNTHESIS ---
+  public setMasterTuning(hz: number) {
+    this.masterTuning = Math.max(400, Math.min(480, hz));
+  }
+
+  public getMasterTuning(): number {
+    return this.masterTuning;
+  }
+
   public midiToFreq(midi: number): number {
-    return 440 * Math.pow(2, (midi - 69) / 12);
+    return this.masterTuning * Math.pow(2, (midi - 69) / 12);
   }
 
   public setPitchBend(semitones: number, track?: string) {
