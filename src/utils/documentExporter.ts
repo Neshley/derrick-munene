@@ -106,13 +106,32 @@ export async function downloadWordDocx(): Promise<void> {
       </w:r>
     </w:p>`;
 
-  // Render all 22 sections
+  // Render all sections grouped by category
+  let lastCategory = '';
   for (const sec of WORSHIP_GUIDE_SECTIONS) {
+    if (sec.category && sec.category !== lastCategory) {
+      lastCategory = sec.category;
+      bodyXml += `
+      <w:p>
+        <w:pPr>
+          <w:spacing w:before="400" w:after="140"/>
+        </w:pPr>
+        <w:r>
+          <w:rPr>
+            <w:b/>
+            <w:sz w:val="32"/>
+            <w:color w:val="D97706"/>
+          </w:rPr>
+          <w:t>━━━ CATEGORY: ${xmlEscape(sec.category.toUpperCase())} ━━━</w:t>
+        </w:r>
+      </w:p>`;
+    }
+
     // Section Heading
     bodyXml += `
       <w:p>
         <w:pPr>
-          <w:spacing w:before="280" w:after="100"/>
+          <w:spacing w:before="280" w:after="80"/>
         </w:pPr>
         <w:r>
           <w:rPr>
@@ -123,6 +142,24 @@ export async function downloadWordDocx(): Promise<void> {
           <w:t>${xmlEscape(sec.title)}</w:t>
         </w:r>
       </w:p>`;
+
+    // Plain English Summary if available
+    if (sec.summary) {
+      bodyXml += `
+      <w:p>
+        <w:pPr>
+          <w:spacing w:after="100"/>
+        </w:pPr>
+        <w:r>
+          <w:rPr>
+            <w:i/>
+            <w:sz w:val="22"/>
+            <w:color w:val="52525B"/>
+          </w:rPr>
+          <w:t>${xmlEscape(sec.summary)}</w:t>
+        </w:r>
+      </w:p>`;
+    }
 
     // Content paragraphs
     for (const para of sec.content) {
@@ -258,23 +295,17 @@ export async function downloadWordDocx(): Promise<void> {
             .map(
               (r) => `
             <w:tr>
-              <w:tc>
-                <w:p>
-                  <w:pPr><w:spacing w:after="60" w:before="60"/></w:pPr>
-                  <w:r>
-                    <w:rPr><w:b/></w:rPr>
-                    <w:t>${xmlEscape(r[0])}</w:t>
-                  </w:r>
-                </w:p>
-              </w:tc>
-              <w:tc>
-                <w:p>
-                  <w:pPr><w:spacing w:after="60" w:before="60"/></w:pPr>
-                  <w:r>
-                    <w:t>${xmlEscape(r[1])}</w:t>
-                  </w:r>
-                </w:p>
-              </w:tc>
+              ${r.map((cell, cIdx) => `
+                <w:tc>
+                  <w:p>
+                    <w:pPr><w:spacing w:after="60" w:before="60"/></w:pPr>
+                    <w:r>
+                      ${cIdx === 0 ? '<w:rPr><w:b/></w:rPr>' : ''}
+                      <w:t>${xmlEscape(cell)}</w:t>
+                    </w:r>
+                  </w:p>
+                </w:tc>
+              `).join('')}
             </w:tr>`
             )
             .join('')}
@@ -360,15 +391,42 @@ export function downloadPdf(): void {
   cursorY += 8;
 
   // Render all sections
+  let lastPdfCategory = '';
   for (const sec of WORSHIP_GUIDE_SECTIONS) {
+    if (sec.category && sec.category !== lastPdfCategory) {
+      lastPdfCategory = sec.category;
+      checkPageBreak(24);
+      doc.setFillColor(245, 245, 247);
+      doc.rect(margin, cursorY, maxLineWidth, 8, 'F');
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(10.5);
+      doc.setTextColor(180, 83, 9); // Amber-700
+      doc.text(`CATEGORY: ${sec.category.toUpperCase()}`, margin + 3, cursorY + 5.5);
+      cursorY += 12;
+    }
+
     checkPageBreak(16);
 
     // Section Title
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(13);
+    doc.setFontSize(12.5);
     doc.setTextColor(24, 24, 27); // Zinc-900
     doc.text(sec.title, margin, cursorY);
-    cursorY += 6;
+    cursorY += 5.5;
+
+    // Plain English Summary if present
+    if (sec.summary) {
+      doc.setFont('helvetica', 'italic');
+      doc.setFontSize(9);
+      doc.setTextColor(100, 100, 100);
+      const sumLines = doc.splitTextToSize(sec.summary, maxLineWidth);
+      for (const sl of sumLines) {
+        checkPageBreak(5);
+        doc.text(sl, margin, cursorY);
+        cursorY += 4;
+      }
+      cursorY += 2;
+    }
 
     // Paragraphs
     doc.setFont('helvetica', 'normal');
@@ -447,18 +505,27 @@ export function downloadPdf(): void {
       doc.setFillColor(240, 240, 240);
       doc.rect(margin, cursorY, maxLineWidth, 6, 'F');
       doc.setTextColor(20, 20, 20);
-      doc.text(sec.table.headers[0], margin + 2, cursorY + 4.2);
-      doc.text(sec.table.headers[1], margin + 45, cursorY + 4.2);
+
+      const numCols = sec.table.headers.length;
+      const colWidth = maxLineWidth / numCols;
+      sec.table.headers.forEach((h, hIdx) => {
+        doc.text(h, margin + 2 + hIdx * colWidth, cursorY + 4.2);
+      });
       cursorY += 6.5;
 
       doc.setFont('helvetica', 'normal');
-      doc.setFontSize(8.5);
-      for (const [col1, col2] of sec.table.rows) {
+      doc.setFontSize(8);
+      for (const row of sec.table.rows) {
         checkPageBreak(6);
-        doc.setFont('helvetica', 'bold');
-        doc.text(col1, margin + 2, cursorY + 4);
-        doc.setFont('helvetica', 'normal');
-        doc.text(col2, margin + 45, cursorY + 4);
+        row.forEach((cell, cIdx) => {
+          if (cIdx === 0) {
+            doc.setFont('helvetica', 'bold');
+          } else {
+            doc.setFont('helvetica', 'normal');
+          }
+          const truncated = cell.length > 45 ? cell.substring(0, 42) + '...' : cell;
+          doc.text(truncated, margin + 2 + cIdx * colWidth, cursorY + 4);
+        });
 
         doc.setDrawColor(230, 230, 230);
         doc.line(margin, cursorY + 5.5, margin + maxLineWidth, cursorY + 5.5);
@@ -526,29 +593,41 @@ export function printUserGuide(): void {
       <body>
         <h1>${WORSHIP_GUIDE_TITLE}</h1>
         <h2>${WORSHIP_GUIDE_SUBTITLE}</h2>
-        ${WORSHIP_GUIDE_SECTIONS.map((sec) => `
-          <div style="margin-bottom: 1.5rem;">
-            <h3>${sec.title}</h3>
-            ${sec.content.map(p => `<p>${p.replace(/\n/g, '<br/>')}</p>`).join('')}
-            ${sec.subsections ? sec.subsections.map(sub => `
-              <div style="margin-left: 1rem; margin-top: 0.75rem;">
-                <h4>${sub.title}</h4>
-                ${sub.description ? `<p>${sub.description.replace(/\n/g, '<br/>')}</p>` : ''}
-                ${sub.bestFor ? `<strong>Best for:</strong><ul>${sub.bestFor.map(b => `<li>${b}</li>`).join('')}</ul>` : ''}
+        ${(() => {
+          let lastCat = '';
+          return WORSHIP_GUIDE_SECTIONS.map((sec) => {
+            let catHeader = '';
+            if (sec.category && sec.category !== lastCat) {
+              lastCat = sec.category;
+              catHeader = `<div style="background: #fef3c7; border-left: 4px solid #d97706; padding: 6px 12px; margin: 2rem 0 1rem 0; font-weight: bold; font-size: 1rem; color: #92400e; text-transform: uppercase; letter-spacing: 0.05em;">CATEGORY: ${sec.category}</div>`;
+            }
+            return `
+              ${catHeader}
+              <div style="margin-bottom: 1.5rem;">
+                <h3 style="margin-top: 1rem;">${sec.title}</h3>
+                ${sec.summary ? `<p style="color: #52525b; font-style: italic; font-size: 0.9rem; margin-top: -0.25rem;">${sec.summary}</p>` : ''}
+                ${sec.content.map(p => `<p>${p.replace(/\n/g, '<br/>')}</p>`).join('')}
+                ${sec.subsections ? sec.subsections.map(sub => `
+                  <div style="margin-left: 1rem; margin-top: 0.75rem;">
+                    <h4>${sub.title}</h4>
+                    ${sub.description ? `<p>${sub.description.replace(/\n/g, '<br/>')}</p>` : ''}
+                    ${sub.bestFor ? `<strong>Best for:</strong><ul>${sub.bestFor.map(b => `<li>${b}</li>`).join('')}</ul>` : ''}
+                  </div>
+                `).join('') : ''}
+                ${sec.table ? `
+                  <table>
+                    <thead>
+                      <tr>${sec.table.headers.map(h => `<th>${h}</th>`).join('')}</tr>
+                    </thead>
+                    <tbody>
+                      ${sec.table.rows.map(r => `<tr><td><strong>${r[0]}</strong></td><td>${r[1]}</td></tr>`).join('')}
+                    </tbody>
+                  </table>
+                ` : ''}
               </div>
-            `).join('') : ''}
-            ${sec.table ? `
-              <table>
-                <thead>
-                  <tr>${sec.table.headers.map(h => `<th>${h}</th>`).join('')}</tr>
-                </thead>
-                <tbody>
-                  ${sec.table.rows.map(r => `<tr><td><strong>${r[0]}</strong></td><td>${r[1]}</td></tr>`).join('')}
-                </tbody>
-              </table>
-            ` : ''}
-          </div>
-        `).join('')}
+            `;
+          }).join('');
+        })()}
       </body>
     </html>
   `);
