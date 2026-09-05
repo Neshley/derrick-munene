@@ -179,6 +179,7 @@ let activeWakeLockSentinel: any = null;
  */
 export function getStoredSystemSettings(): SystemSettings {
   try {
+    if (typeof localStorage === 'undefined') return { ...DEFAULT_SYSTEM_SETTINGS };
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return { ...DEFAULT_SYSTEM_SETTINGS };
     const parsed = JSON.parse(raw);
@@ -196,7 +197,9 @@ export function saveSystemSettings(newSettings: Partial<SystemSettings>): System
   const current = getStoredSystemSettings();
   const merged: SystemSettings = { ...current, ...newSettings };
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+    }
   } catch (e) {
     console.warn('Failed to save system settings to localStorage:', e);
   }

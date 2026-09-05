@@ -90,6 +90,14 @@ export class StylePlayer {
     this.fadeDurationSec = settings.fadeDurationSec;
   }
 
+  public get masterVolume(): number {
+    return audioEngine.getMasterVolume();
+  }
+
+  public setMasterVolume(vol: number) {
+    audioEngine.setMasterVolume(vol);
+  }
+
   public fadeEnding(durationSec?: number) {
     if (!this.isPlaying) return;
     const duration = durationSec || this.fadeDurationSec || 4;

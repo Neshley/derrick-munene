@@ -796,7 +796,15 @@ export class AudioEngine {
     this.setMasterEq('high', settings.eqHigh);
 
     // Master Reverb DSP
-    this.setReverbPreset(settings.reverbType, settings.reverbDecaySeconds, settings.reverbMix);
+    const reverbTypeMap: Record<SystemSettings['reverbType'], ReverbType> = {
+      room: 'room',
+      cathedral: 'cathedral',
+      plate: 'plate',
+      hall1: 'hall',
+      hall2: 'hall',
+      stage: 'hall',
+    };
+    this.setReverbPreset(reverbTypeMap[settings.reverbType] || 'hall', settings.reverbDecaySeconds, settings.reverbMix);
 
     // Dynamics Compressor DSP
     this.setCompressorEnabled(settings.compressorEnabled);
@@ -869,9 +877,21 @@ export class AudioEngine {
     }
   }
 
+  public getMasterVolume(): number {
+    if (this.masterGain) {
+      return this.masterGain.gain.value;
+    }
+    return this.systemSettings.masterVolume ?? 0.85;
+  }
+
   public setMasterVolume(vol: number) {
     if (!this.masterGain || !this.ctx) return;
-    this.masterGain.gain.setTargetAtTime(Math.max(0, Math.min(1.2, vol)), this.ctx.currentTime, 0.02);
+    const target = Math.max(0, Math.min(1.2, vol));
+    if (typeof this.masterGain.gain.setTargetAtTime === 'function') {
+      this.masterGain.gain.setTargetAtTime(target, this.ctx.currentTime, 0.02);
+    } else {
+      this.masterGain.gain.value = target;
+    }
   }
 
   public setMasterEq(band: 'low' | 'mid' | 'high', gainDb: number) {
@@ -886,7 +906,11 @@ export class AudioEngine {
     else if (band === 'high') node = this.eqHigh;
 
     if (node) {
-      node.gain.setTargetAtTime(clampedGain, this.ctx.currentTime, 0.02);
+      if (typeof node.gain.setTargetAtTime === 'function') {
+        node.gain.setTargetAtTime(clampedGain, this.ctx.currentTime, 0.02);
+      } else {
+        node.gain.value = clampedGain;
+      }
     }
   }
 

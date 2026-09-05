@@ -8,19 +8,25 @@ class MockAudioNode {
 }
 
 class MockGainNode extends MockAudioNode {
-  gain = { value: 1, setValueAtTime: () => {}, linearRampToValueAtTime: () => {}, exponentialRampToValueAtTime: () => {} };
+  gain = {
+    value: 1,
+    setValueAtTime: () => {},
+    linearRampToValueAtTime: () => {},
+    exponentialRampToValueAtTime: () => {},
+    setTargetAtTime: () => {},
+  };
 }
 
 class MockDelayNode extends MockAudioNode {
-  delayTime = { value: 0 };
+  delayTime = { value: 0, setTargetAtTime: () => {} };
 }
 
 class MockCompressorNode extends MockAudioNode {
-  threshold = { value: -12 };
-  knee = { value: 18 };
-  ratio = { value: 4 };
-  attack = { value: 0.005 };
-  release = { value: 0.15 };
+  threshold = { value: -12, setTargetAtTime: () => {} };
+  knee = { value: 18, setTargetAtTime: () => {} };
+  ratio = { value: 4, setTargetAtTime: () => {} };
+  attack = { value: 0.005, setTargetAtTime: () => {} };
+  release = { value: 0.15, setTargetAtTime: () => {} };
 }
 
 class MockAnalyserNode extends MockAudioNode {
@@ -36,14 +42,15 @@ class MockConvolverNode extends MockAudioNode {
 
 class MockFilterNode extends MockAudioNode {
   type = 'lowpass';
-  frequency = { value: 1000, setValueAtTime: () => {} };
-  Q = { value: 1, setValueAtTime: () => {} };
-  gain = { value: 0, setValueAtTime: () => {} };
+  frequency = { value: 1000, setValueAtTime: () => {}, setTargetAtTime: () => {} };
+  Q = { value: 1, setValueAtTime: () => {}, setTargetAtTime: () => {} };
+  gain = { value: 0, setValueAtTime: () => {}, setTargetAtTime: () => {} };
 }
 
 class MockOscillatorNode extends MockAudioNode {
   type = 'sine';
-  frequency = { value: 440, setValueAtTime: () => {} };
+  frequency = { value: 440, setValueAtTime: () => {}, setTargetAtTime: () => {} };
+  detune = { value: 0, setValueAtTime: () => {}, setTargetAtTime: () => {} };
   start() {}
   stop() {}
 }

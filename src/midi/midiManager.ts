@@ -118,7 +118,7 @@ export class MidiManager {
     this.modWheelDest = settings.modWheelDest;
     this.expressionPedalDest = settings.expressionPedalDest;
     this.midiChannelFilter = settings.midiChannelFilter;
-    this.clockSource = settings.midiClockSource;
+    this.clockSource = settings.midiClockSource === 'external_midi' ? 'midi' : 'internal';
   }
 
   public static getInstance(): MidiManager {
