@@ -17,12 +17,15 @@ import {
   Flame,
   Volume2,
   Gauge,
-  ArrowRight
+  ArrowRight,
+  Timer
 } from 'lucide-react';
 
 interface ArrangerControlsProps {
   isPlaying: boolean;
   onTogglePlay: () => void;
+  metronomeEnabled?: boolean;
+  onToggleMetronome?: () => void;
   currentSection: StyleSection;
   onSelectSection: (section: StyleSection) => void;
   onTriggerBreak: () => void;
@@ -51,6 +54,8 @@ interface ArrangerControlsProps {
 export const ArrangerControls: React.FC<ArrangerControlsProps> = ({
   isPlaying,
   onTogglePlay,
+  metronomeEnabled = false,
+  onToggleMetronome,
   currentSection,
   onSelectSection,
   onTriggerBreak,
@@ -211,6 +216,26 @@ export const ArrangerControls: React.FC<ArrangerControlsProps> = ({
           >
             <Sparkles className="w-3.5 h-3.5" />
             <span>AUTO FILL</span>
+          </button>
+
+          {/* METRONOME ON/OFF */}
+          <button
+            id="btn-toggle-metronome"
+            onClick={onToggleMetronome}
+            className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all border flex items-center gap-1.5 cursor-pointer ${
+              metronomeEnabled
+                ? 'bg-amber-500 text-zinc-950 border-amber-400 font-bold shadow-sm shadow-amber-500/20'
+                : 'bg-zinc-800 text-zinc-400 border-zinc-700 hover:bg-zinc-750 hover:text-zinc-200'
+            }`}
+            title={metronomeEnabled ? "Metronome Click ON (Click to turn off)" : "Metronome Click OFF (Click to turn on)"}
+          >
+            <div className={`w-2 h-2 rounded-full ${
+              metronomeEnabled 
+                ? 'bg-zinc-950 shadow-[0_0_6px_rgba(245,158,11,0.9)] animate-pulse' 
+                : 'bg-zinc-600'
+            }`} />
+            <Timer className="w-3.5 h-3.5" />
+            <span>METRONOME</span>
           </button>
 
           {/* CHORD MODE */}

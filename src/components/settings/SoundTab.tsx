@@ -480,7 +480,22 @@ export const SoundTab: React.FC<SoundTabProps> = ({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Metronome Sound */}
         <div className="p-4 bg-zinc-900/60 border border-zinc-800/80 rounded-xl space-y-3">
-          <div className="text-sm font-semibold text-white">Metronome & Click Settings</div>
+          <div className="flex items-center justify-between">
+            <div className="text-sm font-semibold text-white">Metronome & Click Settings</div>
+            <button
+              id="btn-settings-toggle-metronome"
+              type="button"
+              onClick={() => updateSetting('metronomeEnabled', !settings.metronomeEnabled)}
+              className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all border flex items-center gap-1.5 cursor-pointer ${
+                settings.metronomeEnabled
+                  ? 'bg-amber-500 text-zinc-950 border-amber-400 font-bold shadow-sm shadow-amber-500/20'
+                  : 'bg-zinc-800 text-zinc-400 border-zinc-700 hover:bg-zinc-750 hover:text-zinc-200'
+              }`}
+            >
+              <div className={`w-2 h-2 rounded-full ${settings.metronomeEnabled ? 'bg-zinc-950 animate-pulse' : 'bg-zinc-600'}`} />
+              <span>{settings.metronomeEnabled ? 'CLICK: ON' : 'CLICK: OFF'}</span>
+            </button>
+          </div>
           <div className="grid grid-cols-2 gap-2">
             <div className="space-y-1">
               <label className="text-xs text-zinc-400">Click Sound</label>

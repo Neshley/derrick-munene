@@ -44,6 +44,7 @@ export interface SystemSettings {
   metronomeSound: 'click' | 'woodblock' | 'cowbell' | 'beep';
   metronomeVolume: number; // 0-100
   metronomeBeatFlash: boolean;
+  metronomeEnabled: boolean;
 
   // MIDI Hardware & Controller Routing
   velocityCurve: 'linear' | 'soft1' | 'soft2' | 'hard1' | 'hard2' | 'fixed100' | 'fixed127';
@@ -126,6 +127,7 @@ export const DEFAULT_SYSTEM_SETTINGS: SystemSettings = {
   metronomeSound: 'click',
   metronomeVolume: 70,
   metronomeBeatFlash: true,
+  metronomeEnabled: false,
 
   // MIDI Hardware
   velocityCurve: 'linear',
@@ -289,6 +291,7 @@ export function resetSettingsGroup(group: 'arranger' | 'sound' | 'midi' | 'perfo
       metronomeSound: DEFAULT_SYSTEM_SETTINGS.metronomeSound,
       metronomeVolume: DEFAULT_SYSTEM_SETTINGS.metronomeVolume,
       metronomeBeatFlash: DEFAULT_SYSTEM_SETTINGS.metronomeBeatFlash,
+      metronomeEnabled: DEFAULT_SYSTEM_SETTINGS.metronomeEnabled,
     };
   }
 

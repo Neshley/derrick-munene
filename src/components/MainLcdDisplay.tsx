@@ -46,6 +46,8 @@ interface MainLcdDisplayProps {
   onToggleSyncStart?: () => void;
   isStyleLoading?: boolean;
   styleLoadingProgress?: number;
+  metronomeEnabled?: boolean;
+  onToggleMetronome?: () => void;
 }
 
 export const MainLcdDisplay: React.FC<MainLcdDisplayProps> = ({
@@ -72,6 +74,8 @@ export const MainLcdDisplay: React.FC<MainLcdDisplayProps> = ({
   onToggleSyncStart,
   isStyleLoading,
   styleLoadingProgress,
+  metronomeEnabled = false,
+  onToggleMetronome,
 }) => {
   const systemSettings = useSystemSettings();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -422,8 +426,8 @@ export const MainLcdDisplay: React.FC<MainLcdDisplayProps> = ({
           {/* Top Bar: Measure, Beat, Tempo, Ticker LEDs */}
           <div className="flex items-center justify-between gap-2">
             {/* Beat Ticker LEDs */}
-            <div className="flex items-center gap-1.5 bg-zinc-950 px-2.5 py-1 rounded-lg border border-zinc-800">
-              <span className="text-[10px] text-zinc-400 font-mono mr-1">BEAT</span>
+            <div className="flex items-center gap-1.5 bg-zinc-950 px-2 sm:px-2.5 py-1 rounded-lg border border-zinc-800">
+              <span className="text-[10px] text-zinc-400 font-mono mr-0.5 sm:mr-1">BEAT</span>
               {[1, 2, 3, 4].map(b => {
                 const isActive = isPlaying && beat === b;
                 const isDownbeat = b === 1;
@@ -442,6 +446,24 @@ export const MainLcdDisplay: React.FC<MainLcdDisplayProps> = ({
                   </div>
                 );
               })}
+
+              {/* Metronome Quick Toggle Button on LCD */}
+              {onToggleMetronome && (
+                <button
+                  id="lcd-btn-metronome"
+                  type="button"
+                  onClick={onToggleMetronome}
+                  className={`ml-1 px-1.5 py-0.5 rounded text-[9px] font-mono font-bold transition-all flex items-center gap-1 border cursor-pointer ${
+                    metronomeEnabled
+                      ? 'bg-amber-500 text-zinc-950 border-amber-400 shadow-sm shadow-amber-500/30'
+                      : 'bg-zinc-900 text-zinc-400 border-zinc-700 hover:text-zinc-200 hover:bg-zinc-800'
+                  }`}
+                  title={metronomeEnabled ? "Metronome Click is ON (Click to turn off)" : "Metronome Click is OFF (Click to turn on)"}
+                >
+                  <span className={`w-1.5 h-1.5 rounded-full ${metronomeEnabled ? 'bg-zinc-950 animate-pulse' : 'bg-zinc-600'}`} />
+                  <span>CLICK</span>
+                </button>
+              )}
             </div>
 
             {/* Measure Counter */}

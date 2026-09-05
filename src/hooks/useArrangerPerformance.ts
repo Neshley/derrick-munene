@@ -51,6 +51,7 @@ export function useArrangerPerformance() {
   const [chordMode, setChordMode] = useState<'fingered' | 'single_finger'>('fingered');
   const [fillIntensityThreshold, setFillIntensityThreshold] = useState<number>(5);
   const [dynamicFillMode, setDynamicFillMode] = useState<boolean>(false);
+  const [metronomeEnabled, setMetronomeEnabled] = useState<boolean>(stylePlayer.getMetronomeEnabled());
 
   // Live Voices
   const [r1Voice, setR1Voice] = useState<string>(FACTORY_STYLES[0].otsVoices.ots1.r1);
@@ -154,11 +155,20 @@ export function useArrangerPerformance() {
       onTempoChanged: (bpm: number) => {
         setTempoState(bpm);
       },
+      onMetronomeChanged: (enabled: boolean) => {
+        setMetronomeEnabled(enabled);
+      },
     };
 
     stylePlayer.addListener(listener);
     return () => stylePlayer.removeListener(listener);
   }, []);
+
+  const handleToggleMetronome = () => {
+    const next = stylePlayer.toggleMetronome();
+    setMetronomeEnabled(next);
+    return next;
+  };
 
   // Synchronize dynamic parameters to stylePlayer
   useEffect(() => {
@@ -304,5 +314,7 @@ export function useArrangerPerformance() {
     midiConnected,
     midiDeviceName,
     handlePanic,
+    metronomeEnabled,
+    handleToggleMetronome,
   };
 }

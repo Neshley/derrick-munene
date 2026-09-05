@@ -117,6 +117,7 @@ export class AudioEngine {
 
   public init() {
     this._isDisposed = false;
+    if (typeof window === 'undefined') return;
     if (this.ctx && this.ctx.state !== 'closed' && this.masterGain && this.compressor) {
       if (this.ctx.state === 'suspended') {
         this.ctx.resume().catch((e) => console.warn('AudioContext resume failed', e));
@@ -723,7 +724,8 @@ export class AudioEngine {
   public playMetronomeTick(
     isAccent: boolean = false,
     soundOverride?: SystemSettings['metronomeSound'],
-    volumePercent?: number
+    volumePercent?: number,
+    scheduledTime?: number
   ) {
     this.init();
     if (!this.ctx || !this.dryGain) return;
@@ -732,7 +734,9 @@ export class AudioEngine {
     const vol = (volumePercent !== undefined ? volumePercent : this.systemSettings.metronomeVolume) / 100;
     if (vol <= 0) return;
 
-    const now = this.ctx.currentTime;
+    const now = scheduledTime !== undefined && scheduledTime >= this.ctx.currentTime
+      ? scheduledTime
+      : this.ctx.currentTime;
     const osc = this.ctx.createOscillator();
     const gain = this.ctx.createGain();
 

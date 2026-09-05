@@ -140,6 +140,12 @@ export default function App() {
   const [chordMode, setChordMode] = useState<'fingered' | 'single_finger'>('fingered');
   const [fillIntensityThreshold, setFillIntensityThreshold] = useState<number>(5);
   const [dynamicFillMode, setDynamicFillMode] = useState<boolean>(false);
+  const [metronomeEnabled, setMetronomeEnabled] = useState<boolean>(stylePlayer.getMetronomeEnabled());
+
+  const handleToggleMetronome = () => {
+    const next = stylePlayer.toggleMetronome();
+    setMetronomeEnabled(next);
+  };
 
   // Live keyboard voices
   const [r1Voice, setR1Voice] = useState<string>(FACTORY_STYLES[0].otsVoices.ots1.r1);
@@ -290,6 +296,9 @@ export default function App() {
       },
       onTempoChanged: (bpm: number) => {
         setTempo(bpm);
+      },
+      onMetronomeChanged: (enabled: boolean) => {
+        setMetronomeEnabled(enabled);
       },
     };
 
@@ -638,6 +647,8 @@ export default function App() {
               onToggleSyncStart={handleToggleSyncStart}
               isStyleLoading={isStyleLoading}
               styleLoadingProgress={styleLoadingProgress}
+              metronomeEnabled={metronomeEnabled}
+              onToggleMetronome={handleToggleMetronome}
             />
 
             {/* Style & Fill Capability Notification Banner */}
@@ -674,6 +685,8 @@ export default function App() {
             <ArrangerControls
               isPlaying={isPlaying}
               onTogglePlay={() => stylePlayer.togglePlay()}
+              metronomeEnabled={metronomeEnabled}
+              onToggleMetronome={handleToggleMetronome}
               currentSection={currentSection}
               onSelectSection={(sec) => stylePlayer.triggerSection(sec)}
               onTriggerBreak={() => stylePlayer.triggerBreak()}

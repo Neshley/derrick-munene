@@ -58,4 +58,15 @@ describe('StylePlayer Engine', () => {
 
     Date.now = originalDateNow;
   });
+
+  it('should initialize with metronome disabled by default and allow toggling', () => {
+    expect(player.getMetronomeEnabled()).toBe(false);
+
+    player.setMetronomeEnabled(true);
+    expect(player.getMetronomeEnabled()).toBe(true);
+
+    const nextState = player.toggleMetronome();
+    expect(nextState).toBe(false);
+    expect(player.getMetronomeEnabled()).toBe(false);
+  });
 });

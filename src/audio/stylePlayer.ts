@@ -2,7 +2,7 @@ import { ArrangerStyle, DetectedChord, NoteEvent, StyleSection, TrackType } from
 import { audioEngine } from './audioEngine';
 import { FACTORY_STYLES } from './builtInStyles';
 import { ChordEngine } from './chordEngine';
-import { SystemSettings, getStoredSystemSettings, subscribeSystemSettings } from '../utils/systemSettings';
+import { SystemSettings, getStoredSystemSettings, subscribeSystemSettings, saveSystemSettings } from '../utils/systemSettings';
 
 export interface StylePlayerListener {
   onBeat?: (measure: number, beat: number, stepInMeasure: number) => void;
@@ -11,6 +11,7 @@ export interface StylePlayerListener {
   onPlaybackStateChanged?: (isPlaying: boolean) => void;
   onTempoChanged?: (bpm: number) => void;
   onOtsLinkChanged?: (otsIndex: 1 | 2 | 3 | 4) => void;
+  onMetronomeChanged?: (enabled: boolean) => void;
 }
 
 export class StylePlayer {
@@ -21,6 +22,9 @@ export class StylePlayer {
   private syncStop: boolean = false;
   private autoFill: boolean = true;
   private acmpEnabled: boolean = false;
+  private metronomeEnabled: boolean = false;
+  private standaloneMetronomeTimerId: number | null = null;
+  private standaloneMetronomeBeat: number = 1;
 
   private currentSection: StyleSection = 'main_a';
   private nextQueuedSection: StyleSection | null = null;
@@ -71,7 +75,9 @@ export class StylePlayer {
 
   constructor() {
     this.tempo = this.currentStyle.tempo;
-    this.applySystemSettings(getStoredSystemSettings());
+    const initialSettings = getStoredSystemSettings();
+    this.metronomeEnabled = initialSettings.metronomeEnabled ?? false;
+    this.applySystemSettings(initialSettings);
     subscribeSystemSettings((newSettings) => {
       this.applySystemSettings(newSettings);
     });
@@ -88,6 +94,80 @@ export class StylePlayer {
     this.chordHold = settings.chordHold;
     this.chordDebounceMs = settings.chordDebounceMs;
     this.fadeDurationSec = settings.fadeDurationSec;
+    if (settings.metronomeEnabled !== undefined && this.metronomeEnabled !== settings.metronomeEnabled) {
+      this.metronomeEnabled = settings.metronomeEnabled;
+      this.listeners.forEach(l => l.onMetronomeChanged?.(this.metronomeEnabled));
+      if (!this.isPlaying) {
+        if (this.metronomeEnabled) this.startStandaloneMetronome();
+        else this.stopStandaloneMetronome();
+      }
+    }
+  }
+
+  public getMetronomeEnabled(): boolean {
+    return this.metronomeEnabled;
+  }
+
+  public setMetronomeEnabled(val: boolean) {
+    if (this.metronomeEnabled === val) return;
+    this.metronomeEnabled = val;
+    saveSystemSettings({ metronomeEnabled: val });
+    this.listeners.forEach(l => l.onMetronomeChanged?.(val));
+    if (!this.isPlaying) {
+      if (val) {
+        this.startStandaloneMetronome();
+      } else {
+        this.stopStandaloneMetronome();
+      }
+    }
+  }
+
+  public toggleMetronome(): boolean {
+    const next = !this.metronomeEnabled;
+    this.setMetronomeEnabled(next);
+    return next;
+  }
+
+  private startStandaloneMetronome() {
+    this.stopStandaloneMetronome();
+    if (typeof window === 'undefined') return;
+    if (!this.metronomeEnabled || this.isPlaying) return;
+
+    audioEngine.init();
+    const ctx = audioEngine.getContext();
+    if (ctx && ctx.state === 'suspended') {
+      ctx.resume().catch(() => {});
+    }
+
+    this.standaloneMetronomeBeat = 1;
+
+    const tick = () => {
+      if (!this.metronomeEnabled || this.isPlaying) {
+        this.stopStandaloneMetronome();
+        return;
+      }
+      const settings = getStoredSystemSettings();
+      if (settings.metronomeVolume > 0) {
+        audioEngine.playMetronomeTick(
+          this.standaloneMetronomeBeat === 1,
+          settings.metronomeSound,
+          settings.metronomeVolume
+        );
+      }
+      this.notifyBeat(1, this.standaloneMetronomeBeat, 0);
+      this.standaloneMetronomeBeat = (this.standaloneMetronomeBeat % 4) + 1;
+      const intervalMs = (60 / this.tempo) * 1000;
+      this.standaloneMetronomeTimerId = window.setTimeout(tick, intervalMs);
+    };
+
+    tick();
+  }
+
+  private stopStandaloneMetronome() {
+    if (this.standaloneMetronomeTimerId !== null) {
+      clearTimeout(this.standaloneMetronomeTimerId);
+      this.standaloneMetronomeTimerId = null;
+    }
   }
 
   public get masterVolume(): number {
@@ -458,6 +538,7 @@ export class StylePlayer {
       }
     }
 
+    this.stopStandaloneMetronome();
     this.isPlaying = true;
     this.currentStep = 0;
     this.nextStepTime = ctx.currentTime + 0.05;
@@ -468,6 +549,7 @@ export class StylePlayer {
   }
 
   public stop() {
+    this.stopStandaloneMetronome();
     this.isPlaying = false;
     if (this.timerId !== null) {
       clearTimeout(this.timerId);
@@ -527,11 +609,11 @@ export class StylePlayer {
     // Notify listeners for LCD UI beat flash
     this.notifyBeat(measure, beat, stepInMeasure);
 
-    // Trigger acoustic metronome click on beat downbeats if enabled
-    if (stepInMeasure % 4 === 0) {
+    // Trigger acoustic metronome click on beat downbeats ONLY if enabled
+    if (stepInMeasure % 4 === 0 && this.metronomeEnabled) {
       const settings = getStoredSystemSettings();
       if (settings.metronomeVolume > 0) {
-        audioEngine.playMetronomeTick(beat === 1, settings.metronomeSound, settings.metronomeVolume);
+        audioEngine.playMetronomeTick(beat === 1, settings.metronomeSound, settings.metronomeVolume, time);
       }
     }
 
