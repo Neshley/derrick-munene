@@ -318,35 +318,21 @@ export const MediaTrackList: React.FC<MediaTrackListProps> = ({
                   )}
                 </div>
 
-                {/* Format & Codec Badges */}
-                <div className="col-span-2 flex flex-col sm:flex-row items-center justify-center gap-1">
+                {/* Format Badge (Single format badge under Format column) */}
+                <div className="col-span-2 flex items-center justify-center">
                   <button
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
                       if (onSelectFormat) onSelectFormat(track.format);
                     }}
-                    className={`text-[9px] uppercase font-mono font-bold tracking-wider px-1.5 py-0.5 rounded border transition-transform hover:scale-105 cursor-pointer ${getFormatBadgeStyle(
+                    className={`text-[9px] uppercase font-mono font-bold tracking-wider px-2 py-0.5 rounded border transition-transform hover:scale-105 cursor-pointer ${getFormatBadgeStyle(
                       track.format
                     )}`}
                     title={`Filter by format: ${track.format.toUpperCase()}`}
                   >
                     {track.format}
                   </button>
-
-                  {track.codec && (
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (onSelectCodec) onSelectCodec(track.codec!);
-                      }}
-                      className="text-[8px] uppercase font-mono font-bold px-1.5 py-0.2 rounded bg-purple-950/70 text-purple-300 border border-purple-600/30 hover:bg-purple-900/80 transition-colors cursor-pointer"
-                      title={`Filter by codec: ${track.codec}`}
-                    >
-                      {track.codec.split(' ')[0]}
-                    </button>
-                  )}
                 </div>
 
                 {/* Duration & Context Menu */}
