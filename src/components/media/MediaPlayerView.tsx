@@ -63,7 +63,8 @@ import {
   HardDrive,
   ChevronDown,
   ChevronUp,
-  Info
+  Info,
+  ArrowUp
 } from 'lucide-react';
 
 interface MediaPlayerViewProps {
@@ -151,6 +152,38 @@ export const MediaPlayerView: React.FC<MediaPlayerViewProps> = ({
 
   const directoryInputRef = useRef<HTMLInputElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const mainScrollRef = useRef<HTMLElement | null>(null);
+  const [showScrollTop, setShowScrollTop] = useState(false);
+
+  // Monitor scroll on main content area
+  const handleMainScroll = (e: React.UIEvent<HTMLElement>) => {
+    const scrollTop = e.currentTarget.scrollTop;
+    setShowScrollTop(scrollTop > 200);
+  };
+
+  const handleScrollToTop = () => {
+    if (mainScrollRef.current) {
+      mainScrollRef.current.scrollTo({
+        top: 0,
+        behavior: 'smooth',
+      });
+    }
+  };
+
+  // Also bind event listener directly on mainScrollRef container for reliable capture
+  useEffect(() => {
+    const el = mainScrollRef.current;
+    if (!el) return;
+
+    const onScroll = () => {
+      setShowScrollTop(el.scrollTop > 200);
+    };
+
+    el.addEventListener('scroll', onScroll, { passive: true });
+    return () => {
+      el.removeEventListener('scroll', onScroll);
+    };
+  }, []);
 
   // All distinct folders from connected directories and track paths
   const availableFolders = useMemo(() => {
@@ -802,7 +835,7 @@ export const MediaPlayerView: React.FC<MediaPlayerViewProps> = ({
       )}
 
       {/* Main Body: Left Sidebar + Center Workspace Stage */}
-      <div className="flex-1 flex overflow-hidden min-h-0">
+      <div className="flex-1 flex overflow-hidden min-h-0 relative">
         
         {/* Left Navigation Sidebar (Visible on md and larger) */}
         <aside className="hidden md:flex w-52 sm:w-60 bg-zinc-925/80 border-r border-zinc-800/80 flex-col p-3 gap-4 shrink-0 overflow-y-auto custom-scrollbar">
@@ -1206,7 +1239,11 @@ export const MediaPlayerView: React.FC<MediaPlayerViewProps> = ({
         </aside>
 
         {/* Center Main Stage Content Area */}
-        <main className="flex-1 flex flex-col overflow-y-auto overflow-x-hidden min-w-0 custom-scrollbar p-3 sm:p-5 bg-zinc-950/90 scroll-smooth">
+        <main
+          ref={mainScrollRef}
+          onScroll={handleMainScroll}
+          className="flex-1 flex flex-col overflow-y-auto overflow-x-hidden min-w-0 custom-scrollbar p-3 sm:p-5 bg-zinc-950/90 scroll-smooth"
+        >
           
           {/* Mobile Navigation Strip for small screens (< md) */}
           <div className="md:hidden flex items-center gap-1.5 pb-3 mb-2 border-b border-zinc-800/80 overflow-x-auto custom-scrollbar shrink-0 select-none">
@@ -1787,6 +1824,20 @@ export const MediaPlayerView: React.FC<MediaPlayerViewProps> = ({
           )}
 
         </main>
+
+        {/* Return to Top Floating Arrow Button */}
+        {showScrollTop && (
+          <button
+            type="button"
+            onClick={handleScrollToTop}
+            aria-label="Return back to top"
+            className="absolute bottom-5 right-5 sm:right-8 z-30 px-3.5 py-2 rounded-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-zinc-950 font-bold shadow-xl shadow-amber-500/30 border border-amber-300/50 hover:scale-105 active:scale-95 transition-all flex items-center gap-1.5 cursor-pointer backdrop-blur-xs select-none animate-in fade-in zoom-in-95 duration-200"
+            title="Return back to top"
+          >
+            <ArrowUp className="w-4 h-4 stroke-[2.5]" />
+            <span className="text-xs font-bold tracking-tight">Top</span>
+          </button>
+        )}
       </div>
 
       {/* Sticky Bottom Now Playing Bar */}
