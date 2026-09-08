@@ -23,6 +23,8 @@ export interface MediaTrack {
   isFavorite: boolean;
   fileSize?: number;
   isBuiltIn?: boolean;
+  folderPath?: string; // Relative path on device (e.g. "Music/Worship/Song.mp3")
+  folderName?: string; // Directed root directory name (e.g. "Music" or "Worship")
 }
 
 export interface Playlist {

@@ -13,7 +13,9 @@ import {
   ListPlus, 
   Radio, 
   FolderPlus,
-  Sparkles
+  Sparkles,
+  Folder,
+  FolderOpen
 } from 'lucide-react';
 
 interface MediaTrackListProps {
@@ -26,6 +28,7 @@ interface MediaTrackListProps {
   onAddToQueue: (track: MediaTrack) => void;
   onAddToPlaylist?: (track: MediaTrack, playlistId: string) => void;
   onDeleteTrack?: (trackId: string) => void;
+  onDirectFolder?: () => void;
   playlists?: Playlist[];
   emptyMessage?: string;
 }
@@ -40,6 +43,7 @@ export const MediaTrackList: React.FC<MediaTrackListProps> = ({
   onAddToQueue,
   onAddToPlaylist,
   onDeleteTrack,
+  onDirectFolder,
   playlists = [],
   emptyMessage = 'No tracks found in this category',
 }) => {
@@ -70,12 +74,24 @@ export const MediaTrackList: React.FC<MediaTrackListProps> = ({
 
   if (tracks.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center p-12 text-zinc-500 text-center border-2 border-dashed border-zinc-800 rounded-2xl my-4">
-        <Music className="w-12 h-12 mb-3 text-amber-500/30" />
-        <p className="text-sm font-medium text-zinc-400">{emptyMessage}</p>
-        <p className="text-xs text-zinc-600 mt-1">
-          Import your audio or video files or select another view
+      <div className="flex flex-col items-center justify-center p-10 text-zinc-500 text-center border-2 border-dashed border-zinc-800 rounded-2xl my-4 bg-zinc-900/30">
+        <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mb-3">
+          <FolderOpen className="w-6 h-6 text-amber-400" />
+        </div>
+        <p className="text-sm font-semibold text-zinc-300">{emptyMessage}</p>
+        <p className="text-xs text-zinc-500 mt-1 max-w-sm">
+          Access your songs and videos directly on your device by selecting a folder. No uploading or importing required.
         </p>
+        {onDirectFolder && (
+          <button
+            type="button"
+            onClick={onDirectFolder}
+            className="mt-4 px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-zinc-950 font-bold text-xs flex items-center gap-2 transition-all shadow-md shadow-amber-500/20 active:scale-95 cursor-pointer"
+          >
+            <FolderOpen className="w-4 h-4" />
+            <span>Direct Device Folder</span>
+          </button>
+        )}
       </div>
     );
   }
@@ -160,19 +176,36 @@ export const MediaTrackList: React.FC<MediaTrackListProps> = ({
                     >
                       {track.title}
                     </span>
-                    {track.isBuiltIn && (
+                    {track.isBuiltIn ? (
                       <span className="text-[9px] px-1 py-0.2 rounded bg-zinc-800 text-zinc-400 hidden md:inline">
                         Built-in
                       </span>
+                    ) : track.folderName ? (
+                      <span className="text-[9px] px-1 py-0.2 rounded bg-amber-950/60 text-amber-300/90 border border-amber-500/20 hidden lg:inline-flex items-center gap-0.5">
+                        <Folder className="w-2.5 h-2.5" />
+                        <span>{track.folderName}</span>
+                      </span>
+                    ) : null}
+                  </div>
+                  <div className="flex items-center gap-2 text-[11px] text-zinc-400 truncate">
+                    <span className="truncate">{track.artist}</span>
+                    {track.folderPath && track.folderPath.includes('/') && (
+                      <span className="text-[10px] text-zinc-500 truncate hidden sm:inline">
+                        • {track.folderPath}
+                      </span>
                     )}
                   </div>
-                  <p className="text-[11px] text-zinc-400 truncate">{track.artist}</p>
                 </div>
               </div>
 
               {/* Album (desktop only) */}
               <div className="hidden sm:block sm:col-span-3 text-xs text-zinc-400 truncate">
-                {track.album || 'Single'}
+                <span>{track.album || 'Single'}</span>
+                {track.fileSize && (
+                  <span className="text-[10px] text-zinc-500 block">
+                    {(track.fileSize / (1024 * 1024)).toFixed(1)} MB
+                  </span>
+                )}
               </div>
 
               {/* Format Badge */}
