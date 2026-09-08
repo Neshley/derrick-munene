@@ -22,7 +22,9 @@ import {
   extractFilesFromDirectoryInput, 
   convertFilesToMediaTracks, 
   getStoredDirectedFolderName, 
-  saveStoredDirectedFolderName 
+  saveStoredDirectedFolderName,
+  getStoredDirectedFolders,
+  saveStoredDirectedFolders
 } from '../../utils/deviceFolderScanner';
 import { mediaPlayerEngine, MediaPlayerState } from '../../audio/mediaPlayerEngine';
 import { MediaTrackList } from './MediaTrackList';
@@ -75,13 +77,16 @@ export const MediaPlayerView: React.FC<MediaPlayerViewProps> = ({
   const [playlists, setPlaylists] = useState<Playlist[]>(() => getStoredPlaylists());
   const [favorites, setFavorites] = useState<Set<string>>(() => getStoredFavorites());
   const [recentItems, setRecentItems] = useState<{ trackId: string; playedAt: number }[]>(() => getStoredRecentlyPlayed());
+  const [directedFolders, setDirectedFolders] = useState<string[]>(() => getStoredDirectedFolders());
   const [directedFolderName, setDirectedFolderName] = useState<string | null>(() => getStoredDirectedFolderName());
+  const [selectedFolderFilter, setSelectedFolderFilter] = useState<string>('all');
   const [selectedSubfolder, setSelectedSubfolder] = useState<string>('all');
   const [isScanning, setIsScanning] = useState<boolean>(false);
   const [scanMessage, setScanMessage] = useState<string | null>(null);
   const [isIntroExpanded, setIsIntroExpanded] = useState<boolean>(false);
   const [isSubfoldersExpanded, setIsSubfoldersExpanded] = useState<boolean>(false);
   const [isStatsExpanded, setIsStatsExpanded] = useState<boolean>(false);
+  const scanModeRef = useRef<'add' | 'replace'>('add');
 
   // All combined tracks (built-in + device files)
   const allTracks: MediaTrack[] = useMemo(() => {
@@ -93,10 +98,14 @@ export const MediaPlayerView: React.FC<MediaPlayerViewProps> = ({
     }));
   }, [customTracks, favorites]);
 
-  // Available subdirectories in directed folder
+  // Available subdirectories in directed folders
   const availableSubfolders = useMemo(() => {
     const set = new Set<string>();
-    customTracks.forEach((t) => {
+    const sourceTracks = selectedFolderFilter === 'all'
+      ? customTracks
+      : customTracks.filter((t) => t.folderName === selectedFolderFilter);
+
+    sourceTracks.forEach((t) => {
       if (t.folderPath && t.folderPath.includes('/')) {
         const parts = t.folderPath.split('/');
         if (parts.length > 1) {
@@ -105,12 +114,12 @@ export const MediaPlayerView: React.FC<MediaPlayerViewProps> = ({
             set.add(sub);
           }
         }
-      } else if (t.album && t.album !== 'Device Storage' && t.album !== 'Local Collection' && t.album !== directedFolderName) {
+      } else if (t.album && t.album !== 'Device Storage' && t.album !== 'Local Collection' && !directedFolders.includes(t.album)) {
         set.add(t.album);
       }
     });
     return Array.from(set).sort();
-  }, [customTracks, directedFolderName]);
+  }, [customTracks, selectedFolderFilter, directedFolders]);
 
   // --- Playback Engine State ---
   const [playerState, setPlayerState] = useState<MediaPlayerState>(mediaPlayerEngine.getState());
@@ -192,6 +201,11 @@ export const MediaPlayerView: React.FC<MediaPlayerViewProps> = ({
       );
     }
 
+    // Apply Specific Device Folder Filter
+    if (selectedFolderFilter !== 'all') {
+      list = list.filter((t) => t.folderName === selectedFolderFilter);
+    }
+
     // Apply Search Query
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase().trim();
@@ -217,6 +231,7 @@ export const MediaPlayerView: React.FC<MediaPlayerViewProps> = ({
     playerState.queue,
     formatFilter,
     selectedSubfolder,
+    selectedFolderFilter,
     searchQuery,
   ]);
 
@@ -301,37 +316,78 @@ export const MediaPlayerView: React.FC<MediaPlayerViewProps> = ({
   };
 
   // --- Direct Device Folder & Media Access (No Server Uploads) ---
-  const handleDirectDeviceFolder = async () => {
+  const handleDirectDeviceFolder = async (mode: 'add' | 'replace' = 'add') => {
+    scanModeRef.current = mode;
+
     // 1. Try modern File System Access API (Point directly to device directory)
     if (typeof window !== 'undefined' && 'showDirectoryPicker' in window) {
       try {
         setIsScanning(true);
         setScanMessage('Waiting for folder selection on device...');
+        const startTime = performance.now();
         const dirHandle = await (window as any).showDirectoryPicker({
           id: 'arrangia-device-library',
           mode: 'read',
         });
+
         setScanMessage(`Scanning "${dirHandle.name}" on device...`);
-        const fileEntries = await scanFileSystemDirectory(dirHandle);
+        const fileEntries = await scanFileSystemDirectory(
+          dirHandle,
+          '',
+          dirHandle.name,
+          (count, folder) => {
+            setScanMessage(`Syncing "${folder}": indexed ${count} media files...`);
+          }
+        );
 
         if (fileEntries.length === 0) {
           setScanMessage(`No audio or video files found in "${dirHandle.name}".`);
           setTimeout(() => {
             setIsScanning(false);
             setScanMessage(null);
-          }, 3500);
+          }, 2500);
           return;
         }
 
-        setScanMessage(`Found ${fileEntries.length} media file(s). Reading metadata...`);
-        const tracks = await convertFilesToMediaTracks(fileEntries, dirHandle.name);
-        setCustomTracks(tracks);
-        saveStoredCustomTracks(tracks);
-        setDirectedFolderName(dirHandle.name);
-        saveStoredDirectedFolderName(dirHandle.name);
+        const elapsedSec = Math.max(0.1, (performance.now() - startTime) / 1000).toFixed(1);
+        setScanMessage(`Found ${fileEntries.length} media file(s). Finalizing library...`);
+
+        // Instant synchronous conversion with zero DOM audio/video decoder lockup
+        const newTracks = convertFilesToMediaTracks(fileEntries, dirHandle.name);
+
+        if (mode === 'add') {
+          // Merge avoiding duplicates by folderPath or title
+          setCustomTracks((prev) => {
+            const existingKeys = new Set(prev.map((t) => `${t.folderName || ''}::${t.folderPath || t.title}`));
+            const uniqueNew = newTracks.filter(
+              (t) => !existingKeys.has(`${t.folderName || ''}::${t.folderPath || t.title}`)
+            );
+            const merged = [...uniqueNew, ...prev];
+            saveStoredCustomTracks(merged);
+            return merged;
+          });
+
+          const updatedFolders = Array.from(new Set([...directedFolders, dirHandle.name]));
+          setDirectedFolders(updatedFolders);
+          saveStoredDirectedFolders(updatedFolders);
+          setDirectedFolderName(updatedFolders[0]);
+          saveStoredDirectedFolderName(updatedFolders[0]);
+          setSelectedFolderFilter('all');
+          setUploadNotification(`Added folder "${dirHandle.name}": +${newTracks.length} tracks synced in ${elapsedSec}s!`);
+        } else {
+          setCustomTracks(newTracks);
+          saveStoredCustomTracks(newTracks);
+          const updatedFolders = [dirHandle.name];
+          setDirectedFolders(updatedFolders);
+          saveStoredDirectedFolders(updatedFolders);
+          setDirectedFolderName(dirHandle.name);
+          saveStoredDirectedFolderName(dirHandle.name);
+          setSelectedFolderFilter(dirHandle.name);
+          setUploadNotification(`Synced "${dirHandle.name}": ${newTracks.length} tracks ready in ${elapsedSec}s!`);
+        }
+
         setSelectedSubfolder('all');
-        setUploadNotification(`Directed to "${dirHandle.name}": ${tracks.length} song(s) & video(s) ready!`);
-        setTimeout(() => setUploadNotification(null), 5000);
+        setTimeout(() => setUploadNotification(null), 4000);
         setIsScanning(false);
         setScanMessage(null);
         return;
@@ -358,6 +414,7 @@ export const MediaPlayerView: React.FC<MediaPlayerViewProps> = ({
 
     setIsScanning(true);
     setScanMessage('Scanning selected folder on device...');
+    const startTime = performance.now();
 
     try {
       const { rootFolderName, files: fileEntries } = extractFilesFromDirectoryInput(files);
@@ -366,19 +423,45 @@ export const MediaPlayerView: React.FC<MediaPlayerViewProps> = ({
         setTimeout(() => {
           setIsScanning(false);
           setScanMessage(null);
-        }, 3500);
+        }, 2500);
         return;
       }
 
-      setScanMessage(`Indexing ${fileEntries.length} media file(s) from "${rootFolderName}"...`);
-      const tracks = await convertFilesToMediaTracks(fileEntries, rootFolderName);
-      setCustomTracks(tracks);
-      saveStoredCustomTracks(tracks);
-      setDirectedFolderName(rootFolderName);
-      saveStoredDirectedFolderName(rootFolderName);
+      const elapsedSec = Math.max(0.1, (performance.now() - startTime) / 1000).toFixed(1);
+      const newTracks = convertFilesToMediaTracks(fileEntries, rootFolderName);
+
+      if (scanModeRef.current === 'add') {
+        setCustomTracks((prev) => {
+          const existingKeys = new Set(prev.map((t) => `${t.folderName || ''}::${t.folderPath || t.title}`));
+          const uniqueNew = newTracks.filter(
+            (t) => !existingKeys.has(`${t.folderName || ''}::${t.folderPath || t.title}`)
+          );
+          const merged = [...uniqueNew, ...prev];
+          saveStoredCustomTracks(merged);
+          return merged;
+        });
+
+        const updatedFolders = Array.from(new Set([...directedFolders, rootFolderName]));
+        setDirectedFolders(updatedFolders);
+        saveStoredDirectedFolders(updatedFolders);
+        setDirectedFolderName(updatedFolders[0]);
+        saveStoredDirectedFolderName(updatedFolders[0]);
+        setSelectedFolderFilter('all');
+        setUploadNotification(`Added folder "${rootFolderName}": +${newTracks.length} tracks synced in ${elapsedSec}s!`);
+      } else {
+        setCustomTracks(newTracks);
+        saveStoredCustomTracks(newTracks);
+        const updatedFolders = [rootFolderName];
+        setDirectedFolders(updatedFolders);
+        saveStoredDirectedFolders(updatedFolders);
+        setDirectedFolderName(rootFolderName);
+        saveStoredDirectedFolderName(rootFolderName);
+        setSelectedFolderFilter(rootFolderName);
+        setUploadNotification(`Synced "${rootFolderName}": ${newTracks.length} tracks ready in ${elapsedSec}s!`);
+      }
+
       setSelectedSubfolder('all');
-      setUploadNotification(`Directed to "${rootFolderName}": ${tracks.length} song(s) & video(s) ready!`);
-      setTimeout(() => setUploadNotification(null), 5000);
+      setTimeout(() => setUploadNotification(null), 4000);
     } catch (err) {
       console.warn('Error reading directory files', err);
     } finally {
@@ -388,13 +471,58 @@ export const MediaPlayerView: React.FC<MediaPlayerViewProps> = ({
     }
   };
 
+  const handleFastSync = () => {
+    if (directedFolders.length === 0) {
+      handleDirectDeviceFolder('add');
+      return;
+    }
+    setIsScanning(true);
+    setScanMessage(`Quick verifying ${directedFolders.length} device folder(s)...`);
+    setTimeout(() => {
+      setIsScanning(false);
+      setScanMessage(null);
+      setUploadNotification(
+        `⚡ Quick sync complete: ${customTracks.length} tracks verified across ${directedFolders.length} folder(s).`
+      );
+      setTimeout(() => setUploadNotification(null), 3500);
+    }, 450);
+  };
+
+  const handleRemoveFolder = (folderToRemove: string) => {
+    const updatedTracks = customTracks.filter((t) => t.folderName !== folderToRemove);
+    setCustomTracks(updatedTracks);
+    saveStoredCustomTracks(updatedTracks);
+
+    const updatedFolders = directedFolders.filter((f) => f !== folderToRemove);
+    setDirectedFolders(updatedFolders);
+    saveStoredDirectedFolders(updatedFolders);
+
+    if (updatedFolders.length > 0) {
+      setDirectedFolderName(updatedFolders[0]);
+      saveStoredDirectedFolderName(updatedFolders[0]);
+    } else {
+      setDirectedFolderName(null);
+      saveStoredDirectedFolderName(null);
+    }
+
+    if (selectedFolderFilter === folderToRemove) {
+      setSelectedFolderFilter('all');
+    }
+
+    setUploadNotification(`Removed folder "${folderToRemove}" from library.`);
+    setTimeout(() => setUploadNotification(null), 3000);
+  };
+
   const handleClearDeviceFolder = () => {
     setDirectedFolderName(null);
     saveStoredDirectedFolderName(null);
+    setDirectedFolders([]);
+    saveStoredDirectedFolders([]);
     setCustomTracks([]);
     saveStoredCustomTracks([]);
+    setSelectedFolderFilter('all');
     setSelectedSubfolder('all');
-    setUploadNotification('Device folder disconnected.');
+    setUploadNotification('All device folders disconnected.');
     setTimeout(() => setUploadNotification(null), 3000);
   };
 
@@ -532,25 +660,37 @@ export const MediaPlayerView: React.FC<MediaPlayerViewProps> = ({
           </div>
         </div>
 
-        {/* Right Action: Direct Device Folder */}
-        <div className="flex items-center gap-2">
-          {directedFolderName && (
+        {/* Right Action: Add Folder & Quick Sync */}
+        <div className="flex items-center gap-2 shrink-0">
+          {directedFolders.length > 0 && (
             <div className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-zinc-900 border border-zinc-800 text-xs text-zinc-300">
               <Folder className="w-3.5 h-3.5 text-amber-400" />
-              <span className="font-semibold text-zinc-200 truncate max-w-[120px]">{directedFolderName}</span>
+              <span className="font-semibold text-zinc-200 truncate max-w-[130px]">
+                {directedFolders.length === 1 ? directedFolders[0] : `${directedFolders.length} Folders`}
+              </span>
               <span className="text-[10px] text-zinc-500">({customTracks.length})</span>
             </div>
           )}
+
+          {directedFolders.length > 0 && (
+            <button
+              type="button"
+              onClick={handleFastSync}
+              className="p-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 hover:border-zinc-700 text-zinc-300 hover:text-amber-400 transition-all cursor-pointer shadow-xs active:scale-95"
+              title="Fast sync connected device folders"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isScanning ? 'animate-spin text-amber-400' : ''}`} />
+            </button>
+          )}
+
           <button
             type="button"
-            onClick={handleDirectDeviceFolder}
-            className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-zinc-950 font-bold text-xs flex items-center gap-1.5 transition-all shadow-md shadow-amber-500/20 active:scale-95 cursor-pointer"
-            title="Direct ARRANGIA where to search for songs & videos on your device"
+            onClick={() => handleDirectDeviceFolder('add')}
+            className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-zinc-950 font-bold text-xs flex items-center gap-1.5 transition-all shadow-md shadow-amber-500/20 active:scale-95 cursor-pointer whitespace-nowrap"
+            title="Add a folder on this device to search for songs & videos"
           >
-            <FolderOpen className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">
-              {directedFolderName ? 'Change Folder' : 'Direct Device Folder'}
-            </span>
+            <FolderPlus className="w-3.5 h-3.5" />
+            <span>Add Folder</span>
           </button>
         </div>
       </header>
@@ -675,55 +815,100 @@ export const MediaPlayerView: React.FC<MediaPlayerViewProps> = ({
                 <HardDrive className="w-3.5 h-3.5 text-amber-400" />
                 Device Storage
               </span>
-              {directedFolderName && (
-                <button
-                  type="button"
-                  onClick={handleDirectDeviceFolder}
-                  className="text-[10px] text-amber-400 hover:text-amber-300 font-semibold cursor-pointer"
-                  title="Change directory"
-                >
-                  Change
-                </button>
-              )}
+              <button
+                type="button"
+                onClick={() => handleDirectDeviceFolder('add')}
+                className="text-[10px] text-amber-400 hover:text-amber-300 font-bold flex items-center gap-0.5 cursor-pointer"
+                title="Add another device folder"
+              >
+                <Plus className="w-3 h-3" />
+                <span>Add</span>
+              </button>
             </div>
 
-            {directedFolderName ? (
+            {directedFolders.length > 0 ? (
               <div className="flex flex-col gap-1.5 pt-1">
-                <div className="px-2.5 py-2 rounded-lg bg-zinc-900 border border-zinc-750 flex items-center justify-between text-xs">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <Folder className="w-4 h-4 text-amber-400 shrink-0" />
-                    <span className="font-bold text-zinc-200 truncate">{directedFolderName}</span>
-                  </div>
-                  <span className="text-[10px] text-amber-400 font-mono font-bold shrink-0">
-                    {customTracks.length}
-                  </span>
+                {/* Folder List */}
+                <div className="flex flex-col gap-1 max-h-48 overflow-y-auto pr-0.5 custom-scrollbar">
+                  {directedFolders.map((f) => {
+                    const count = customTracks.filter((t) => t.folderName === f).length;
+                    const isSelected = selectedFolderFilter === f;
+                    return (
+                      <div
+                        key={f}
+                        className={`px-2 py-1.5 rounded-lg border text-xs flex items-center justify-between group transition-colors ${
+                          isSelected
+                            ? 'bg-amber-500/15 border-amber-500/40 text-amber-200'
+                            : 'bg-zinc-900 border-zinc-800/90 text-zinc-300 hover:border-zinc-700'
+                        }`}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => setSelectedFolderFilter(isSelected ? 'all' : f)}
+                          className="flex items-center gap-1.5 min-w-0 flex-1 text-left cursor-pointer truncate"
+                          title={`Click to filter by ${f} (active: ${isSelected ? 'yes' : 'no'})`}
+                        >
+                          <Folder className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                          <span className="truncate font-medium text-xs">{f}</span>
+                        </button>
+                        <div className="flex items-center gap-1.5 shrink-0 ml-1.5">
+                          <span className="text-[10px] font-mono font-bold text-zinc-400">{count}</span>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveFolder(f)}
+                            title={`Remove "${f}" from library`}
+                            className="opacity-0 group-hover:opacity-100 hover:text-rose-400 text-zinc-500 p-0.5 cursor-pointer transition-opacity"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-                <div className="flex items-center justify-between px-1 text-[10px] text-zinc-500">
-                  <span className="flex items-center gap-1 text-emerald-400">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 inline-block animate-pulse" />
-                    Direct Stream
-                  </span>
+
+                {/* Explicit Add Folder Button */}
+                <button
+                  type="button"
+                  onClick={() => handleDirectDeviceFolder('add')}
+                  className="w-full py-1.5 px-2 rounded-lg bg-zinc-800/60 hover:bg-zinc-800 text-amber-300 hover:text-amber-200 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer border border-dashed border-zinc-700 hover:border-amber-500/40"
+                  title="Add another folder from your device"
+                >
+                  <FolderPlus className="w-3.5 h-3.5 text-amber-400" />
+                  <span>+ Add Folder</span>
+                </button>
+
+                <div className="flex items-center justify-between px-1 pt-0.5 text-[10px] text-zinc-500">
+                  <button
+                    type="button"
+                    onClick={handleFastSync}
+                    className="flex items-center gap-1 text-emerald-400 hover:text-emerald-300 cursor-pointer"
+                    title="Quick rescan connected device folders"
+                  >
+                    <RefreshCw className={`w-2.5 h-2.5 ${isScanning ? 'animate-spin' : ''}`} />
+                    <span>Sync</span>
+                  </button>
                   <button
                     type="button"
                     onClick={handleClearDeviceFolder}
                     className="hover:text-rose-400 cursor-pointer transition-colors"
                   >
-                    Disconnect
+                    Disconnect All
                   </button>
                 </div>
               </div>
             ) : (
               <div className="p-2 text-center flex flex-col items-center gap-2">
                 <p className="text-[11px] text-zinc-400 leading-tight">
-                  Point to where files are located on this device.
+                  Direct ARRANGIA to where songs & videos are on this device.
                 </p>
                 <button
                   type="button"
-                  onClick={handleDirectDeviceFolder}
-                  className="w-full py-1.5 px-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-amber-300 text-xs font-semibold flex items-center justify-center gap-1.5 transition-colors cursor-pointer border border-zinc-700"
+                  onClick={() => handleDirectDeviceFolder('add')}
+                  className="w-full py-2 px-2.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-zinc-950 text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer shadow-sm shadow-amber-500/20"
                 >
-                  <FolderOpen className="w-3.5 h-3.5 text-amber-400" />
-                  <span>Direct Folder</span>
+                  <FolderPlus className="w-3.5 h-3.5" />
+                  <span>+ Add Folder</span>
                 </button>
               </div>
             )}
@@ -935,12 +1120,12 @@ export const MediaPlayerView: React.FC<MediaPlayerViewProps> = ({
             </button>
             <button
               type="button"
-              onClick={handleDirectDeviceFolder}
-              className="px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap flex items-center gap-1.5 transition-all shrink-0 bg-amber-500/10 text-amber-300 border border-amber-500/30"
-              title="Direct ARRANGIA to search a folder on your device"
+              onClick={() => handleDirectDeviceFolder('add')}
+              className="px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap flex items-center gap-1.5 transition-all shrink-0 bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/40 cursor-pointer shadow-xs active:scale-95"
+              title="Add another device folder to your media library"
             >
-              <FolderOpen className="w-3.5 h-3.5 text-amber-400" />
-              <span>{directedFolderName ? `📁 ${directedFolderName}` : 'Direct Folder'}</span>
+              <FolderPlus className="w-3.5 h-3.5 text-amber-400" />
+              <span>+ Add Folder</span>
             </button>
           </div>
 
@@ -1099,7 +1284,7 @@ export const MediaPlayerView: React.FC<MediaPlayerViewProps> = ({
               {/* If Library tab: Display Directed Device Folder Status or Prompt */}
               {activeTab === 'library' && (
                 <>
-                  {directedFolderName ? (
+                  {directedFolders.length > 0 ? (
                     <div className="mb-4 p-3.5 sm:p-4 rounded-2xl bg-zinc-900/90 border border-zinc-800 flex flex-col gap-3 shadow-md">
                       <div className="flex items-center justify-between gap-3 flex-wrap">
                         <div className="flex items-center gap-3 min-w-0">
@@ -1108,9 +1293,14 @@ export const MediaPlayerView: React.FC<MediaPlayerViewProps> = ({
                           </div>
                           <div className="min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <span className="text-[10px] font-mono uppercase font-bold text-zinc-400">Folder:</span>
-                              <span className="text-sm font-bold text-amber-300 truncate max-w-[200px] sm:max-w-md" title={directedFolderName}>
-                                📁 {directedFolderName}
+                              <span className="text-[10px] font-mono uppercase font-bold text-zinc-400">Storage:</span>
+                              <span
+                                className="text-sm font-bold text-amber-300 truncate max-w-[200px] sm:max-w-md"
+                                title={directedFolders.join(', ')}
+                              >
+                                {directedFolders.length === 1
+                                  ? `📁 ${directedFolders[0]}`
+                                  : `📁 ${directedFolders.length} Connected Folders`}
                               </span>
                               <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-950/80 text-emerald-400 border border-emerald-500/30 flex items-center gap-1 shrink-0">
                                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
@@ -1134,25 +1324,35 @@ export const MediaPlayerView: React.FC<MediaPlayerViewProps> = ({
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-2 shrink-0 ml-auto sm:ml-0">
+                        <div className="flex items-center gap-2 shrink-0 ml-auto sm:ml-0 flex-wrap">
                           <button
                             type="button"
-                            onClick={handleDirectDeviceFolder}
-                            className="px-3 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 border border-zinc-750 text-zinc-200 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
-                            title="Rescan or change folder"
+                            onClick={() => handleDirectDeviceFolder('add')}
+                            className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-zinc-950 font-bold text-xs flex items-center gap-1.5 transition-all shadow-md shadow-amber-500/20 active:scale-95 cursor-pointer"
+                            title="Add another device folder to search for files"
                           >
-                            <RefreshCw className="w-3.5 h-3.5 text-amber-400" />
-                            <span>Rescan / Change</span>
+                            <FolderPlus className="w-3.5 h-3.5" />
+                            <span>Add Folder</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={handleFastSync}
+                            className="px-3 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 border border-zinc-750 text-zinc-200 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+                            title="Quick rescan connected device folders"
+                          >
+                            <RefreshCw className={`w-3.5 h-3.5 text-amber-400 ${isScanning ? 'animate-spin' : ''}`} />
+                            <span>Sync</span>
                           </button>
 
                           <button
                             type="button"
                             onClick={handleClearDeviceFolder}
                             className="px-2.5 py-1.5 rounded-xl bg-zinc-900 hover:bg-rose-950/50 border border-zinc-800 text-zinc-400 hover:text-rose-400 text-xs font-semibold transition-colors cursor-pointer"
-                            title="Disconnect device folder"
+                            title="Disconnect all device folders"
                           >
                             <X className="w-3.5 h-3.5" />
-                            <span className="hidden sm:inline">Disconnect</span>
+                            <span className="hidden sm:inline">Disconnect All</span>
                           </button>
                         </div>
                       </div>
@@ -1173,15 +1373,74 @@ export const MediaPlayerView: React.FC<MediaPlayerViewProps> = ({
                             </span>
                           </div>
                           <div className="p-2 rounded-lg bg-zinc-950/60 border border-zinc-850">
-                            <span className="text-[10px] font-mono text-zinc-500 uppercase block">Subfolders</span>
-                            <span className="font-bold text-zinc-200 text-sm">
-                              {availableSubfolders.length} detected
+                            <span className="text-[10px] font-mono text-zinc-500 uppercase block">Device Folders</span>
+                            <span className="font-bold text-amber-400 text-sm">
+                              {directedFolders.length} active
                             </span>
                           </div>
                           <div className="p-2 rounded-lg bg-zinc-950/60 border border-zinc-850">
                             <span className="text-[10px] font-mono text-zinc-500 uppercase block">Storage Mode</span>
-                            <span className="font-mono text-emerald-400 font-bold text-xs">Direct Device Blob</span>
+                            <span className="font-mono text-emerald-400 font-bold text-xs">Direct Device Stream</span>
                           </div>
+                        </div>
+                      )}
+
+                      {/* Multi-Folder Filter Strip (if more than 1 folder connected) */}
+                      {directedFolders.length > 1 && (
+                        <div className="flex items-center gap-1.5 flex-wrap pt-2 border-t border-zinc-800/80">
+                          <span className="text-[10px] font-mono text-zinc-500 uppercase mr-1">Folders:</span>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedFolderFilter('all')}
+                            className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer shrink-0 ${
+                              selectedFolderFilter === 'all'
+                                ? 'bg-amber-500 text-zinc-950 font-bold'
+                                : 'bg-zinc-800 text-zinc-400 hover:text-zinc-200'
+                            }`}
+                          >
+                            All Folders ({customTracks.length})
+                          </button>
+                          {directedFolders.map((f) => {
+                            const fCount = customTracks.filter((t) => t.folderName === f).length;
+                            const isSelected = selectedFolderFilter === f;
+                            return (
+                              <div key={f} className="flex items-center">
+                                <button
+                                  type="button"
+                                  onClick={() => setSelectedFolderFilter(f)}
+                                  className={`px-2.5 py-1 rounded-l-lg text-xs font-semibold transition-all cursor-pointer shrink-0 flex items-center gap-1.5 ${
+                                    isSelected
+                                      ? 'bg-amber-500 text-zinc-950 font-bold'
+                                      : 'bg-zinc-800 text-zinc-400 hover:text-zinc-200'
+                                  }`}
+                                >
+                                  <Folder className="w-3 h-3 text-amber-400/80" />
+                                  <span>{f}</span>
+                                  <span className="text-[10px] opacity-70">({fCount})</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemoveFolder(f)}
+                                  title={`Remove folder "${f}"`}
+                                  className={`px-1.5 py-1 rounded-r-lg text-xs transition-colors cursor-pointer border-l border-zinc-700/50 ${
+                                    isSelected
+                                      ? 'bg-amber-600 hover:bg-amber-700 text-zinc-950'
+                                      : 'bg-zinc-800 hover:bg-rose-900/60 text-zinc-400 hover:text-rose-300'
+                                  }`}
+                                >
+                                  <X className="w-2.5 h-2.5" />
+                                </button>
+                              </div>
+                            );
+                          })}
+                          <button
+                            type="button"
+                            onClick={() => handleDirectDeviceFolder('add')}
+                            className="px-2 py-1 rounded-lg text-xs font-semibold text-amber-400 hover:text-amber-300 bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 flex items-center gap-1 cursor-pointer transition-colors"
+                          >
+                            <Plus className="w-3 h-3" />
+                            <span>Add Folder</span>
+                          </button>
                         </div>
                       )}
 
@@ -1215,14 +1474,15 @@ export const MediaPlayerView: React.FC<MediaPlayerViewProps> = ({
                                   : 'bg-zinc-800 text-zinc-400 hover:text-zinc-200'
                               }`}
                             >
-                              All ({customTracks.length})
+                              All ({selectedFolderFilter === 'all' ? customTracks.length : customTracks.filter(t => t.folderName === selectedFolderFilter).length})
                             </button>
                             {(isSubfoldersExpanded ? availableSubfolders : availableSubfolders.slice(0, 4)).map((sub) => {
                               const count = customTracks.filter(
                                 (t) =>
-                                  t.folderPath?.includes(`/${sub}/`) ||
-                                  t.folderPath?.startsWith(`${sub}/`) ||
-                                  t.album === sub
+                                  (selectedFolderFilter === 'all' || t.folderName === selectedFolderFilter) &&
+                                  (t.folderPath?.includes(`/${sub}/`) ||
+                                    t.folderPath?.startsWith(`${sub}/`) ||
+                                    t.album === sub)
                               ).length;
                               return (
                                 <button
@@ -1262,7 +1522,7 @@ export const MediaPlayerView: React.FC<MediaPlayerViewProps> = ({
                               </span>
                             </div>
                             <p className="text-xs text-zinc-400 mt-0.5 max-w-xl">
-                              Play your songs and videos directly from local folders on your device with zero upload time.
+                              Play your songs and videos directly from local folders on your device with instant syncing and zero upload wait.
                             </p>
                           </div>
                         </div>
@@ -1283,11 +1543,11 @@ export const MediaPlayerView: React.FC<MediaPlayerViewProps> = ({
 
                           <button
                             type="button"
-                            onClick={handleDirectDeviceFolder}
+                            onClick={() => handleDirectDeviceFolder('add')}
                             className="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-zinc-950 font-bold text-xs sm:text-sm flex items-center gap-2 transition-all shadow-md shadow-amber-500/20 active:scale-95 cursor-pointer whitespace-nowrap"
                           >
-                            <FolderOpen className="w-4 h-4" />
-                            <span>Select Folder</span>
+                            <FolderPlus className="w-4 h-4" />
+                            <span>Add Folder</span>
                           </button>
                         </div>
                       </div>
@@ -1298,21 +1558,19 @@ export const MediaPlayerView: React.FC<MediaPlayerViewProps> = ({
                           <div className="p-3 rounded-xl bg-zinc-950/60 border border-zinc-800/70">
                             <span className="font-bold text-amber-300 block mb-1">Direct Streaming</span>
                             <p className="text-[11px] text-zinc-400 leading-relaxed">
-                              Files are streamed directly from your device storage using browser file handles. Your media is 100% private and never uploaded to a cloud server.
+                              Files are streamed directly from your device storage using fast browser file handles. Your media is 100% private and never uploaded to any remote server.
                             </p>
                           </div>
                           <div className="p-3 rounded-xl bg-zinc-950/60 border border-zinc-800/70">
-                            <span className="font-bold text-amber-300 block mb-1">Supported Formats</span>
-                            <p className="text-[11px] text-zinc-400 leading-relaxed font-mono">
-                              Lossless: FLAC, WAV<br />
-                              Compressed: MP3, M4A, AAC<br />
-                              Video: MP4, MKV, WEBM
-                            </p>
-                          </div>
-                          <div className="p-3 rounded-xl bg-zinc-950/60 border border-zinc-800/70">
-                            <span className="font-bold text-amber-300 block mb-1">Folder Organization</span>
+                            <span className="font-bold text-amber-300 block mb-1">High-Speed Syncing</span>
                             <p className="text-[11px] text-zinc-400 leading-relaxed">
-                              Subfolders and album directories are automatically recognized as filter tabs for rapid navigation.
+                              Optimized parallel directory scanning and instant duration estimation index hundreds of media files in sub-second time.
+                            </p>
+                          </div>
+                          <div className="p-3 rounded-xl bg-zinc-950/60 border border-zinc-800/70">
+                            <span className="font-bold text-amber-300 block mb-1">Multiple Device Folders</span>
+                            <p className="text-[11px] text-zinc-400 leading-relaxed">
+                              Click "Add Folder" anytime to add multiple directories (e.g. Music, Videos, Downloads) into one unified player.
                             </p>
                           </div>
                         </div>

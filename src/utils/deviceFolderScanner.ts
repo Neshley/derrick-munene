@@ -9,7 +9,28 @@ export interface FileWithPath {
 const SUPPORTED_AUDIO_EXTENSIONS = new Set(['mp3', 'wav', 'flac', 'm4a', 'aac', 'ogg', 'weba']);
 const SUPPORTED_VIDEO_EXTENSIONS = new Set(['mp4', 'mkv', 'webm', 'mov', 'avi', 'm4v']);
 
+const IGNORED_DIRECTORIES = new Set([
+  'node_modules',
+  '.git',
+  '.svn',
+  '.hg',
+  '.cache',
+  '$recycle.bin',
+  'system volume information',
+  '.trash',
+  '.ds_store',
+  'appdata',
+  '__pycache__',
+  '.idea',
+  '.vscode',
+  '.gradle',
+  '.cargo',
+  'dist',
+  'build',
+]);
+
 export function isSupportedMediaFile(fileName: string): boolean {
+  if (fileName.startsWith('.')) return false;
   const ext = fileName.split('.').pop()?.toLowerCase() || '';
   return SUPPORTED_AUDIO_EXTENSIONS.has(ext) || SUPPORTED_VIDEO_EXTENSIONS.has(ext);
 }
@@ -27,41 +48,112 @@ export function getFormatFromFileName(fileName: string): { format: MediaFormat; 
 }
 
 /**
- * Recursively scans a FileSystemDirectoryHandle (File System Access API).
+ * Fast duration estimation based on format & file size to avoid locking
+ * the browser with hundreds of simultaneous audio/video decoder DOM elements.
+ * Exact duration is set natively by the audio/video engine once loaded.
+ */
+export function estimateMediaDuration(fileSize: number, format: MediaFormat, isVideo: boolean): number {
+  if (!fileSize || fileSize <= 0) return 180;
+  if (isVideo) {
+    // Approx 2.5 Mbps average video bit-rate (312.5 KB/s)
+    return Math.max(10, Math.min(10800, Math.round(fileSize / 312500)));
+  }
+  if (format === 'wav' || format === 'flac') {
+    // Approx 16-bit 44.1kHz stereo PCM (176.4 KB/s) or lossless FLAC (90 KB/s)
+    const rate = format === 'wav' ? 176400 : 92000;
+    return Math.max(15, Math.min(3600, Math.round(fileSize / rate)));
+  }
+  // Compressed audio MP3/M4A/AAC/OGG approx 192 kbps (24 KB/s)
+  return Math.max(15, Math.min(3600, Math.round(fileSize / 24000)));
+}
+
+interface PendingFileHandle {
+  handle: any;
+  relativePath: string;
+  rootName: string;
+}
+
+/**
+ * High-speed parallel scanner for FileSystemDirectoryHandle (File System Access API).
+ * Quickly collects file handles across subdirectories and resolves files concurrently
+ * in chunks to minimize sync time.
  */
 export async function scanFileSystemDirectory(
   dirHandle: FileSystemDirectoryHandle,
   currentPath = '',
-  rootName = dirHandle.name
+  rootName = dirHandle.name,
+  onProgress?: (count: number, currentFolder: string) => void,
+  maxDepth = 8
 ): Promise<FileWithPath[]> {
-  const results: FileWithPath[] = [];
+  const pendingFiles: PendingFileHandle[] = [];
 
-  // Use values() or entries() if supported
-  try {
-    for await (const entry of (dirHandle as any).values()) {
-      const entryPath = currentPath ? `${currentPath}/${entry.name}` : entry.name;
-      if (entry.kind === 'file') {
-        if (isSupportedMediaFile(entry.name)) {
-          const file = await entry.getFile();
-          results.push({
-            file,
-            relativePath: entryPath,
-            rootFolderName: rootName,
-          });
-        }
-      } else if (entry.kind === 'directory') {
-        // Recursively read sub-directory
-        try {
-          const subResults = await scanFileSystemDirectory(entry, entryPath, rootName);
-          results.push(...subResults);
-        } catch (subErr) {
-          console.warn(`Could not access sub-directory ${entry.name}:`, subErr);
+  // Helper to traverse handles rapidly
+  async function collectHandles(handle: any, relPath: string, depth: number) {
+    if (depth > maxDepth) return;
+    try {
+      const subDirPromises: Promise<void>[] = [];
+
+      for await (const entry of handle.values()) {
+        const entryPath = relPath ? `${relPath}/${entry.name}` : entry.name;
+        if (entry.kind === 'file') {
+          if (isSupportedMediaFile(entry.name)) {
+            pendingFiles.push({
+              handle: entry,
+              relativePath: entryPath,
+              rootName,
+            });
+            if (onProgress && pendingFiles.length % 20 === 0) {
+              onProgress(pendingFiles.length, rootName);
+            }
+          }
+        } else if (entry.kind === 'directory') {
+          const lowerName = entry.name.toLowerCase();
+          if (!lowerName.startsWith('.') && !IGNORED_DIRECTORIES.has(lowerName)) {
+            subDirPromises.push(collectHandles(entry, entryPath, depth + 1));
+          }
         }
       }
+
+      // Parallelize child directory traversal
+      if (subDirPromises.length > 0) {
+        await Promise.all(subDirPromises);
+      }
+    } catch (err) {
+      console.warn(`Error scanning directory handle at "${relPath}":`, err);
     }
-  } catch (err) {
-    console.warn('Error reading directory handle:', err);
   }
+
+  // 1. Traverse directory tree
+  await collectHandles(dirHandle, currentPath, 0);
+
+  if (onProgress) {
+    onProgress(pendingFiles.length, rootName);
+  }
+
+  // 2. Resolve File objects with a concurrency pool of 32 workers for maximum speed
+  const results: FileWithPath[] = [];
+  const CONCURRENCY = 32;
+  let index = 0;
+
+  async function worker() {
+    while (index < pendingFiles.length) {
+      const item = pendingFiles[index++];
+      if (!item) break;
+      try {
+        const file = await item.handle.getFile();
+        results.push({
+          file,
+          relativePath: item.relativePath,
+          rootFolderName: item.rootName,
+        });
+      } catch (err) {
+        console.warn(`Could not read file: ${item.relativePath}`, err);
+      }
+    }
+  }
+
+  const workers = Array.from({ length: Math.min(CONCURRENCY, pendingFiles.length) }, () => worker());
+  await Promise.all(workers);
 
   return results;
 }
@@ -69,12 +161,15 @@ export async function scanFileSystemDirectory(
 /**
  * Extracts FileWithPath entries from standard HTML file input (e.g. webkitdirectory).
  */
-export function extractFilesFromDirectoryInput(fileList: FileList): {
+export function extractFilesFromDirectoryInput(
+  fileList: FileList,
+  rootFolderOverride?: string
+): {
   rootFolderName: string;
   files: FileWithPath[];
 } {
   const files: FileWithPath[] = [];
-  let rootFolderName = 'Device Media';
+  let rootFolderName = rootFolderOverride || 'Device Media';
 
   for (let i = 0; i < fileList.length; i++) {
     const file = fileList[i];
@@ -82,14 +177,14 @@ export function extractFilesFromDirectoryInput(fileList: FileList): {
 
     const relPath = file.webkitRelativePath || file.name;
     const parts = relPath.split('/');
-    if (parts.length > 1 && parts[0]) {
+    if (!rootFolderOverride && parts.length > 1 && parts[0]) {
       rootFolderName = parts[0];
     }
 
     files.push({
       file,
       relativePath: relPath,
-      rootFolderName,
+      rootFolderName: rootFolderOverride || rootFolderName,
     });
   }
 
@@ -97,13 +192,13 @@ export function extractFilesFromDirectoryInput(fileList: FileList): {
 }
 
 /**
- * Converts FileWithPath entries into MediaTrack items with proper metadata,
- * folder paths, and probed durations.
+ * Converts FileWithPath entries into MediaTrack items with instantaneous metadata
+ * and zero DOM decoder thrashing.
  */
-export async function convertFilesToMediaTracks(
+export function convertFilesToMediaTracks(
   entries: FileWithPath[],
   rootFolderOverride?: string
-): Promise<MediaTrack[]> {
+): MediaTrack[] {
   const tracks: MediaTrack[] = [];
 
   for (const entry of entries) {
@@ -133,13 +228,14 @@ export async function convertFilesToMediaTracks(
     const album = pathParts.length > 1 ? pathParts[pathParts.length - 2] : effectiveRoot;
 
     const url = URL.createObjectURL(file);
+    const estimatedDuration = estimateMediaDuration(file.size, format, isVideo);
 
     const track: MediaTrack = {
       id: `dev-track-${Date.now()}-${Math.random().toString(36).substr(2, 7)}`,
       title,
       artist,
       album,
-      duration: 180, // Updated once loaded
+      duration: estimatedDuration,
       url,
       format,
       isVideo,
@@ -154,61 +250,14 @@ export async function convertFilesToMediaTracks(
       folderName: effectiveRoot,
     };
 
-    // Probe duration asynchronously without blocking
-    probeMediaDuration(url, isVideo).then((dur) => {
-      if (dur > 0) {
-        track.duration = Math.round(dur);
-      }
-    });
-
     tracks.push(track);
   }
 
   return tracks;
 }
 
-/**
- * Probe duration of media file using temporary audio/video element.
- */
-function probeMediaDuration(url: string, isVideo: boolean): Promise<number> {
-  return new Promise((resolve) => {
-    try {
-      const el = isVideo ? document.createElement('video') : new Audio();
-      el.preload = 'metadata';
-      el.src = url;
-
-      const cleanup = () => {
-        el.onloadedmetadata = null;
-        el.onerror = null;
-      };
-
-      const timeout = setTimeout(() => {
-        cleanup();
-        resolve(180);
-      }, 3000);
-
-      el.onloadedmetadata = () => {
-        clearTimeout(timeout);
-        cleanup();
-        if (el.duration && !isNaN(el.duration) && el.duration > 0) {
-          resolve(el.duration);
-        } else {
-          resolve(180);
-        }
-      };
-
-      el.onerror = () => {
-        clearTimeout(timeout);
-        cleanup();
-        resolve(180);
-      };
-    } catch {
-      resolve(180);
-    }
-  });
-}
-
 const STORAGE_KEY_DIRECTED_FOLDER = 'lark_directed_device_folder';
+const STORAGE_KEY_DIRECTED_FOLDERS = 'lark_directed_device_folders_list';
 
 export function getStoredDirectedFolderName(): string | null {
   try {
@@ -229,3 +278,31 @@ export function saveStoredDirectedFolderName(name: string | null): void {
     console.warn('Failed to save directed folder name', e);
   }
 }
+
+export function getStoredDirectedFolders(): string[] {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_DIRECTED_FOLDERS);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+    const legacy = getStoredDirectedFolderName();
+    return legacy ? [legacy] : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveStoredDirectedFolders(folders: string[]): void {
+  try {
+    localStorage.setItem(STORAGE_KEY_DIRECTED_FOLDERS, JSON.stringify(folders));
+    if (folders.length > 0) {
+      saveStoredDirectedFolderName(folders[0]);
+    } else {
+      saveStoredDirectedFolderName(null);
+    }
+  } catch (e) {
+    console.warn('Failed to save directed folders list', e);
+  }
+}
+
