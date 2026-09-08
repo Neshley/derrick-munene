@@ -46,6 +46,7 @@ interface NowPlayingBarProps {
   activePanel: 'lyrics' | 'visualizer' | 'video' | 'queue' | 'none';
   onTogglePanel: (panel: 'lyrics' | 'visualizer' | 'video' | 'queue') => void;
   onOpenFullPlayer?: () => void;
+  hasVideos?: boolean;
 }
 
 export const NowPlayingBar: React.FC<NowPlayingBarProps> = ({
@@ -72,6 +73,7 @@ export const NowPlayingBar: React.FC<NowPlayingBarProps> = ({
   activePanel,
   onTogglePanel,
   onOpenFullPlayer,
+  hasVideos = false,
 }) => {
   const [isSeeking, setIsSeeking] = useState(false);
   const [seekVal, setSeekVal] = useState(0);
@@ -353,14 +355,14 @@ export const NowPlayingBar: React.FC<NowPlayingBarProps> = ({
             <Radio className="w-4 h-4" />
           </button>
 
-          {currentTrack?.isVideo && (
+          {(currentTrack?.isVideo || hasVideos) && (
             <button
               type="button"
               onClick={() => onTogglePanel('video')}
               className={`p-1.5 sm:p-2 rounded-xl border text-xs transition-all cursor-pointer ${
                 activePanel === 'video'
                   ? 'bg-cyan-500 text-zinc-950 border-cyan-400 font-bold shadow-xs'
-                  : 'bg-zinc-900 hover:bg-zinc-800 border-zinc-800 text-cyan-400'
+                  : 'bg-zinc-900 hover:bg-zinc-800 border-zinc-800 text-cyan-400 hover:text-cyan-300'
               }`}
               title="Toggle Video Stage"
             >

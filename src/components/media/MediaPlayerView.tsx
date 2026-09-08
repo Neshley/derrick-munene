@@ -1071,7 +1071,15 @@ export const MediaPlayerView: React.FC<MediaPlayerViewProps> = ({
 
             <button
               type="button"
-              onClick={() => setActiveTab('video')}
+              onClick={() => {
+                setActiveTab('video');
+                if (!playerState.currentTrack?.isVideo) {
+                  const firstVid = allTracks.find((t) => t.isVideo);
+                  if (firstVid) {
+                    handlePlayTrack(firstVid);
+                  }
+                }
+              }}
               className={`w-full px-3 py-2 rounded-xl text-xs font-semibold flex items-center gap-2.5 transition-all cursor-pointer ${
                 activeTab === 'video'
                   ? 'bg-cyan-500/15 text-cyan-300 border border-cyan-500/30 font-bold'
@@ -1299,7 +1307,15 @@ export const MediaPlayerView: React.FC<MediaPlayerViewProps> = ({
             </button>
             <button
               type="button"
-              onClick={() => setActiveTab('video')}
+              onClick={() => {
+                setActiveTab('video');
+                if (!playerState.currentTrack?.isVideo) {
+                  const firstVid = allTracks.find((t) => t.isVideo);
+                  if (firstVid) {
+                    handlePlayTrack(firstVid);
+                  }
+                }
+              }}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap flex items-center gap-1.5 transition-all shrink-0 ${
                 activeTab === 'video' ? 'bg-cyan-500 text-zinc-950 font-bold shadow-sm' : 'bg-zinc-900 text-zinc-300 border border-zinc-800'
               }`}
@@ -1449,9 +1465,21 @@ export const MediaPlayerView: React.FC<MediaPlayerViewProps> = ({
               <VideoPlayerStage
                 currentTrack={playerState.currentTrack}
                 isPlaying={playerState.isPlaying}
+                currentTime={playerState.currentTime}
+                duration={playerState.duration}
+                volume={playerState.volume}
+                isMuted={playerState.isMuted}
+                playbackRate={playerState.playbackRate}
                 onTogglePlay={() => mediaPlayerEngine.togglePlay()}
+                onSeek={(sec) => mediaPlayerEngine.seek(sec)}
+                onVolumeChange={(vol) => mediaPlayerEngine.setVolume(vol)}
+                onToggleMute={() => mediaPlayerEngine.toggleMute()}
+                onRateChange={(rate) => mediaPlayerEngine.setPlaybackRate(rate)}
                 isCinemaMode={isCinemaMode}
                 onToggleCinemaMode={() => setIsCinemaMode((prev) => !prev)}
+                allTracks={allTracks}
+                onPlayTrack={handlePlayTrack}
+                onDirectFolder={handleDirectDeviceFolder}
                 className="w-full flex-1"
               />
             </div>
@@ -1873,11 +1901,18 @@ export const MediaPlayerView: React.FC<MediaPlayerViewProps> = ({
             ? 'queue'
             : 'none'
         }
+        hasVideos={allTracks.some((t) => t.isVideo)}
         onTogglePanel={(panel) => {
           if (activeTab === panel) {
             setActiveTab('library');
           } else {
             setActiveTab(panel);
+            if (panel === 'video' && !playerState.currentTrack?.isVideo) {
+              const availableVideo = allTracks.find((t) => t.isVideo);
+              if (availableVideo) {
+                handlePlayTrack(availableVideo);
+              }
+            }
           }
         }}
         onOpenFullPlayer={() => {

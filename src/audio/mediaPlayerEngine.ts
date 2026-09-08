@@ -109,10 +109,15 @@ class MediaPlayerEngine {
   }
 
   public bindVideoElement(videoEl: HTMLVideoElement | null) {
-    this.videoElement = videoEl;
-    if (!videoEl || !this.ctx) return;
+    if (!videoEl) {
+      this.videoElement = null;
+      return;
+    }
 
-    if (!this.videoSourceNode) {
+    this.videoElement = videoEl;
+    this.initAudioContext();
+
+    if (this.ctx && !this.videoSourceNode) {
       try {
         this.videoSourceNode = this.ctx.createMediaElementSource(videoEl);
         this.videoSourceNode.connect(this.masterGainNode!);
@@ -132,7 +137,13 @@ class MediaPlayerEngine {
     };
     videoEl.ontimeupdate = () => {
       this.state.currentTime = videoEl.currentTime;
-      if (videoEl.duration && !isNaN(videoEl.duration)) {
+      if (videoEl.duration && !isNaN(videoEl.duration) && videoEl.duration > 0) {
+        this.state.duration = videoEl.duration;
+      }
+      this.notify();
+    };
+    videoEl.onloadedmetadata = () => {
+      if (videoEl.duration && !isNaN(videoEl.duration) && videoEl.duration > 0) {
         this.state.duration = videoEl.duration;
       }
       this.notify();
@@ -140,6 +151,52 @@ class MediaPlayerEngine {
     videoEl.onended = () => {
       this.handleTrackEnded();
     };
+
+    // Immediately synchronize video element with current playback state
+    const cur = this.state.currentTrack;
+    if (cur?.isVideo && !cur.url.startsWith('builtin:')) {
+      if (videoEl.src !== cur.url) {
+        videoEl.src = cur.url;
+      }
+      if (Math.abs(videoEl.currentTime - this.state.currentTime) > 0.5) {
+        try {
+          videoEl.currentTime = this.state.currentTime;
+        } catch {
+          // ignore seek restriction before load
+        }
+      }
+      videoEl.playbackRate = this.state.playbackRate;
+      videoEl.volume = this.state.isMuted ? 0 : this.state.volume;
+      videoEl.muted = this.state.isMuted;
+
+      // Silence background audio element so there's no double audio playback
+      if (this.audioElement && !this.audioElement.paused) {
+        this.audioElement.pause();
+      }
+
+      if (this.state.isPlaying) {
+        videoEl.play().catch((err) => console.warn('Video auto-play warning:', err));
+      }
+    }
+  }
+
+  public unbindVideoElement(videoEl: HTMLVideoElement | null) {
+    if (this.videoElement === videoEl) {
+      const cur = this.state.currentTrack;
+      // Transfer playback to background audioElement if we are still playing a real video file
+      if (this.state.isPlaying && cur?.isVideo && !cur.url.startsWith('builtin:')) {
+        if (this.audioElement) {
+          if (this.audioElement.src !== cur.url) {
+            this.audioElement.src = cur.url;
+          }
+          this.audioElement.currentTime = videoEl?.currentTime ?? this.state.currentTime;
+          this.audioElement.playbackRate = this.state.playbackRate;
+          this.audioElement.volume = this.state.isMuted ? 0 : this.state.volume;
+          this.audioElement.play().catch(() => {});
+        }
+      }
+      this.videoElement = null;
+    }
   }
 
   private setupAudioElementEvents() {
@@ -290,14 +347,20 @@ class MediaPlayerEngine {
       // Start real-time synthesized playback of built-in worship tracks
       this.startSyntheticTrack(track);
     } else if (track.isVideo && this.videoElement) {
+      if (this.audioElement && !this.audioElement.paused) {
+        this.audioElement.pause();
+      }
       this.videoElement.src = track.url;
       this.videoElement.currentTime = 0;
       this.videoElement.playbackRate = this.state.playbackRate;
+      this.videoElement.volume = this.state.isMuted ? 0 : this.state.volume;
+      this.videoElement.muted = this.state.isMuted;
       this.videoElement.play().catch((e) => console.warn('Video auto-play warning:', e));
     } else if (this.audioElement) {
       this.audioElement.src = track.url;
       this.audioElement.currentTime = 0;
       this.audioElement.playbackRate = this.state.playbackRate;
+      this.audioElement.volume = this.state.isMuted ? 0 : this.state.volume;
       this.audioElement.play().catch((e) => console.warn('Audio auto-play warning:', e));
     }
 
@@ -484,6 +547,13 @@ class MediaPlayerEngine {
       this.state.isMuted = true;
       if (this.masterGainNode) {
         this.masterGainNode.gain.value = 0;
+      }
+      if (this.audioElement) {
+        this.audioElement.volume = 0;
+      }
+      if (this.videoElement) {
+        this.videoElement.volume = 0;
+        this.videoElement.muted = true;
       }
       this.notify();
     }
