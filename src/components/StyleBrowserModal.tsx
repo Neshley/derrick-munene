@@ -502,6 +502,12 @@ export const StyleBrowserModal: React.FC<StyleBrowserModalProps> = ({
                       onSelectStyle(s);
                       onClose();
                     }}
+                    onContextMenu={(e) => {
+                      e.preventDefault();
+                      onSelectStyle(s);
+                      onClose();
+                    }}
+                    title={`Click or right-click to Open with Workstation (DM ARRANGIA)`}
                     className={`p-3.5 rounded-xl border transition-all cursor-pointer flex flex-col justify-between gap-2.5 ${
                       isSelected
                         ? 'bg-amber-950/30 border-amber-500 shadow-md shadow-amber-500/10'

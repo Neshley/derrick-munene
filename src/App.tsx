@@ -42,6 +42,21 @@ import { MediaPlayerView } from './components/media/MediaPlayerView';
 import { StartupLoadingScreen } from './components/StartupLoadingScreen';
 import { addMultiPadBank } from './audio/multiPads';
 import { applyThemeToDom, getStoredSystemSettings } from './utils/systemSettings';
+import { 
+  processIncomingFile, 
+  initLaunchQueueConsumer, 
+  FileLaunchResult 
+} from './utils/fileLaunchRouter';
+import { 
+  FolderOpen, 
+  Disc, 
+  Piano, 
+  CheckCircle2, 
+  AlertCircle, 
+  UploadCloud, 
+  X,
+  FileCode
+} from 'lucide-react';
 
 export default function App() {
   // Initialize global theme and visual engine on startup
@@ -52,7 +67,23 @@ export default function App() {
   const [isAppLoaded, setIsAppLoaded] = useState<boolean>(false);
 
   // --- Active App Mode: WORKSTATION <-> MEDIA PLAYER ---
-  const [appMode, setAppMode] = useState<'workstation' | 'media_player'>('workstation');
+  const [appMode, setAppMode] = useState<'workstation' | 'media_player'>(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const mode = params.get('mode') || params.get('launch');
+      if (mode === 'media_player' || mode === 'media') return 'media_player';
+      if (mode === 'workstation') return 'workstation';
+    }
+    return 'workstation';
+  });
+
+  // --- External File Handling & Universal Drag/Drop State ---
+  const [fileNotice, setFileNotice] = useState<{
+    message: string;
+    type: 'workstation' | 'media' | 'error';
+  } | null>(null);
+  const [isDragOverWindow, setIsDragOverWindow] = useState<boolean>(false);
+  const filePickerInputRef = useRef<HTMLInputElement>(null);
 
   // --- View Mode: Performance Mode vs Studio / Edit Mode ---
   const [viewMode, setViewMode] = useState<'performance' | 'studio'>('studio');
@@ -522,6 +553,119 @@ export default function App() {
     setAppMode(mode);
   };
 
+  // --- External File Handling (PWA LaunchQueue, Drag & Drop, Open File...) ---
+  const handleIncomingFile = useCallback(async (file: File) => {
+    // Dismiss startup loading screen immediately if active
+    setIsAppLoaded(true);
+
+    try {
+      const result: FileLaunchResult = await processIncomingFile(file);
+
+      if (result.destination === 'workstation') {
+        handleSwitchMode('workstation');
+        if (result.success && result.style) {
+          if (result.allStyles && result.allStyles.length > 0) {
+            setCustomStyles(prev => {
+              const newIds = new Set(result.allStyles!.map(s => s.id));
+              return [...result.allStyles!, ...prev.filter(p => !newIds.has(p.id))];
+            });
+          }
+          handleSelectStyle(result.style);
+        }
+      } else {
+        handleSwitchMode('media_player');
+      }
+
+      setFileNotice({
+        message: result.message,
+        type: result.success ? (result.destination === 'workstation' ? 'workstation' : 'media') : 'error',
+      });
+      setTimeout(() => setFileNotice(null), 5000);
+    } catch (err: any) {
+      console.error('Failed to handle incoming file:', err);
+      setFileNotice({
+        message: err.message || 'Failed to open file',
+        type: 'error',
+      });
+      setTimeout(() => setFileNotice(null), 5000);
+    }
+  }, [handleSwitchMode]);
+
+  // Listen for OS "Open with -> DM ARRANGIA" via PWA LaunchQueue
+  useEffect(() => {
+    const cleanup = initLaunchQueueConsumer((file) => {
+      handleIncomingFile(file);
+    });
+    return cleanup;
+  }, [handleIncomingFile]);
+
+  // Global window Drag & Drop and Ctrl+O shortcut
+  useEffect(() => {
+    let dragCounter = 0;
+
+    const handleWindowDragEnter = (e: DragEvent) => {
+      if (e.dataTransfer && Array.from(e.dataTransfer.types).includes('Files')) {
+        e.preventDefault();
+        dragCounter++;
+        setIsDragOverWindow(true);
+      }
+    };
+
+    const handleWindowDragOver = (e: DragEvent) => {
+      if (e.dataTransfer && Array.from(e.dataTransfer.types).includes('Files')) {
+        e.preventDefault();
+      }
+    };
+
+    const handleWindowDragLeave = (e: DragEvent) => {
+      dragCounter--;
+      if (dragCounter <= 0) {
+        dragCounter = 0;
+        setIsDragOverWindow(false);
+      }
+    };
+
+    const handleWindowDrop = (e: DragEvent) => {
+      e.preventDefault();
+      dragCounter = 0;
+      setIsDragOverWindow(false);
+      if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        handleIncomingFile(e.dataTransfer.files[0]);
+      }
+    };
+
+    const handleWindowKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.tagName === 'SELECT' ||
+          target.isContentEditable)
+      ) {
+        return;
+      }
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'o') {
+        e.preventDefault();
+        filePickerInputRef.current?.click();
+      }
+    };
+
+    window.addEventListener('dragenter', handleWindowDragEnter);
+    window.addEventListener('dragover', handleWindowDragOver);
+    window.addEventListener('dragleave', handleWindowDragLeave);
+    window.addEventListener('drop', handleWindowDrop);
+    window.addEventListener('keydown', handleWindowKeyDown);
+
+    return () => {
+      window.removeEventListener('dragenter', handleWindowDragEnter);
+      window.removeEventListener('dragover', handleWindowDragOver);
+      window.removeEventListener('dragleave', handleWindowDragLeave);
+      window.removeEventListener('drop', handleWindowDrop);
+      window.removeEventListener('keydown', handleWindowKeyDown);
+    };
+  }, [handleIncomingFile]);
+
   // --- Show Opening / Startup Loading Page ---
   if (!isAppLoaded) {
     return <StartupLoadingScreen onStart={() => setIsAppLoaded(true)} />;
@@ -534,6 +678,7 @@ export default function App() {
         appMode={appMode}
         onSwitchMode={handleSwitchMode}
         onOpenMediaPlayer={() => handleSwitchMode('media_player')}
+        onOpenFile={() => filePickerInputRef.current?.click()}
         midiConnected={midiConnected}
         midiDeviceName={midiDeviceName}
         onToggleSidebar={() => setIsSidebarCollapsed(prev => !prev)}
@@ -1095,6 +1240,97 @@ export default function App() {
         masterVolume={masterVolume}
         onMasterVolumeChange={handleMasterVolumeChange}
       />
+
+      {/* Hidden Universal File Input for Open File / OS / Drag */}
+      <input
+        ref={filePickerInputRef}
+        type="file"
+        aria-label="Open File into DM ARRANGIA"
+        onChange={(e) => {
+          if (e.target.files && e.target.files[0]) {
+            handleIncomingFile(e.target.files[0]);
+          }
+          e.target.value = '';
+        }}
+        accept=".sty,.prs,.sst,.bcf,.pst,.fps,.mid,.midi,.mp3,.wav,.ogg,.flac,.m4a,.aac,.wma,.mp4,.mkv,.webm,.avi,.mov,.flv,.zip"
+        className="hidden"
+      />
+
+      {/* Floating Notification for External File Routing */}
+      {fileNotice && (
+        <div
+          role="status"
+          aria-live="polite"
+          className={`fixed bottom-6 right-6 z-50 max-w-md px-4 py-3 rounded-2xl border shadow-2xl flex items-center gap-3 animate-in slide-in-from-bottom-5 duration-200 ${
+            fileNotice.type === 'workstation'
+              ? 'bg-zinc-950/95 border-amber-500/60 text-amber-200 shadow-amber-950/50'
+              : fileNotice.type === 'media'
+              ? 'bg-zinc-950/95 border-cyan-500/60 text-cyan-200 shadow-cyan-950/50'
+              : 'bg-zinc-950/95 border-rose-500/60 text-rose-200 shadow-rose-950/50'
+          }`}
+        >
+          <div
+            className={`p-2 rounded-xl shrink-0 ${
+              fileNotice.type === 'workstation'
+                ? 'bg-amber-500/20 text-amber-400'
+                : fileNotice.type === 'media'
+                ? 'bg-cyan-500/20 text-cyan-400'
+                : 'bg-rose-500/20 text-rose-400'
+            }`}
+          >
+            {fileNotice.type === 'workstation' ? (
+              <Piano className="w-5 h-5" />
+            ) : fileNotice.type === 'media' ? (
+              <Disc className="w-5 h-5" />
+            ) : (
+              <AlertCircle className="w-5 h-5" />
+            )}
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="text-[11px] font-mono uppercase tracking-wider font-bold opacity-75">
+              {fileNotice.type === 'workstation'
+                ? 'Workstation Mode'
+                : fileNotice.type === 'media'
+                ? 'Media Player Mode'
+                : 'File Open Notice'}
+            </div>
+            <div className="text-xs font-medium line-clamp-2">{fileNotice.message}</div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setFileNotice(null)}
+            className="p-1.5 rounded-lg hover:bg-zinc-800/80 text-zinc-400 hover:text-zinc-200 cursor-pointer"
+            aria-label="Dismiss notice"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      {/* Fullscreen Drag & Drop Target Overlay */}
+      {isDragOverWindow && (
+        <div className="fixed inset-0 z-[100] bg-zinc-950/90 backdrop-blur-md border-4 border-dashed border-amber-500/80 flex flex-col items-center justify-center p-6 text-center animate-in fade-in duration-150 pointer-events-none">
+          <div className="p-6 rounded-3xl bg-amber-500/10 border border-amber-500/40 text-amber-400 mb-4 animate-bounce">
+            <UploadCloud className="w-16 h-16" />
+          </div>
+          <h2 className="text-2xl sm:text-3xl font-bold font-mono text-zinc-100 mb-2">
+            Drop File to Open with DM ARRANGIA
+          </h2>
+          <p className="text-sm text-zinc-400 max-w-md mb-6">
+            Release anywhere to automatically route and launch this file.
+          </p>
+          <div className="flex items-center gap-4 flex-wrap justify-center">
+            <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-950/50 border border-amber-500/40 text-xs font-mono text-amber-300">
+              <Piano className="w-4 h-4 text-amber-400" />
+              <span>.STY / .PRS / .MID &rarr; Workstation</span>
+            </div>
+            <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-cyan-950/50 border border-cyan-500/40 text-xs font-mono text-cyan-300">
+              <Disc className="w-4 h-4 text-cyan-400" />
+              <span>.MP3 / .MP4 / .WAV &rarr; Media Player</span>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

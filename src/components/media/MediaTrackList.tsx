@@ -202,6 +202,10 @@ export const MediaTrackList: React.FC<MediaTrackListProps> = ({
                     : 'hover:bg-zinc-900/80 border border-transparent'
                 }`}
                 onClick={() => onPlayTrack(track)}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  setActiveMenuTrackId(isMenuOpen ? null : track.id);
+                }}
               >
                 {/* Index or Equalizer / Play button */}
                 <div className="col-span-1 flex items-center justify-center text-xs font-mono text-zinc-500 group-hover:text-amber-400">
@@ -373,9 +377,21 @@ export const MediaTrackList: React.FC<MediaTrackListProps> = ({
                 {/* Floating Context Dropdown */}
                 {isMenuOpen && (
                   <div
-                    className="absolute right-4 top-12 z-30 w-48 rounded-xl bg-zinc-900 border border-zinc-750 shadow-2xl p-1.5 flex flex-col gap-0.5 animate-in fade-in zoom-in-95 text-xs text-zinc-200"
+                    className="absolute right-4 top-12 z-30 w-52 rounded-xl bg-zinc-900 border border-zinc-700 shadow-2xl p-1.5 flex flex-col gap-0.5 animate-in fade-in zoom-in-95 text-xs text-zinc-200"
                     onClick={(e) => e.stopPropagation()}
                   >
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onPlayTrack(track);
+                        setActiveMenuTrackId(null);
+                      }}
+                      className="w-full px-2.5 py-1.5 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 font-semibold flex items-center gap-2 text-left cursor-pointer border border-amber-500/30 mb-0.5"
+                    >
+                      <Play className="w-3.5 h-3.5 text-amber-400 fill-current" />
+                      <span>Open with Media Player</span>
+                    </button>
+
                     <button
                       type="button"
                       onClick={() => {

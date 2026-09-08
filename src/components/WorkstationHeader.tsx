@@ -28,7 +28,8 @@ import {
   Volume2,
   Piano,
   Disc,
-  Film
+  Film,
+  FolderOpen
 } from 'lucide-react';
 import { subscribePwaStatus, PwaStatus } from '../pwaRegister';
 import { HardwareMidiDropdown } from './HardwareMidiDropdown';
@@ -37,6 +38,7 @@ interface WorkstationHeaderProps {
   appMode?: 'workstation' | 'media_player';
   onSwitchMode?: (mode: 'workstation' | 'media_player') => void;
   onOpenMediaPlayer?: () => void;
+  onOpenFile?: () => void;
   midiConnected: boolean;
   midiDeviceName: string;
   onToggleSidebar?: () => void;
@@ -71,6 +73,7 @@ export const WorkstationHeader: React.FC<WorkstationHeaderProps> = ({
   appMode = 'workstation',
   onSwitchMode,
   onOpenMediaPlayer,
+  onOpenFile,
   midiConnected,
   midiDeviceName,
   onToggleSidebar,
@@ -385,6 +388,19 @@ export const WorkstationHeader: React.FC<WorkstationHeaderProps> = ({
 
             {/* Center Quick Shortcuts */}
             <div className="flex items-center gap-1.5 bg-zinc-950/80 p-1 rounded-xl border border-zinc-800/80 shrink-0">
+              {onOpenFile && (
+                <button
+                  id="btn-header-open-file"
+                  type="button"
+                  onClick={onOpenFile}
+                  className="px-2.5 py-1 rounded-lg text-xs font-mono font-bold text-amber-300 bg-amber-950/40 hover:bg-amber-900/60 border border-amber-500/40 hover:border-amber-400 flex items-center gap-1.5 transition-all shadow-xs cursor-pointer active:scale-95 shrink-0 whitespace-nowrap touch-manipulation min-h-[32px]"
+                  title="Open File (Ctrl+O): Opens .STY styles in Workstation or MP3/MP4/video in Media Player"
+                >
+                  <FolderOpen className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                  <span>Open File</span>
+                </button>
+              )}
+
               {onOpenStyleCreator && (
                 <button
                   id="btn-header-style-creator"
@@ -671,6 +687,28 @@ export const WorkstationHeader: React.FC<WorkstationHeaderProps> = ({
                       </div>
                       <p className="text-[11px] text-zinc-400 line-clamp-2">
                         Play songs and videos (MP3, WAV, FLAC, MP4) with visualizer and lyrics.
+                      </p>
+                    </button>
+                  )}
+
+                  {/* Open File Router */}
+                  {onOpenFile && (
+                    <button
+                      type="button"
+                      onClick={() => handleOpenTool(onOpenFile)}
+                      className="p-3 rounded-xl bg-zinc-900/80 hover:bg-amber-500/15 border border-zinc-800 hover:border-amber-500/50 text-left transition-all group cursor-pointer flex flex-col gap-1.5"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="p-2 rounded-lg bg-amber-500/20 text-amber-300 group-hover:scale-105 transition-transform">
+                          <FolderOpen className="w-4 h-4" />
+                        </div>
+                        <span className="text-[10px] font-mono text-amber-400 font-bold">CTRL+O</span>
+                      </div>
+                      <div className="font-bold text-sm text-zinc-100 group-hover:text-amber-300 transition-colors">
+                        Open File (.STY / Media)
+                      </div>
+                      <p className="text-[11px] text-zinc-400 line-clamp-2">
+                        .STY files open in Workstation; MP3, MP4 &amp; audio/video open in Media Player.
                       </p>
                     </button>
                   )}
