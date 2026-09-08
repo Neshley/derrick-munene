@@ -6,8 +6,44 @@ export interface FileWithPath {
   rootFolderName: string;
 }
 
-const SUPPORTED_AUDIO_EXTENSIONS = new Set(['mp3', 'wav', 'flac', 'm4a', 'aac', 'ogg', 'weba']);
-const SUPPORTED_VIDEO_EXTENSIONS = new Set(['mp4', 'mkv', 'webm', 'mov', 'avi', 'm4v']);
+const SUPPORTED_AUDIO_EXTENSIONS = new Set([
+  'mp3',
+  'aac',
+  'flac',
+  'ac3',
+  'eac3',
+  'dts',
+  'dtshd',
+  'wma',
+  'ogg',
+  'oga',
+  'wav',
+  'm4a',
+  'alac',
+  'weba',
+  'opus',
+]);
+
+const SUPPORTED_VIDEO_EXTENSIONS = new Set([
+  'mp4',
+  'm4v',
+  'mkv',
+  'avi',
+  'mov',
+  'qt',
+  'flv',
+  'f4v',
+  'ogg',
+  'ogv',
+  'webm',
+  'wmv',
+  'divx',
+  'xvid',
+  'mpg',
+  'mpeg',
+  'm2v',
+  'ts',
+]);
 
 const IGNORED_DIRECTORIES = new Set([
   'node_modules',
@@ -35,16 +71,172 @@ export function isSupportedMediaFile(fileName: string): boolean {
   return SUPPORTED_AUDIO_EXTENSIONS.has(ext) || SUPPORTED_VIDEO_EXTENSIONS.has(ext);
 }
 
-export function getFormatFromFileName(fileName: string): { format: MediaFormat; isVideo: boolean } {
+export interface MediaFormatInfo {
+  format: MediaFormat;
+  isVideo: boolean;
+  codec: string;
+  videoCodec?: string;
+  audioCodec?: string;
+  mimeType: string;
+}
+
+export function detectMediaFormatAndCodecs(fileName: string): MediaFormatInfo {
   const ext = fileName.split('.').pop()?.toLowerCase() || '';
-  if (SUPPORTED_VIDEO_EXTENSIONS.has(ext)) {
-    if (ext === 'mkv') return { format: 'mkv', isVideo: true };
-    return { format: 'mp4', isVideo: true };
+  const lower = fileName.toLowerCase();
+
+  // Video Codec hints from filename
+  let videoCodec = '';
+  if (lower.includes('hevc') || lower.includes('h265') || lower.includes('h.265') || lower.includes('x265')) {
+    videoCodec = 'HEVC (H.265)';
+  } else if (lower.includes('av01') || lower.includes('av1')) {
+    videoCodec = 'AV1';
+  } else if (lower.includes('h264') || lower.includes('h.264') || lower.includes('x264') || lower.includes('avc')) {
+    videoCodec = 'H.264';
+  } else if (lower.includes('xvid')) {
+    videoCodec = 'XviD';
+  } else if (lower.includes('divx')) {
+    videoCodec = 'DivX';
+  } else if (lower.includes('mpeg2') || lower.includes('mpeg-2') || lower.includes('m2v') || lower.includes('mpg2')) {
+    videoCodec = 'MPEG-2';
+  } else if (lower.includes('mpeg4') || lower.includes('mpeg-4') || lower.includes('mp4v')) {
+    videoCodec = 'MPEG-4';
+  } else if (lower.includes('vp9') || lower.includes('vp8') || ext === 'webm') {
+    videoCodec = 'WebM';
+  } else if (lower.includes('wmv') || ext === 'wmv') {
+    videoCodec = 'WMV';
   }
-  if (ext === 'wav') return { format: 'wav', isVideo: false };
-  if (ext === 'flac') return { format: 'flac', isVideo: false };
-  if (ext === 'm4a' || ext === 'aac') return { format: 'm4a', isVideo: false };
-  return { format: 'mp3', isVideo: false };
+
+  // Audio Codec hints from filename or format
+  let audioCodec = '';
+  if (lower.includes('dts-hd') || lower.includes('dtshd') || lower.includes('dts') || ext === 'dts' || ext === 'dtshd') {
+    audioCodec = 'DTS';
+  } else if (lower.includes('ac3') || lower.includes('eac3') || lower.includes('dd5.1') || lower.includes('dolby') || ext === 'ac3' || ext === 'eac3') {
+    audioCodec = 'AC3';
+  } else if (lower.includes('flac') || ext === 'flac') {
+    audioCodec = 'FLAC';
+  } else if (lower.includes('wma') || ext === 'wma') {
+    audioCodec = 'WMA';
+  } else if (lower.includes('aac') || ext === 'aac') {
+    audioCodec = 'AAC';
+  } else if (lower.includes('mp3') || ext === 'mp3') {
+    audioCodec = 'MP3';
+  } else if (lower.includes('opus') || lower.includes('vorbis') || ext === 'ogg' || ext === 'oga') {
+    audioCodec = 'OGG';
+  }
+
+  // Check if format is a video container
+  if (SUPPORTED_VIDEO_EXTENSIONS.has(ext) || ext === 'ogv') {
+    let format: MediaFormat = 'mp4';
+    let mimeType = 'video/mp4';
+
+    if (ext === 'mkv') {
+      format = 'mkv';
+      mimeType = 'video/x-matroska';
+      if (!videoCodec) videoCodec = 'H.264';
+      if (!audioCodec) audioCodec = 'AAC';
+    } else if (ext === 'avi' || ext === 'divx' || ext === 'xvid') {
+      format = 'avi';
+      mimeType = 'video/x-msvideo';
+      if (!videoCodec) videoCodec = lower.includes('xvid') ? 'XviD' : 'DivX';
+      if (!audioCodec) audioCodec = 'MP3';
+    } else if (ext === 'mov' || ext === 'qt') {
+      format = 'mov';
+      mimeType = 'video/quicktime';
+      if (!videoCodec) videoCodec = 'H.264';
+      if (!audioCodec) audioCodec = 'AAC';
+    } else if (ext === 'flv' || ext === 'f4v') {
+      format = 'flv';
+      mimeType = 'video/x-flv';
+      if (!videoCodec) videoCodec = 'H.264';
+      if (!audioCodec) audioCodec = 'AAC';
+    } else if (ext === 'webm') {
+      format = 'webm';
+      mimeType = 'video/webm';
+      if (!videoCodec) videoCodec = 'WebM';
+      if (!audioCodec) audioCodec = 'WebM';
+    } else if (ext === 'wmv') {
+      format = 'wmv';
+      mimeType = 'video/x-ms-wmv';
+      if (!videoCodec) videoCodec = 'WMV';
+      if (!audioCodec) audioCodec = 'WMA';
+    } else if (ext === 'ogg' || ext === 'ogv') {
+      format = 'ogg';
+      mimeType = 'video/ogg';
+      if (!videoCodec) videoCodec = 'OGG';
+      if (!audioCodec) audioCodec = 'OGG';
+    } else if (ext === 'mpg' || ext === 'mpeg' || ext === 'm2v' || ext === 'ts') {
+      format = 'mp4';
+      mimeType = 'video/mp4';
+      if (!videoCodec) videoCodec = 'MPEG-2';
+      if (!audioCodec) audioCodec = 'AC3';
+    } else {
+      // mp4, m4v
+      format = 'mp4';
+      mimeType = 'video/mp4';
+      if (!videoCodec) videoCodec = 'H.264';
+      if (!audioCodec) audioCodec = 'AAC';
+    }
+
+    return {
+      format,
+      isVideo: true,
+      codec: videoCodec,
+      videoCodec,
+      audioCodec: audioCodec || 'AAC',
+      mimeType,
+    };
+  }
+
+  // Audio container / formats
+  let format: MediaFormat = 'mp3';
+  let mimeType = 'audio/mpeg';
+
+  if (ext === 'flac') {
+    format = 'flac';
+    mimeType = 'audio/flac';
+    audioCodec = 'FLAC';
+  } else if (ext === 'wav') {
+    format = 'wav';
+    mimeType = 'audio/wav';
+    audioCodec = 'PCM';
+  } else if (ext === 'm4a' || ext === 'aac') {
+    format = ext === 'aac' ? 'aac' : 'm4a';
+    mimeType = ext === 'aac' ? 'audio/aac' : 'audio/mp4';
+    audioCodec = 'AAC';
+  } else if (ext === 'ac3' || ext === 'eac3') {
+    format = 'ac3';
+    mimeType = 'audio/ac3';
+    audioCodec = 'AC3';
+  } else if (ext === 'dts' || ext === 'dtshd') {
+    format = 'dts';
+    mimeType = 'audio/vnd.dts';
+    audioCodec = 'DTS';
+  } else if (ext === 'wma') {
+    format = 'wma';
+    mimeType = 'audio/x-ms-wma';
+    audioCodec = 'WMA';
+  } else if (ext === 'ogg' || ext === 'oga') {
+    format = 'ogg';
+    mimeType = 'audio/ogg';
+    audioCodec = 'OGG';
+  } else {
+    format = 'mp3';
+    mimeType = 'audio/mpeg';
+    audioCodec = 'MP3';
+  }
+
+  return {
+    format,
+    isVideo: false,
+    codec: audioCodec,
+    audioCodec,
+    mimeType,
+  };
+}
+
+export function getFormatFromFileName(fileName: string): { format: MediaFormat; isVideo: boolean } {
+  const info = detectMediaFormatAndCodecs(fileName);
+  return { format: info.format, isVideo: info.isVideo };
 }
 
 /**
@@ -63,8 +255,9 @@ export function estimateMediaDuration(fileSize: number, format: MediaFormat, isV
     const rate = format === 'wav' ? 176400 : 92000;
     return Math.max(15, Math.min(3600, Math.round(fileSize / rate)));
   }
-  // Compressed audio MP3/M4A/AAC/OGG approx 192 kbps (24 KB/s)
-  return Math.max(15, Math.min(3600, Math.round(fileSize / 24000)));
+  // Compressed audio MP3/M4A/AAC/AC3/DTS/WMA/OGG approx 192-320 kbps (24-40 KB/s)
+  const rate = format === 'dts' || format === 'ac3' ? 48000 : 24000;
+  return Math.max(15, Math.min(3600, Math.round(fileSize / rate)));
 }
 
 interface PendingFileHandle {
@@ -204,7 +397,7 @@ export function convertFilesToMediaTracks(
   for (const entry of entries) {
     const { file, relativePath, rootFolderName } = entry;
     const effectiveRoot = rootFolderOverride || rootFolderName || 'Device Storage';
-    const { format, isVideo } = getFormatFromFileName(file.name);
+    const { format, isVideo, codec, videoCodec, audioCodec, mimeType } = detectMediaFormatAndCodecs(file.name);
 
     // Clean title and artist
     const rawName = file.name.replace(/\.[^/.]+$/, '');
@@ -227,7 +420,14 @@ export function convertFilesToMediaTracks(
     const pathParts = relativePath.split('/');
     const album = pathParts.length > 1 ? pathParts[pathParts.length - 2] : effectiveRoot;
 
-    const url = URL.createObjectURL(file);
+    let url: string;
+    try {
+      const blob = file.type ? file : new Blob([file], { type: mimeType });
+      url = URL.createObjectURL(blob);
+    } catch {
+      url = URL.createObjectURL(file);
+    }
+
     const estimatedDuration = estimateMediaDuration(file.size, format, isVideo);
 
     const track: MediaTrack = {
@@ -239,6 +439,10 @@ export function convertFilesToMediaTracks(
       url,
       format,
       isVideo,
+      codec,
+      videoCodec,
+      audioCodec,
+      mimeType,
       artworkGradient: isVideo
         ? 'from-cyan-600 via-blue-700 to-purple-900'
         : 'from-amber-600 via-rose-700 to-zinc-900',

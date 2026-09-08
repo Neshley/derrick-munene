@@ -1,4 +1,20 @@
-export type MediaFormat = 'mp3' | 'wav' | 'flac' | 'm4a' | 'mp4' | 'mkv';
+export type MediaFormat = 
+  | 'mp3' 
+  | 'wav' 
+  | 'flac' 
+  | 'm4a' 
+  | 'aac' 
+  | 'ac3' 
+  | 'dts' 
+  | 'wma' 
+  | 'ogg' 
+  | 'mp4' 
+  | 'mkv' 
+  | 'avi' 
+  | 'mov' 
+  | 'flv' 
+  | 'webm' 
+  | 'wmv';
 
 export interface LyricLine {
   time: number; // in seconds
@@ -16,6 +32,10 @@ export interface MediaTrack {
   artworkGradient?: string; // CSS gradient for album art
   format: MediaFormat;
   isVideo: boolean;
+  codec?: string; // Primary codec (e.g. 'H.264', 'HEVC', 'AV1', 'MPEG-4', 'MPEG-2', 'DivX', 'XviD', 'AC3', 'DTS', 'FLAC', 'WMA', etc.)
+  videoCodec?: string; // Video codec details
+  audioCodec?: string; // Audio codec details
+  mimeType?: string;
   lyrics?: string;
   parsedLyrics?: LyricLine[];
   dateAdded: number;

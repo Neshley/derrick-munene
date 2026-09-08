@@ -33,6 +33,7 @@ import { LyricsViewer } from './LyricsViewer';
 import { AudioVisualizerCanvas } from './AudioVisualizerCanvas';
 import { VideoPlayerStage } from './VideoPlayerStage';
 import { PlaylistModal } from './PlaylistModal';
+import { MediaFilterBar, MediaSortOption, MediaTypeFilter } from './MediaFilterBar';
 import { 
   Search, 
   Upload, 
@@ -137,7 +138,10 @@ export const MediaPlayerView: React.FC<MediaPlayerViewProps> = ({
   const [activeTab, setActiveTab] = useState<MediaTab>('library');
   const [activePlaylistId, setActivePlaylistId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
-  const [formatFilter, setFormatFilter] = useState<'all' | 'audio' | 'video' | MediaFormat>('all');
+  const [typeFilter, setTypeFilter] = useState<MediaTypeFilter>('all');
+  const [formatFilter, setFormatFilter] = useState<string>('all');
+  const [codecFilter, setCodecFilter] = useState<string>('all');
+  const [sortOption, setSortOption] = useState<MediaSortOption>('title-asc');
   const [visualizerMode, setVisualizerMode] = useState<VisualizerMode>('bars');
   const [isCinemaMode, setIsCinemaMode] = useState(false);
   const [isPlaylistModalOpen, setIsPlaylistModalOpen] = useState(false);
@@ -148,7 +152,40 @@ export const MediaPlayerView: React.FC<MediaPlayerViewProps> = ({
   const directoryInputRef = useRef<HTMLInputElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  // Filtered tracks based on tab, playlist, search, format, and subfolder
+  // All distinct folders from connected directories and track paths
+  const availableFolders = useMemo(() => {
+    const set = new Set<string>(directedFolders);
+    customTracks.forEach((t) => {
+      if (t.folderName) set.add(t.folderName);
+      if (t.folderPath && t.folderPath.includes('/')) {
+        const root = t.folderPath.split('/')[0];
+        if (root && !root.includes('.')) set.add(root);
+      }
+    });
+    return Array.from(set).filter(Boolean).sort();
+  }, [directedFolders, customTracks]);
+
+  // Check if any filter or search is active
+  const isFiltered = Boolean(
+    searchQuery.trim() ||
+    typeFilter !== 'all' ||
+    formatFilter !== 'all' ||
+    codecFilter !== 'all' ||
+    selectedFolderFilter !== 'all' ||
+    selectedSubfolder !== 'all'
+  );
+
+  const handleResetFilters = () => {
+    setSearchQuery('');
+    setTypeFilter('all');
+    setFormatFilter('all');
+    setCodecFilter('all');
+    setSelectedFolderFilter('all');
+    setSelectedSubfolder('all');
+    setSortOption('title-asc');
+  };
+
+  // Filtered tracks based on tab, playlist, search, type, format, codec, folder, and sorting
   const displayedTracks = useMemo(() => {
     let list: MediaTrack[] = [];
 
@@ -179,16 +216,36 @@ export const MediaPlayerView: React.FC<MediaPlayerViewProps> = ({
       list = allTracks;
     }
 
-    // Apply Format Filter
-    if (formatFilter === 'audio') {
+    // 1. Apply Type Filter (audio vs video)
+    if (typeFilter === 'audio') {
       list = list.filter((t) => !t.isVideo);
-    } else if (formatFilter === 'video') {
+    } else if (typeFilter === 'video') {
       list = list.filter((t) => t.isVideo);
-    } else if (formatFilter !== 'all') {
-      list = list.filter((t) => t.format === formatFilter);
     }
 
-    // Apply Subfolder Filter
+    // 2. Apply Format Filter
+    if (formatFilter !== 'all') {
+      if (formatFilter === 'audio') {
+        list = list.filter((t) => !t.isVideo);
+      } else if (formatFilter === 'video') {
+        list = list.filter((t) => t.isVideo);
+      } else {
+        list = list.filter((t) => t.format.toLowerCase() === formatFilter.toLowerCase());
+      }
+    }
+
+    // 3. Apply Codec Filter
+    if (codecFilter !== 'all') {
+      const cLow = codecFilter.toLowerCase();
+      list = list.filter((t) => {
+        const directMatch = t.codec?.toLowerCase().includes(cLow);
+        const vidMatch = t.videoCodec?.toLowerCase().includes(cLow);
+        const audMatch = t.audioCodec?.toLowerCase().includes(cLow);
+        return directMatch || vidMatch || audMatch;
+      });
+    }
+
+    // 4. Apply Subfolder Filter
     if (selectedSubfolder !== 'all') {
       list = list.filter(
         (t) =>
@@ -199,26 +256,58 @@ export const MediaPlayerView: React.FC<MediaPlayerViewProps> = ({
       );
     }
 
-    // Apply Specific Device Folder Filter
+    // 5. Apply Specific Device Folder Filter
     if (selectedFolderFilter !== 'all') {
-      list = list.filter((t) => t.folderName === selectedFolderFilter);
-    }
-
-    // Apply Search Query
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase().trim();
-      list = list.filter(
-        (t) =>
-          t.title.toLowerCase().includes(q) ||
-          t.artist.toLowerCase().includes(q) ||
-          t.album.toLowerCase().includes(q) ||
-          t.format.toLowerCase().includes(q) ||
-          (t.folderPath && t.folderPath.toLowerCase().includes(q)) ||
-          (t.lyrics && t.lyrics.toLowerCase().includes(q))
+      list = list.filter((t) => 
+        t.folderName === selectedFolderFilter ||
+        t.folderPath?.startsWith(`${selectedFolderFilter}/`) ||
+        t.folderPath?.includes(`/${selectedFolderFilter}/`)
       );
     }
 
-    return list;
+    // 6. Apply Search Query (matches name, artist, album, format, codec, folder path, folder name, lyrics, type)
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase().trim();
+      list = list.filter((t) => {
+        const inTitle = t.title.toLowerCase().includes(q);
+        const inArtist = t.artist.toLowerCase().includes(q);
+        const inAlbum = t.album.toLowerCase().includes(q);
+        const inFormat = t.format.toLowerCase().includes(q);
+        const inCodec = t.codec?.toLowerCase().includes(q);
+        const inVidCodec = t.videoCodec?.toLowerCase().includes(q);
+        const inAudCodec = t.audioCodec?.toLowerCase().includes(q);
+        const inFolder = (t.folderPath && t.folderPath.toLowerCase().includes(q)) ||
+                         (t.folderName && t.folderName.toLowerCase().includes(q));
+        const inType = (q === 'video' && t.isVideo) || (q === 'audio' && !t.isVideo) || (q === 'song' && !t.isVideo);
+        const inLyrics = t.lyrics && t.lyrics.toLowerCase().includes(q);
+
+        return inTitle || inArtist || inAlbum || inFormat || inCodec || inVidCodec || inAudCodec || inFolder || inType || inLyrics;
+      });
+    }
+
+    // 7. Apply Sorting
+    return [...list].sort((a, b) => {
+      switch (sortOption) {
+        case 'title-asc':
+          return a.title.localeCompare(b.title);
+        case 'title-desc':
+          return b.title.localeCompare(a.title);
+        case 'date-desc':
+          return (b.dateAdded || 0) - (a.dateAdded || 0);
+        case 'date-asc':
+          return (a.dateAdded || 0) - (b.dateAdded || 0);
+        case 'duration-desc':
+          return (b.duration || 0) - (a.duration || 0);
+        case 'duration-asc':
+          return (a.duration || 0) - (b.duration || 0);
+        case 'size-desc':
+          return (b.fileSize || 0) - (a.fileSize || 0);
+        case 'folder-asc':
+          return (a.folderName || '').localeCompare(b.folderName || '') || a.title.localeCompare(b.title);
+        default:
+          return 0;
+      }
+    });
   }, [
     activeTab,
     activePlaylistId,
@@ -227,10 +316,13 @@ export const MediaPlayerView: React.FC<MediaPlayerViewProps> = ({
     recentItems,
     playlists,
     playerState.queue,
+    typeFilter,
     formatFilter,
+    codecFilter,
     selectedSubfolder,
     selectedFolderFilter,
     searchQuery,
+    sortOption,
   ]);
 
   // --- Handlers ---
@@ -1024,19 +1116,91 @@ export const MediaPlayerView: React.FC<MediaPlayerViewProps> = ({
             })}
           </div>
 
-          {/* Quick Audio Formats Info Pill */}
-          <div className="p-2.5 rounded-xl bg-zinc-900/60 border border-zinc-800/80 text-[10px] text-zinc-400 flex flex-col gap-1 mt-auto">
-            <div className="font-bold text-zinc-300 flex items-center gap-1">
-              <Sparkles className="w-3 h-3 text-amber-400" />
-              <span>Supported Codecs</span>
+          {/* Quick Audio & Video Formats/Codecs Info Pill */}
+          <div className="p-2.5 rounded-xl bg-zinc-900/60 border border-zinc-800/80 text-[10px] text-zinc-400 flex flex-col gap-1.5 mt-auto">
+            <div className="flex items-center justify-between">
+              <div className="font-bold text-zinc-300 flex items-center gap-1">
+                <Sparkles className="w-3 h-3 text-amber-400" />
+                <span>Codecs & Formats</span>
+              </div>
+              {(formatFilter !== 'all' || codecFilter !== 'all') && (
+                <button
+                  type="button"
+                  onClick={() => { setFormatFilter('all'); setCodecFilter('all'); }}
+                  className="text-[9px] text-amber-400 hover:text-amber-300 cursor-pointer underline"
+                >
+                  Clear
+                </button>
+              )}
             </div>
-            <div className="flex flex-wrap gap-1 mt-0.5 font-mono">
-              <span className="px-1 bg-zinc-800 rounded text-amber-300">MP3</span>
-              <span className="px-1 bg-zinc-800 rounded text-cyan-300">WAV</span>
-              <span className="px-1 bg-zinc-800 rounded text-purple-300">FLAC</span>
-              <span className="px-1 bg-zinc-800 rounded text-emerald-300">M4A</span>
-              <span className="px-1 bg-zinc-800 rounded text-rose-300">MP4</span>
-              <span className="px-1 bg-zinc-800 rounded text-blue-300">MKV</span>
+
+            <div>
+              <span className="text-[9px] font-mono text-zinc-500 uppercase block mb-0.5">Video:</span>
+              <div className="flex flex-wrap gap-1 font-mono">
+                {['H.264', 'HEVC', 'AV1', 'MPEG-4', 'MPEG-2', 'DivX', 'XviD'].map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => {
+                      setCodecFilter(codecFilter === c ? 'all' : c);
+                      setActiveTab('library');
+                    }}
+                    className={`px-1 rounded cursor-pointer transition-colors ${
+                      codecFilter === c
+                        ? 'bg-amber-500 text-zinc-950 font-bold'
+                        : 'bg-zinc-800 hover:bg-zinc-750 text-zinc-300'
+                    }`}
+                  >
+                    {c}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <span className="text-[9px] font-mono text-zinc-500 uppercase block mb-0.5">Audio:</span>
+              <div className="flex flex-wrap gap-1 font-mono">
+                {['MP3', 'AAC', 'FLAC', 'AC3', 'DTS', 'WMA'].map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => {
+                      setCodecFilter(codecFilter === c ? 'all' : c);
+                      setActiveTab('library');
+                    }}
+                    className={`px-1 rounded cursor-pointer transition-colors ${
+                      codecFilter === c
+                        ? 'bg-purple-500 text-zinc-950 font-bold'
+                        : 'bg-zinc-800 hover:bg-zinc-750 text-zinc-300'
+                    }`}
+                  >
+                    {c}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <span className="text-[9px] font-mono text-zinc-500 uppercase block mb-0.5">Containers:</span>
+              <div className="flex flex-wrap gap-1 font-mono">
+                {['mkv', 'mp4', 'avi', 'mov', 'flv', 'ogg'].map((fmt) => (
+                  <button
+                    key={fmt}
+                    type="button"
+                    onClick={() => {
+                      setFormatFilter(formatFilter === fmt ? 'all' : fmt);
+                      setActiveTab('library');
+                    }}
+                    className={`px-1 rounded uppercase cursor-pointer transition-colors ${
+                      formatFilter === fmt
+                        ? 'bg-cyan-500 text-zinc-950 font-bold'
+                        : 'bg-zinc-800 hover:bg-zinc-750 text-zinc-400'
+                    }`}
+                  >
+                    {fmt}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         </aside>
@@ -1127,43 +1291,59 @@ export const MediaPlayerView: React.FC<MediaPlayerViewProps> = ({
             </button>
           </div>
 
-          {/* Format Filter Bar (shown on library/favorites/recent/playlists) */}
+          {/* Search & Filter Bar (shown on library/favorites/recent/playlists) */}
           {(activeTab === 'library' || activeTab === 'favorites' || activeTab === 'recent' || activeTab === 'playlists') && (
-            <div className="flex items-center justify-between gap-3 mb-4 flex-wrap shrink-0">
+            <div className="flex flex-col gap-3 mb-4 shrink-0">
               {/* Category Header */}
-              <div>
-                <h2 className="text-base sm:text-lg font-bold text-zinc-100 flex items-center gap-2">
-                  {activeTab === 'library' && 'All Music & Video Media'}
-                  {activeTab === 'favorites' && 'Favorite Tracks ❤️'}
-                  {activeTab === 'recent' && 'Recently Played History ⏱️'}
-                  {activeTab === 'playlists' && (
-                    playlists.find((p) => p.id === activePlaylistId)?.name || 'Playlists'
-                  )}
-                </h2>
-                <p className="text-xs text-zinc-400 mt-0.5">
-                  {displayedTracks.length} track(s) ready for instant playback
-                </p>
-              </div>
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <div>
+                  <h2 className="text-base sm:text-lg font-bold text-zinc-100 flex items-center gap-2">
+                    {activeTab === 'library' && 'All Music & Video Media'}
+                    {activeTab === 'favorites' && 'Favorite Tracks ❤️'}
+                    {activeTab === 'recent' && 'Recently Played History ⏱️'}
+                    {activeTab === 'playlists' && (
+                      playlists.find((p) => p.id === activePlaylistId)?.name || 'Playlists'
+                    )}
+                  </h2>
+                  <p className="text-xs text-zinc-400 mt-0.5">
+                    Showing {displayedTracks.length} of {allTracks.length} media file{allTracks.length === 1 ? '' : 's'}
+                  </p>
+                </div>
 
-              {/* Format Filter Chips */}
-              <div className="flex items-center gap-1 bg-zinc-900/80 p-1 rounded-xl border border-zinc-800 overflow-x-auto custom-scrollbar">
-                {(['all', 'audio', 'video', 'mp3', 'wav', 'flac', 'm4a', 'mp4', 'mkv'] as const).map(
-                  (fmt) => (
+                {directedFolders.length > 0 && (
+                  <div className="flex items-center gap-2">
                     <button
-                      key={fmt}
                       type="button"
-                      onClick={() => setFormatFilter(fmt)}
-                      className={`px-2.5 py-1 rounded-lg text-[11px] font-mono font-bold uppercase transition-all cursor-pointer ${
-                        formatFilter === fmt
-                          ? 'bg-amber-500 text-zinc-950 shadow-xs'
-                          : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800'
-                      }`}
+                      onClick={() => handleDirectDeviceFolder('add')}
+                      className="px-3 py-1.5 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/30 text-xs font-semibold flex items-center gap-1.5 transition-all shadow-xs cursor-pointer active:scale-95"
+                      title="Add another folder on your device"
                     >
-                      {fmt}
+                      <FolderPlus className="w-3.5 h-3.5 text-amber-400" />
+                      <span>Add Folder</span>
                     </button>
-                  )
+                  </div>
                 )}
               </div>
+
+              {/* Full Interactive Search & Filter Bar */}
+              <MediaFilterBar
+                searchQuery={searchQuery}
+                onSearchChange={setSearchQuery}
+                typeFilter={typeFilter}
+                onTypeFilterChange={setTypeFilter}
+                formatFilter={formatFilter}
+                onFormatFilterChange={setFormatFilter}
+                codecFilter={codecFilter}
+                onCodecFilterChange={setCodecFilter}
+                folderFilter={selectedFolderFilter}
+                onFolderFilterChange={setSelectedFolderFilter}
+                availableFolders={availableFolders}
+                sortOption={sortOption}
+                onSortChange={setSortOption}
+                totalTracksCount={allTracks.length}
+                filteredTracksCount={displayedTracks.length}
+                onResetFilters={handleResetFilters}
+              />
             </div>
           )}
 
@@ -1589,10 +1769,15 @@ export const MediaPlayerView: React.FC<MediaPlayerViewProps> = ({
                 onAddToPlaylist={handleAddToPlaylist}
                 onDeleteTrack={handleDeleteTrack}
                 onDirectFolder={handleDirectDeviceFolder}
+                onSelectFolder={(folder) => setSelectedFolderFilter(folder)}
+                onSelectCodec={(codec) => setCodecFilter(codec)}
+                onSelectFormat={(fmt) => setFormatFilter(fmt)}
+                onResetFilters={handleResetFilters}
+                isFiltered={isFiltered}
                 playlists={playlists}
                 emptyMessage={
-                  searchQuery
-                    ? `No tracks found matching "${searchQuery}"`
+                  isFiltered
+                    ? `No media matches your search & filter criteria.`
                     : activeTab === 'favorites'
                     ? 'No favorite tracks saved yet. Click the heart on any song!'
                     : 'No tracks found.'

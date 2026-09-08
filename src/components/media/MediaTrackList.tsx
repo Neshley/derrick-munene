@@ -20,7 +20,9 @@ import {
   ChevronUp,
   Copy,
   Check,
-  Info
+  Info,
+  Search,
+  RotateCcw
 } from 'lucide-react';
 
 interface MediaTrackListProps {
@@ -34,6 +36,11 @@ interface MediaTrackListProps {
   onAddToPlaylist?: (track: MediaTrack, playlistId: string) => void;
   onDeleteTrack?: (trackId: string) => void;
   onDirectFolder?: () => void;
+  onSelectFolder?: (folder: string) => void;
+  onSelectCodec?: (codec: string) => void;
+  onSelectFormat?: (format: string) => void;
+  onResetFilters?: () => void;
+  isFiltered?: boolean;
   playlists?: Playlist[];
   emptyMessage?: string;
 }
@@ -49,6 +56,11 @@ export const MediaTrackList: React.FC<MediaTrackListProps> = ({
   onAddToPlaylist,
   onDeleteTrack,
   onDirectFolder,
+  onSelectFolder,
+  onSelectCodec,
+  onSelectFormat,
+  onResetFilters,
+  isFiltered = false,
   playlists = [],
   emptyMessage = 'No tracks found in this category',
 }) => {
@@ -83,16 +95,61 @@ export const MediaTrackList: React.FC<MediaTrackListProps> = ({
         return 'bg-cyan-950/80 text-cyan-300 border-cyan-600/40';
       case 'm4a':
         return 'bg-emerald-950/80 text-emerald-300 border-emerald-600/40';
-      case 'mp4':
+      case 'aac':
+        return 'bg-lime-950/80 text-lime-300 border-lime-600/40';
+      case 'ac3':
+        return 'bg-rose-950/80 text-rose-300 border-rose-600/40';
+      case 'dts':
+        return 'bg-fuchsia-950/80 text-fuchsia-300 border-fuchsia-600/40';
+      case 'wma':
+        return 'bg-violet-950/80 text-violet-300 border-violet-600/40';
+      case 'ogg':
+        return 'bg-emerald-950/80 text-emerald-300 border-emerald-600/40';
       case 'mkv':
-      case 'webm':
         return 'bg-amber-950/80 text-amber-300 border-amber-600/40';
+      case 'mp4':
+        return 'bg-sky-950/80 text-sky-300 border-sky-600/40';
+      case 'avi':
+        return 'bg-teal-950/80 text-teal-300 border-teal-600/40';
+      case 'mov':
+        return 'bg-indigo-950/80 text-indigo-300 border-indigo-600/40';
+      case 'flv':
+        return 'bg-orange-950/80 text-orange-300 border-orange-600/40';
+      case 'webm':
+        return 'bg-cyan-950/80 text-cyan-300 border-cyan-600/40';
+      case 'wmv':
+        return 'bg-blue-950/80 text-blue-300 border-blue-600/40';
+      case 'mp3':
       default:
         return 'bg-zinc-800 text-zinc-300 border-zinc-700';
     }
   };
 
   if (tracks.length === 0) {
+    if (isFiltered) {
+      return (
+        <div className="flex flex-col items-center justify-center p-10 text-zinc-500 text-center border-2 border-dashed border-zinc-800 rounded-2xl my-4 bg-zinc-900/30">
+          <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mb-3">
+            <Search className="w-6 h-6 text-amber-400" />
+          </div>
+          <p className="text-sm font-semibold text-zinc-200">No media matches your active filters</p>
+          <p className="text-xs text-zinc-500 mt-1 max-w-md">
+            Try adjusting your search query, type (Audio/Video), format, codec, or folder location filter.
+          </p>
+          {onResetFilters && (
+            <button
+              type="button"
+              onClick={onResetFilters}
+              className="mt-4 px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-zinc-950 font-bold text-xs flex items-center gap-2 transition-all shadow-md shadow-amber-500/20 active:scale-95 cursor-pointer"
+            >
+              <RotateCcw className="w-4 h-4" />
+              <span>Reset Search & Filters</span>
+            </button>
+          )}
+        </div>
+      );
+    }
+
     return (
       <div className="flex flex-col items-center justify-center p-10 text-zinc-500 text-center border-2 border-dashed border-zinc-800 rounded-2xl my-4 bg-zinc-900/30">
         <div className="w-12 h-12 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mb-3">
@@ -203,10 +260,18 @@ export const MediaTrackList: React.FC<MediaTrackListProps> = ({
                           Built-in
                         </span>
                       ) : track.folderName ? (
-                        <span className="text-[9px] px-1 py-0.2 rounded bg-amber-950/60 text-amber-300/90 border border-amber-500/20 hidden lg:inline-flex items-center gap-0.5 shrink-0">
-                          <Folder className="w-2.5 h-2.5" />
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (onSelectFolder) onSelectFolder(track.folderName!);
+                          }}
+                          className="text-[9px] px-1.5 py-0.5 rounded bg-amber-950/60 hover:bg-amber-900/80 text-amber-300/90 border border-amber-500/20 hover:border-amber-500/40 hidden lg:inline-flex items-center gap-1 shrink-0 transition-colors cursor-pointer"
+                          title={`Filter by folder: ${track.folderName}`}
+                        >
+                          <Folder className="w-2.5 h-2.5 text-amber-400" />
                           <span>{track.folderName}</span>
-                        </span>
+                        </button>
                       ) : null}
 
                       {/* Show more / Show less toggle button */}
@@ -253,15 +318,35 @@ export const MediaTrackList: React.FC<MediaTrackListProps> = ({
                   )}
                 </div>
 
-                {/* Format Badge */}
-                <div className="col-span-2 flex items-center justify-center">
-                  <span
-                    className={`text-[9px] uppercase font-mono font-bold tracking-wider px-1.5 py-0.5 rounded border ${getFormatBadgeStyle(
+                {/* Format & Codec Badges */}
+                <div className="col-span-2 flex flex-col sm:flex-row items-center justify-center gap-1">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (onSelectFormat) onSelectFormat(track.format);
+                    }}
+                    className={`text-[9px] uppercase font-mono font-bold tracking-wider px-1.5 py-0.5 rounded border transition-transform hover:scale-105 cursor-pointer ${getFormatBadgeStyle(
                       track.format
                     )}`}
+                    title={`Filter by format: ${track.format.toUpperCase()}`}
                   >
                     {track.format}
-                  </span>
+                  </button>
+
+                  {track.codec && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (onSelectCodec) onSelectCodec(track.codec!);
+                      }}
+                      className="text-[8px] uppercase font-mono font-bold px-1.5 py-0.2 rounded bg-purple-950/70 text-purple-300 border border-purple-600/30 hover:bg-purple-900/80 transition-colors cursor-pointer"
+                      title={`Filter by codec: ${track.codec}`}
+                    >
+                      {track.codec.split(' ')[0]}
+                    </button>
+                  )}
                 </div>
 
                 {/* Duration & Context Menu */}
@@ -459,10 +544,16 @@ export const MediaTrackList: React.FC<MediaTrackListProps> = ({
                   )}
 
                   {/* Metadata Specs Grid */}
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-zinc-800/80 text-[11px]">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 pt-2 border-t border-zinc-800/80 text-[11px]">
                     <div className="p-2 rounded-lg bg-zinc-950/50">
                       <span className="text-zinc-500 text-[10px] uppercase font-mono block">Format</span>
                       <span className="font-mono font-bold text-amber-300 uppercase text-xs">{track.format}</span>
+                    </div>
+                    <div className="p-2 rounded-lg bg-zinc-950/50">
+                      <span className="text-zinc-500 text-[10px] uppercase font-mono block">Codec</span>
+                      <span className="font-mono font-bold text-purple-300 text-xs truncate block" title={track.codec || 'Native'}>
+                        {track.codec || (track.isVideo ? 'H.264' : 'MP3')}
+                      </span>
                     </div>
                     <div className="p-2 rounded-lg bg-zinc-950/50">
                       <span className="text-zinc-500 text-[10px] uppercase font-mono block">Duration</span>
@@ -475,8 +566,16 @@ export const MediaTrackList: React.FC<MediaTrackListProps> = ({
                       </span>
                     </div>
                     <div className="p-2 rounded-lg bg-zinc-950/50">
-                      <span className="text-zinc-500 text-[10px] uppercase font-mono block">Play Count</span>
-                      <span className="font-mono font-semibold text-zinc-200 text-xs">{track.playCount || 0} plays</span>
+                      <span className="text-zinc-500 text-[10px] uppercase font-mono block">Type</span>
+                      <span className="font-mono font-semibold text-cyan-300 text-xs">
+                        {track.isVideo ? 'Video Clip' : 'Audio Track'}
+                      </span>
+                    </div>
+                    <div className="p-2 rounded-lg bg-zinc-950/50">
+                      <span className="text-zinc-500 text-[10px] uppercase font-mono block">Folder</span>
+                      <span className="font-mono font-semibold text-amber-300 text-xs truncate block" title={track.folderName || 'Device'}>
+                        {track.folderName || 'Device'}
+                      </span>
                     </div>
                   </div>
 
