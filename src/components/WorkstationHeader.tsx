@@ -14,6 +14,7 @@ import {
   Music,
   Circle,
   Settings,
+  Palette,
   LayoutGrid,
   Bot,
   ListMusic,
@@ -50,6 +51,7 @@ interface WorkstationHeaderProps {
   onOpenAudioRecording?: () => void;
   onOpenMidiAutomation?: () => void;
   onOpenSettings?: () => void;
+  onOpenDisplaySettings?: () => void;
   onOpenAiStudio?: () => void;
   onOpenChordSequencer?: () => void;
   onOpenApiKeyModal?: () => void;
@@ -83,6 +85,7 @@ export const WorkstationHeader: React.FC<WorkstationHeaderProps> = ({
   onOpenAudioRecording,
   onOpenMidiAutomation,
   onOpenSettings,
+  onOpenDisplaySettings,
   onOpenAiStudio,
   onOpenChordSequencer,
   onOpenApiKeyModal,
@@ -501,6 +504,19 @@ export const WorkstationHeader: React.FC<WorkstationHeaderProps> = ({
                 </button>
               )}
 
+              {onOpenDisplaySettings && (
+                <button
+                  id="btn-header-themes"
+                  type="button"
+                  onClick={onOpenDisplaySettings}
+                  className="px-2.5 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 hover:border-zinc-700 text-zinc-300 hover:text-amber-300 transition-all shadow-xs active:scale-95 cursor-pointer shrink-0 touch-manipulation min-h-[36px] flex items-center gap-1.5"
+                  title="Display, Console Themes & Visual Ergonomics"
+                >
+                  <Palette className="w-4 h-4 text-amber-400 shrink-0" />
+                  <span className="hidden xl:inline text-xs font-mono font-bold">Themes</span>
+                </button>
+              )}
+
               {onOpenSettings && (
                 <button
                   id="btn-header-settings"
@@ -882,6 +898,25 @@ export const WorkstationHeader: React.FC<WorkstationHeaderProps> = ({
                       </div>
                       <p className="text-[11px] text-zinc-400">
                         Full manual with worship stages, tips, and printable PDF or Word file.
+                      </p>
+                    </button>
+                  )}
+
+                  {/* Themes & Display */}
+                  {onOpenDisplaySettings && (
+                    <button
+                      type="button"
+                      onClick={() => handleOpenTool(onOpenDisplaySettings)}
+                      className="p-3 rounded-xl bg-zinc-900/80 hover:bg-zinc-800 border border-zinc-800 hover:border-zinc-700 text-left transition-all group cursor-pointer flex flex-col gap-1.5"
+                    >
+                      <div className="p-2 w-fit rounded-lg bg-amber-500/20 text-amber-300 group-hover:scale-105 transition-transform">
+                        <Palette className="w-4 h-4" />
+                      </div>
+                      <div className="font-bold text-sm text-zinc-100 group-hover:text-amber-300 transition-colors">
+                        Themes &amp; Display
+                      </div>
+                      <p className="text-[11px] text-zinc-400">
+                        7 hardware console themes, stage neon glow, LCD contrast, and note labels.
                       </p>
                     </button>
                   )}

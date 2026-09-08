@@ -72,13 +72,14 @@ export interface SystemSettings {
   hotkeysActiveInModals: boolean;
 
   // Display, Themes & Accessibility
-  themeArchetype: 'genos_gold' | 'montage_cyan' | 'nord_crimson' | 'kronos_platinum' | 'stage_day';
+  themeArchetype: 'genos_gold' | 'montage_cyan' | 'nord_crimson' | 'kronos_platinum' | 'sanctuary_purple' | 'oled_obsidian' | 'stage_day';
   keyLabelsMode: 'note_name' | 'solfege' | 'midi_num' | 'none';
   displayGlow: boolean;
   chordNotation: 'standard' | 'nashville' | 'solfege' | 'german';
   lcdContrastPercent: number;
   keepScreenAwake: boolean;
   virtualKeyboardOctaves: 3 | 4 | 5 | 7;
+  uiScale: 'compact' | 'normal' | 'expanded';
 
   // AI Co-Producer Preferences
   aiModel: string;
@@ -162,6 +163,7 @@ export const DEFAULT_SYSTEM_SETTINGS: SystemSettings = {
   lcdContrastPercent: 100,
   keepScreenAwake: false,
   virtualKeyboardOctaves: 4,
+  uiScale: 'normal',
 
   // AI Co-Producer
   aiModel: 'gemini-2.5-flash',
@@ -183,9 +185,14 @@ export function getStoredSystemSettings(): SystemSettings {
   try {
     if (typeof localStorage === 'undefined') return { ...DEFAULT_SYSTEM_SETTINGS };
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return { ...DEFAULT_SYSTEM_SETTINGS };
+    if (!raw) {
+      applyThemeToDom(DEFAULT_SYSTEM_SETTINGS);
+      return { ...DEFAULT_SYSTEM_SETTINGS };
+    }
     const parsed = JSON.parse(raw);
-    return { ...DEFAULT_SYSTEM_SETTINGS, ...parsed };
+    const merged = { ...DEFAULT_SYSTEM_SETTINGS, ...parsed };
+    applyThemeToDom(merged);
+    return merged;
   } catch (e) {
     console.warn('Failed to load system settings from localStorage:', e);
     return { ...DEFAULT_SYSTEM_SETTINGS };
@@ -211,10 +218,8 @@ export function saveSystemSettings(newSettings: Partial<SystemSettings>): System
     applyWakeLock(newSettings.keepScreenAwake);
   }
 
-  // Handle Theme archetype
-  if (newSettings.themeArchetype !== undefined) {
-    applyThemeToDom(newSettings.themeArchetype);
-  }
+  // Handle Theme archetype & display properties across document root
+  applyThemeToDom(merged);
 
   // Notify listeners
   listeners.forEach(fn => {
@@ -335,6 +340,7 @@ export function resetSettingsGroup(group: 'arranger' | 'sound' | 'midi' | 'perfo
       lcdContrastPercent: DEFAULT_SYSTEM_SETTINGS.lcdContrastPercent,
       keepScreenAwake: DEFAULT_SYSTEM_SETTINGS.keepScreenAwake,
       virtualKeyboardOctaves: DEFAULT_SYSTEM_SETTINGS.virtualKeyboardOctaves,
+      uiScale: DEFAULT_SYSTEM_SETTINGS.uiScale,
     };
   }
 
@@ -373,10 +379,38 @@ export async function applyWakeLock(enabled: boolean): Promise<boolean> {
 /**
  * Apply theme archetype class/attributes to document root
  */
-export function applyThemeToDom(theme: SystemSettings['themeArchetype']) {
+export function applyThemeToDom(settingsOrTheme?: SystemSettings | SystemSettings['themeArchetype']) {
   if (typeof document === 'undefined') return;
   const root = document.documentElement;
+
+  let theme: SystemSettings['themeArchetype'];
+  let glow = true;
+  let contrast = 100;
+  let scale = 'normal';
+
+  if (!settingsOrTheme) {
+    const s = getStoredSystemSettings();
+    theme = s.themeArchetype;
+    glow = s.displayGlow;
+    contrast = s.lcdContrastPercent ?? 100;
+    scale = s.uiScale ?? 'normal';
+  } else if (typeof settingsOrTheme === 'string') {
+    theme = settingsOrTheme;
+    const s = getStoredSystemSettings();
+    glow = s.displayGlow;
+    contrast = s.lcdContrastPercent ?? 100;
+    scale = s.uiScale ?? 'normal';
+  } else {
+    theme = settingsOrTheme.themeArchetype;
+    glow = settingsOrTheme.displayGlow;
+    contrast = settingsOrTheme.lcdContrastPercent ?? 100;
+    scale = settingsOrTheme.uiScale ?? 'normal';
+  }
+
   root.setAttribute('data-workstation-theme', theme);
+  root.setAttribute('data-display-glow', glow ? 'true' : 'false');
+  root.setAttribute('data-ui-scale', scale);
+  root.style.setProperty('--lcd-contrast', `${contrast}%`);
 }
 
 /**

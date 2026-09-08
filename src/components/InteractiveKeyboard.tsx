@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { audioEngine } from '../audio/audioEngine';
 import { ChordEngine } from '../audio/chordEngine';
 import { DetectedChord } from '../types/arranger';
-import { getStoredSystemSettings, subscribeSystemSettings, SystemSettings } from '../utils/systemSettings';
+import { getStoredSystemSettings, subscribeSystemSettings, SystemSettings, formatNoteLabel } from '../utils/systemSettings';
 import { 
   Sparkles, 
   Keyboard as KeyboardIcon,
@@ -58,7 +58,7 @@ export const InteractiveKeyboard: React.FC<InteractiveKeyboardProps> = ({
     return '61';
   });
 
-  const [, setSysSettings] = useState<SystemSettings>(() => getStoredSystemSettings());
+  const [sysSettings, setSysSettings] = useState<SystemSettings>(() => getStoredSystemSettings());
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -313,19 +313,20 @@ export const InteractiveKeyboard: React.FC<InteractiveKeyboardProps> = ({
   // Generate piano keys array
   const keys = useMemo(() => {
     const list: { midi: number; isBlack: boolean; noteName: string; keyLabel?: string }[] = [];
+    const mode = sysSettings.keyLabelsMode ?? 'note_name';
     for (let m = startMidi; m < endMidi; m++) {
       const noteInOctave = m % 12;
       const isBlack = [1, 3, 6, 8, 10].includes(noteInOctave);
-      const oct = Math.floor(m / 12) - 1;
+      const formattedLabel = formatNoteLabel(m, mode);
       list.push({
         midi: m,
         isBlack,
-        noteName: `${noteNames[noteInOctave]}${oct}`,
+        noteName: formattedLabel || `${noteNames[noteInOctave]}${Math.floor(m / 12) - 1}`,
         keyLabel: noteToKeyChar[m],
       });
     }
     return list;
-  }, [startMidi, endMidi, noteNames, noteToKeyChar]);
+  }, [startMidi, endMidi, noteNames, noteToKeyChar, sysSettings.keyLabelsMode]);
 
   const whiteKeys = useMemo(() => keys.filter(k => !k.isBlack), [keys]);
   const totalWhite = whiteKeys.length;

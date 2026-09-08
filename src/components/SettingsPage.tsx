@@ -35,6 +35,7 @@ import { AboutTab } from './settings/AboutTab';
 export interface SettingsPageProps {
   isOpen: boolean;
   onClose: () => void;
+  initialTab?: SettingsTabId;
   onOpenApiKeyModal: () => void;
   onOpenUserGuide: () => void;
   onOpenCreatorMessage: () => void;
@@ -87,6 +88,7 @@ const TABS: TabDefinition[] = [
 export const SettingsPage: React.FC<SettingsPageProps> = ({
   isOpen,
   onClose,
+  initialTab,
   onOpenApiKeyModal,
   onOpenUserGuide,
   onOpenCreatorMessage,
@@ -103,7 +105,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
   masterVolume,
   onMasterVolumeChange,
 }) => {
-  const [activeTab, setActiveTab] = useState<SettingsTabId>('arranger');
+  const [activeTab, setActiveTab] = useState<SettingsTabId>(() => initialTab || 'arranger');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [settings, setSettings] = useState<SystemSettings>(() => getStoredSystemSettings());
   const [hasApiKey, setHasApiKey] = useState<boolean>(false);
@@ -114,6 +116,9 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
   // Sync state on open
   useEffect(() => {
     if (isOpen) {
+      if (initialTab) {
+        setActiveTab(initialTab);
+      }
       const stored = getStoredSystemSettings();
       // Keep splitPoint, chordMode, etc in sync with props
       stored.splitPoint = splitPoint;

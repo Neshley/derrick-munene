@@ -52,10 +52,12 @@ export const ChordHeroDisplay: React.FC<ChordHeroDisplayProps> = ({
   chordMode,
   currentKey = 'C',
 }) => {
+  const sysSettings = useSystemSettings();
   const root = currentChord.root || 'C';
   const quality = (currentChord.type || 'maj').toUpperCase();
   const inversion = 'ROOT POSITION';
   const harmonicFunc = getHarmonicFunction(root, currentKey);
+  const formattedChordName = formatChordNotation(currentChord.displayName || 'C', sysSettings.chordNotation);
 
   const notesList = currentChord.notes && currentChord.notes.length > 0
     ? currentChord.notes.map(midiToNoteName).join(' • ')
@@ -100,7 +102,7 @@ export const ChordHeroDisplay: React.FC<ChordHeroDisplayProps> = ({
             id="hero-chord-name"
             className="text-4xl sm:text-5xl lg:text-6xl font-black font-['Chakra_Petch'] tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-sky-200 to-cyan-400 drop-shadow-[0_0_16px_rgba(34,211,238,0.35)]"
           >
-            {currentChord.displayName || 'C'}
+            {formattedChordName}
           </span>
           <span className="text-xs sm:text-sm font-mono font-bold text-cyan-400/80 px-2 py-0.5 rounded bg-cyan-950/60 border border-cyan-800/60">
             {quality}

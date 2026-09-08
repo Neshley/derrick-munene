@@ -41,8 +41,13 @@ import { StyleCreatorModal } from './components/StyleCreatorModal';
 import { MediaPlayerView } from './components/media/MediaPlayerView';
 import { StartupLoadingScreen } from './components/StartupLoadingScreen';
 import { addMultiPadBank } from './audio/multiPads';
+import { applyThemeToDom, getStoredSystemSettings } from './utils/systemSettings';
 
 export default function App() {
+  // Initialize global theme and visual engine on startup
+  useEffect(() => {
+    applyThemeToDom(getStoredSystemSettings());
+  }, []);
   // --- Loading / Startup Screen State ---
   const [isAppLoaded, setIsAppLoaded] = useState<boolean>(false);
 
@@ -193,6 +198,7 @@ export default function App() {
   const [isAiStudioModalOpen, setIsAiStudioModalOpen] = useState(false);
   const [isApiKeyModalOpen, setIsApiKeyModalOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+  const [settingsInitialTab, setSettingsInitialTab] = useState<'arranger' | 'sound' | 'midi' | 'performance' | 'shortcuts' | 'display' | 'ai' | 'backup' | 'about'>('arranger');
   const [styleNotification, setStyleNotification] = useState<{ name: string; fills: string[]; mains: string[] } | null>(null);
   const [isStyleLoading, setIsStyleLoading] = useState<boolean>(false);
   const [styleLoadingProgress, setStyleLoadingProgress] = useState<number>(0);
@@ -552,7 +558,14 @@ export default function App() {
         onOpenWorshipSongbook={() => setIsSongbookModalOpen(true)}
         onOpenAudioRecording={() => setIsAudioRecordModalOpen(true)}
         onOpenMidiAutomation={() => setIsMidiAutomationOpen(true)}
-        onOpenSettings={() => setIsSettingsModalOpen(true)}
+        onOpenSettings={() => {
+          setSettingsInitialTab('arranger');
+          setIsSettingsModalOpen(true);
+        }}
+        onOpenDisplaySettings={() => {
+          setSettingsInitialTab('display');
+          setIsSettingsModalOpen(true);
+        }}
         onOpenAiStudio={() => setIsAiStudioModalOpen(true)}
         onOpenChordSequencer={() => setIsChordSeqModalOpen(true)}
         onOpenApiKeyModal={() => setIsApiKeyModalOpen(true)}
@@ -1056,6 +1069,7 @@ export default function App() {
       <SettingsPage
         isOpen={isSettingsModalOpen}
         onClose={() => setIsSettingsModalOpen(false)}
+        initialTab={settingsInitialTab}
         onOpenApiKeyModal={() => {
           setIsSettingsModalOpen(false);
           setIsApiKeyModalOpen(true);
