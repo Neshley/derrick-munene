@@ -108,8 +108,8 @@ export const MediaTrackList: React.FC<MediaTrackListProps> = ({
             onClick={onDirectFolder}
             className="mt-4 px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-zinc-950 font-bold text-xs flex items-center gap-2 transition-all shadow-md shadow-amber-500/20 active:scale-95 cursor-pointer"
           >
-            <FolderOpen className="w-4 h-4" />
-            <span>Direct Device Folder</span>
+            <FolderPlus className="w-4 h-4" />
+            <span>Add Folder</span>
           </button>
         )}
       </div>

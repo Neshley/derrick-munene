@@ -88,11 +88,9 @@ export const MediaPlayerView: React.FC<MediaPlayerViewProps> = ({
   const [isStatsExpanded, setIsStatsExpanded] = useState<boolean>(false);
   const scanModeRef = useRef<'add' | 'replace'>('add');
 
-  // All combined tracks (built-in + device files)
+  // All tracks (device media files)
   const allTracks: MediaTrack[] = useMemo(() => {
-    const combined = [...customTracks, ...BUILT_IN_TRACKS];
-    // Map favorite flag from persistent set
-    return combined.map((t) => ({
+    return customTracks.map((t) => ({
       ...t,
       isFavorite: favorites.has(t.id),
     }));
