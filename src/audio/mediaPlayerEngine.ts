@@ -5,6 +5,7 @@
  */
 
 import { MediaTrack, RepeatMode } from '../types/mediaPlayer';
+import { resolveTrackBlobUrl, isSessionBlobActive } from '../utils/mediaBlobStorage';
 
 export interface MediaPlayerState {
   currentTrack: MediaTrack | null;
@@ -19,6 +20,8 @@ export interface MediaPlayerState {
   queue: MediaTrack[];
   queueIndex: number;
   isVideoMode: boolean;
+  playbackError?: string | null;
+  isResolving?: boolean;
 }
 
 export type MediaPlayerListener = (state: MediaPlayerState) => void;
@@ -151,6 +154,12 @@ class MediaPlayerEngine {
     videoEl.onended = () => {
       this.handleTrackEnded();
     };
+    videoEl.onerror = (e) => {
+      console.warn('Video playback error on track', this.state.currentTrack?.title, e);
+      if (this.state.currentTrack) {
+        this.handlePlaybackError(this.state.currentTrack, 'video');
+      }
+    };
 
     // Immediately synchronize video element with current playback state
     const cur = this.state.currentTrack;
@@ -224,6 +233,9 @@ class MediaPlayerEngine {
 
     this.audioElement.onerror = (e) => {
       console.warn('Audio playback error on track', this.state.currentTrack?.title, e);
+      if (this.state.currentTrack) {
+        this.handlePlaybackError(this.state.currentTrack, 'audio');
+      }
     };
   }
 
@@ -324,7 +336,7 @@ class MediaPlayerEngine {
     this.notify();
   }
 
-  public playTrack(track: MediaTrack) {
+  public async playTrack(track: MediaTrack) {
     this.initAudioContext();
     this.stopSyntheticEngine();
 
@@ -342,6 +354,23 @@ class MediaPlayerEngine {
     this.state.duration = track.duration || 180;
     this.state.isVideoMode = track.isVideo;
     this.state.isPlaying = true;
+    this.state.playbackError = null;
+
+    // Check if URL needs revitalization (e.g. dead blob URL from prior session after refresh)
+    if (track.url && track.url.startsWith('blob:') && !isSessionBlobActive(track.id, track.url)) {
+      this.state.isResolving = true;
+      this.notify();
+      try {
+        const freshUrl = await resolveTrackBlobUrl(track);
+        if (freshUrl) {
+          track.url = freshUrl;
+        }
+      } catch (err) {
+        console.warn('Error revitalizing track URL:', err);
+      } finally {
+        this.state.isResolving = false;
+      }
+    }
 
     if (track.url.startsWith('builtin:')) {
       // Start real-time synthesized playback of built-in worship tracks
@@ -355,15 +384,48 @@ class MediaPlayerEngine {
       this.videoElement.playbackRate = this.state.playbackRate;
       this.videoElement.volume = this.state.isMuted ? 0 : this.state.volume;
       this.videoElement.muted = this.state.isMuted;
-      this.videoElement.play().catch((e) => console.warn('Video auto-play warning:', e));
+      this.videoElement.play().catch((e) => {
+        console.warn('Video auto-play warning:', e);
+        this.handlePlaybackError(track, 'video');
+      });
     } else if (this.audioElement) {
       this.audioElement.src = track.url;
       this.audioElement.currentTime = 0;
       this.audioElement.playbackRate = this.state.playbackRate;
       this.audioElement.volume = this.state.isMuted ? 0 : this.state.volume;
-      this.audioElement.play().catch((e) => console.warn('Audio auto-play warning:', e));
+      this.audioElement.play().catch((e) => {
+        console.warn('Audio auto-play warning:', e);
+        this.handlePlaybackError(track, 'audio');
+      });
     }
 
+    this.notify();
+  }
+
+  private async handlePlaybackError(track: MediaTrack, type: 'audio' | 'video') {
+    // If it was a dead blob URL, try one dynamic resolution attempt
+    if (track.url && track.url.startsWith('blob:')) {
+      const freshUrl = await resolveTrackBlobUrl(track);
+      if (freshUrl && freshUrl !== track.url) {
+        track.url = freshUrl;
+        if (type === 'video' && this.videoElement) {
+          this.videoElement.src = freshUrl;
+          this.videoElement.play().catch(() => {});
+          return;
+        } else if (this.audioElement) {
+          this.audioElement.src = freshUrl;
+          this.audioElement.play().catch(() => {});
+          return;
+        }
+      }
+    }
+    this.state.isPlaying = false;
+    this.state.playbackError = `Playback failed for "${track.title}". Reconnect your device folder to restore file permissions.`;
+    this.notify();
+  }
+
+  public clearPlaybackError() {
+    this.state.playbackError = null;
     this.notify();
   }
 

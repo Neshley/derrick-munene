@@ -64,8 +64,17 @@ import {
   ChevronDown,
   ChevronUp,
   Info,
-  ArrowUp
+  ArrowUp,
+  AlertCircle
 } from 'lucide-react';
+import { 
+  hydrateCustomTracks, 
+  saveTrackBlobsBatch, 
+  deleteTrackBlob, 
+  clearAllMediaBlobs, 
+  saveDirectoryHandle, 
+  removeDirectoryHandle 
+} from '../../utils/mediaBlobStorage';
 
 interface MediaPlayerViewProps {
   onSwitchToWorkstation: () => void;
@@ -133,6 +142,24 @@ export const MediaPlayerView: React.FC<MediaPlayerViewProps> = ({
       }
     });
     return unsubscribe;
+  }, []);
+
+  // --- Track Revitalization on Page Refresh ---
+  const [unlinkedCount, setUnlinkedCount] = useState<number>(0);
+
+  useEffect(() => {
+    let isMounted = true;
+    hydrateCustomTracks(customTracks).then(({ hydratedTracks, revitalizedCount, unlinkedCount: deadCount }) => {
+      if (!isMounted) return;
+      if (revitalizedCount > 0) {
+        setCustomTracks(hydratedTracks);
+        saveStoredCustomTracks(hydratedTracks);
+      }
+      setUnlinkedCount(deadCount);
+    });
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   // --- UI Navigation & Filtering ---
@@ -418,6 +445,7 @@ export const MediaPlayerView: React.FC<MediaPlayerViewProps> = ({
   };
 
   const handleDeleteTrack = (trackId: string) => {
+    deleteTrackBlob(trackId).catch(() => {});
     setCustomTracks((prev) => {
       const updated = prev.filter((t) => t.id !== trackId);
       saveStoredCustomTracks(updated);
@@ -478,28 +506,75 @@ export const MediaPlayerView: React.FC<MediaPlayerViewProps> = ({
         // Instant synchronous conversion with zero DOM audio/video decoder lockup
         const newTracks = convertFilesToMediaTracks(fileEntries, dirHandle.name);
 
+        // Store directory handle for automatic re-use across refreshes
+        saveDirectoryHandle(dirHandle.name, dirHandle).catch(() => {});
+
+        // Save media file blobs into IndexedDB vault for refresh survival
+        const blobBatch = fileEntries.map((fe, idx) => ({
+          id: newTracks[idx].id,
+          blob: fe.file,
+          fileName: fe.file.name,
+          mimeType: newTracks[idx].mimeType,
+        }));
+        saveTrackBlobsBatch(blobBatch).catch((err) => console.warn('IndexedDB batch save error:', err));
+
         if (mode === 'add') {
-          // Merge avoiding duplicates by folderPath or title
+          // Re-link existing tracks and add new ones without breaking favorites or playlists
           setCustomTracks((prev) => {
-            const existingKeys = new Set(prev.map((t) => `${t.folderName || ''}::${t.folderPath || t.title}`));
-            const uniqueNew = newTracks.filter(
-              (t) => !existingKeys.has(`${t.folderName || ''}::${t.folderPath || t.title}`)
+            const newByPath = new Map(newTracks.map((nt) => [nt.folderPath || nt.title, nt]));
+            const newByName = new Map(newTracks.map((nt) => [nt.title.toLowerCase(), nt]));
+
+            // Update matching existing tracks with fresh active blob URLs and save their blobs
+            const updatedExisting = prev.map((oldTrack) => {
+              const match = newByPath.get(oldTrack.folderPath || oldTrack.title) || newByName.get(oldTrack.title.toLowerCase());
+              if (match) {
+                const matchingFileEntry = fileEntries.find(
+                  (fe) => fe.relativePath === match.folderPath || fe.file.name.toLowerCase() === match.title.toLowerCase()
+                );
+                if (matchingFileEntry) {
+                  saveTrackBlobsBatch([{
+                    id: oldTrack.id,
+                    blob: matchingFileEntry.file,
+                    fileName: matchingFileEntry.file.name,
+                    mimeType: oldTrack.mimeType,
+                  }]).catch(() => {});
+                }
+                return {
+                  ...oldTrack,
+                  url: match.url,
+                  duration: match.duration || oldTrack.duration,
+                  fileSize: match.fileSize || oldTrack.fileSize,
+                };
+              }
+              return oldTrack;
+            });
+
+            // Add brand new tracks that don't exist yet
+            const existingPaths = new Set(prev.map((t) => `${t.folderName || ''}::${t.folderPath || t.title}`));
+            const existingTitles = new Set(prev.map((t) => `${t.folderName || ''}::${t.title.toLowerCase()}`));
+            const brandNew = newTracks.filter(
+              (t) =>
+                !existingPaths.has(`${t.folderName || ''}::${t.folderPath || t.title}`) &&
+                !existingTitles.has(`${t.folderName || ''}::${t.title.toLowerCase()}`)
             );
-            const merged = [...uniqueNew, ...prev];
+
+            const merged = [...brandNew, ...updatedExisting];
             saveStoredCustomTracks(merged);
             return merged;
           });
 
+          setUnlinkedCount(0);
           const updatedFolders = Array.from(new Set([...directedFolders, dirHandle.name]));
           setDirectedFolders(updatedFolders);
           saveStoredDirectedFolders(updatedFolders);
           setDirectedFolderName(updatedFolders[0]);
           saveStoredDirectedFolderName(updatedFolders[0]);
           setSelectedFolderFilter('all');
-          setUploadNotification(`Added folder "${dirHandle.name}": +${newTracks.length} tracks synced in ${elapsedSec}s!`);
+          setUploadNotification(`Connected folder "${dirHandle.name}": +${newTracks.length} tracks ready in ${elapsedSec}s!`);
         } else {
           setCustomTracks(newTracks);
           saveStoredCustomTracks(newTracks);
+          setUnlinkedCount(0);
           const updatedFolders = [dirHandle.name];
           setDirectedFolders(updatedFolders);
           saveStoredDirectedFolders(updatedFolders);
@@ -553,27 +628,69 @@ export const MediaPlayerView: React.FC<MediaPlayerViewProps> = ({
       const elapsedSec = Math.max(0.1, (performance.now() - startTime) / 1000).toFixed(1);
       const newTracks = convertFilesToMediaTracks(fileEntries, rootFolderName);
 
+      // Persist media blobs in IndexedDB vault so they survive page refresh
+      const blobBatch = fileEntries.map((fe, idx) => ({
+        id: newTracks[idx].id,
+        blob: fe.file,
+        fileName: fe.file.name,
+        mimeType: newTracks[idx].mimeType,
+      }));
+      saveTrackBlobsBatch(blobBatch).catch((err) => console.warn('IndexedDB batch save error:', err));
+
       if (scanModeRef.current === 'add') {
         setCustomTracks((prev) => {
-          const existingKeys = new Set(prev.map((t) => `${t.folderName || ''}::${t.folderPath || t.title}`));
-          const uniqueNew = newTracks.filter(
-            (t) => !existingKeys.has(`${t.folderName || ''}::${t.folderPath || t.title}`)
+          const newByPath = new Map(newTracks.map((nt) => [nt.folderPath || nt.title, nt]));
+          const newByName = new Map(newTracks.map((nt) => [nt.title.toLowerCase(), nt]));
+
+          const updatedExisting = prev.map((oldTrack) => {
+            const match = newByPath.get(oldTrack.folderPath || oldTrack.title) || newByName.get(oldTrack.title.toLowerCase());
+            if (match) {
+              const matchingFileEntry = fileEntries.find(
+                (fe) => fe.relativePath === match.folderPath || fe.file.name.toLowerCase() === match.title.toLowerCase()
+              );
+              if (matchingFileEntry) {
+                saveTrackBlobsBatch([{
+                  id: oldTrack.id,
+                  blob: matchingFileEntry.file,
+                  fileName: matchingFileEntry.file.name,
+                  mimeType: oldTrack.mimeType,
+                }]).catch(() => {});
+              }
+              return {
+                ...oldTrack,
+                url: match.url,
+                duration: match.duration || oldTrack.duration,
+                fileSize: match.fileSize || oldTrack.fileSize,
+              };
+            }
+            return oldTrack;
+          });
+
+          const existingPaths = new Set(prev.map((t) => `${t.folderName || ''}::${t.folderPath || t.title}`));
+          const existingTitles = new Set(prev.map((t) => `${t.folderName || ''}::${t.title.toLowerCase()}`));
+          const brandNew = newTracks.filter(
+            (t) =>
+              !existingPaths.has(`${t.folderName || ''}::${t.folderPath || t.title}`) &&
+              !existingTitles.has(`${t.folderName || ''}::${t.title.toLowerCase()}`)
           );
-          const merged = [...uniqueNew, ...prev];
+
+          const merged = [...brandNew, ...updatedExisting];
           saveStoredCustomTracks(merged);
           return merged;
         });
 
+        setUnlinkedCount(0);
         const updatedFolders = Array.from(new Set([...directedFolders, rootFolderName]));
         setDirectedFolders(updatedFolders);
         saveStoredDirectedFolders(updatedFolders);
         setDirectedFolderName(updatedFolders[0]);
         saveStoredDirectedFolderName(updatedFolders[0]);
         setSelectedFolderFilter('all');
-        setUploadNotification(`Added folder "${rootFolderName}": +${newTracks.length} tracks synced in ${elapsedSec}s!`);
+        setUploadNotification(`Added folder "${rootFolderName}": +${newTracks.length} tracks ready in ${elapsedSec}s!`);
       } else {
         setCustomTracks(newTracks);
         saveStoredCustomTracks(newTracks);
+        setUnlinkedCount(0);
         const updatedFolders = [rootFolderName];
         setDirectedFolders(updatedFolders);
         saveStoredDirectedFolders(updatedFolders);
@@ -594,24 +711,36 @@ export const MediaPlayerView: React.FC<MediaPlayerViewProps> = ({
     }
   };
 
-  const handleFastSync = () => {
+  const handleFastSync = async () => {
     if (directedFolders.length === 0) {
       handleDirectDeviceFolder('add');
       return;
     }
     setIsScanning(true);
-    setScanMessage(`Quick verifying ${directedFolders.length} device folder(s)...`);
-    setTimeout(() => {
+    setScanMessage(`Quick verifying and re-syncing ${directedFolders.length} device folder(s)...`);
+    try {
+      const { hydratedTracks, revitalizedCount, unlinkedCount: deadCount } = await hydrateCustomTracks(customTracks);
+      if (revitalizedCount > 0) {
+        setCustomTracks(hydratedTracks);
+        saveStoredCustomTracks(hydratedTracks);
+      }
+      setUnlinkedCount(deadCount);
+      if (deadCount > 0) {
+        setUploadNotification(`⚠️ ${deadCount} track(s) need folder re-selection. Click "Reconnect Folder".`);
+      } else {
+        setUploadNotification(`⚡ Quick sync complete: all ${customTracks.length} tracks verified and ready to play!`);
+      }
+    } catch (err) {
+      console.warn('Fast sync error:', err);
+    } finally {
       setIsScanning(false);
       setScanMessage(null);
-      setUploadNotification(
-        `⚡ Quick sync complete: ${customTracks.length} tracks verified across ${directedFolders.length} folder(s).`
-      );
       setTimeout(() => setUploadNotification(null), 3500);
-    }, 450);
+    }
   };
 
   const handleRemoveFolder = (folderToRemove: string) => {
+    removeDirectoryHandle(folderToRemove).catch(() => {});
     const updatedTracks = customTracks.filter((t) => t.folderName !== folderToRemove);
     setCustomTracks(updatedTracks);
     saveStoredCustomTracks(updatedTracks);
@@ -637,12 +766,14 @@ export const MediaPlayerView: React.FC<MediaPlayerViewProps> = ({
   };
 
   const handleClearDeviceFolder = () => {
+    clearAllMediaBlobs().catch(() => {});
     setDirectedFolderName(null);
     saveStoredDirectedFolderName(null);
     setDirectedFolders([]);
     saveStoredDirectedFolders([]);
     setCustomTracks([]);
     saveStoredCustomTracks([]);
+    setUnlinkedCount(0);
     setSelectedFolderFilter('all');
     setSelectedSubfolder('all');
     setUploadNotification('All device folders disconnected.');
@@ -671,9 +802,20 @@ export const MediaPlayerView: React.FC<MediaPlayerViewProps> = ({
       if (fileEntries.length > 0) {
         const folderName = rootFolderName !== 'Device Media' ? rootFolderName : (directedFolderName || 'Device Storage');
         const tracks = await convertFilesToMediaTracks(fileEntries, folderName);
+
+        // Store dropped blobs in IndexedDB vault
+        const blobBatch = fileEntries.map((fe, idx) => ({
+          id: tracks[idx].id,
+          blob: fe.file,
+          fileName: fe.file.name,
+          mimeType: tracks[idx].mimeType,
+        }));
+        saveTrackBlobsBatch(blobBatch).catch(() => {});
+
         const updated = [...tracks, ...customTracks];
         setCustomTracks(updated);
         saveStoredCustomTracks(updated);
+        setUnlinkedCount(0);
         if (!directedFolderName && rootFolderName !== 'Device Media') {
           setDirectedFolderName(rootFolderName);
           saveStoredDirectedFolderName(rootFolderName);
@@ -831,6 +973,54 @@ export const MediaPlayerView: React.FC<MediaPlayerViewProps> = ({
         <div className="bg-gradient-to-r from-emerald-950 via-zinc-900 to-emerald-950 border border-emerald-500/40 p-2 text-center text-xs font-semibold text-emerald-300 animate-in fade-in shrink-0 flex items-center justify-center gap-2">
           <CheckCircle2 className="w-4 h-4 text-emerald-400" />
           <span>{uploadNotification}</span>
+        </div>
+      )}
+
+      {/* Playback Error Banner with 1-click Reconnect */}
+      {playerState.playbackError && (
+        <div className="bg-red-950/90 border-b border-red-500/50 px-4 py-2 text-xs font-semibold text-red-200 flex flex-wrap items-center justify-between gap-2 shrink-0 animate-in fade-in z-20">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
+            <span>{playerState.playbackError}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => handleDirectDeviceFolder('add')}
+              className="px-3 py-1 bg-red-600 hover:bg-red-500 text-white rounded-lg text-xs font-bold transition-all cursor-pointer flex items-center gap-1 shadow-xs"
+            >
+              <FolderPlus className="w-3.5 h-3.5" />
+              <span>Reconnect Folder</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => mediaPlayerEngine.clearPlaybackError()}
+              className="text-zinc-400 hover:text-zinc-200 p-1 cursor-pointer"
+              title="Dismiss"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Unlinked Tracks Notification (After Refresh without Saved Blobs) */}
+      {unlinkedCount > 0 && !playerState.playbackError && (
+        <div className="bg-amber-950/70 border-b border-amber-500/40 px-4 py-2 text-xs font-medium text-amber-200 flex flex-wrap items-center justify-between gap-2 shrink-0 animate-in fade-in z-20">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="w-4 h-4 text-amber-400 shrink-0" />
+            <span>
+              <strong className="text-amber-100 font-semibold">{unlinkedCount} track{unlinkedCount > 1 ? 's' : ''}</strong> need file access reconnected after browser refresh.
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => handleDirectDeviceFolder('add')}
+            className="px-3 py-1 bg-amber-500 hover:bg-amber-400 text-zinc-950 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer shadow-xs"
+          >
+            <FolderPlus className="w-3.5 h-3.5" />
+            <span>Reconnect Folder</span>
+          </button>
         </div>
       )}
 

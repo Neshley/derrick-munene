@@ -1,4 +1,5 @@
 import { MediaFormat, MediaTrack } from '../types/mediaPlayer';
+import { registerSessionBlobUrl } from './mediaBlobStorage';
 
 export interface FileWithPath {
   file: File;
@@ -455,6 +456,7 @@ export function convertFilesToMediaTracks(
     };
 
     tracks.push(track);
+    registerSessionBlobUrl(track.id, url);
   }
 
   return tracks;
