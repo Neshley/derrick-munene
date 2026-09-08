@@ -174,3 +174,11 @@ export function logRecentlyPlayed(trackId: string): RecentlyPlayedItem[] {
   }
   return updated;
 }
+
+export function clearStoredRecentlyPlayed(): void {
+  try {
+    localStorage.removeItem(STORAGE_KEY_RECENT);
+  } catch (e) {
+    console.warn('Failed to clear recently played', e);
+  }
+}

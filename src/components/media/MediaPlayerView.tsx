@@ -15,7 +15,8 @@ import {
   getStoredFavorites, 
   saveStoredFavorites, 
   getStoredRecentlyPlayed, 
-  logRecentlyPlayed 
+  logRecentlyPlayed,
+  clearStoredRecentlyPlayed 
 } from '../../utils/mediaStorage';
 import { 
   scanFileSystemDirectory, 
@@ -823,6 +824,13 @@ export const MediaPlayerView: React.FC<MediaPlayerViewProps> = ({
     setTimeout(() => setUploadNotification(null), 3000);
   };
 
+  const handleClearRecentlyPlayed = () => {
+    clearStoredRecentlyPlayed();
+    setRecentItems([]);
+    setUploadNotification('Recently played history cleared.');
+    setTimeout(() => setUploadNotification(null), 3000);
+  };
+
   // Drag and drop handlers (points to dropped directory / files)
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -1121,26 +1129,44 @@ export const MediaPlayerView: React.FC<MediaPlayerViewProps> = ({
               </span>
             </button>
 
-            <button
-              type="button"
-              onClick={() => {
-                setActiveTab('recent');
-                setActivePlaylistId(null);
-              }}
-              className={`w-full px-3 py-2 rounded-xl text-xs font-semibold flex items-center justify-between transition-all cursor-pointer ${
-                activeTab === 'recent'
-                  ? 'bg-amber-500/15 text-amber-300 border border-amber-500/30 font-bold'
-                  : 'text-zinc-300 hover:bg-zinc-900 hover:text-zinc-100'
-              }`}
-            >
-              <div className="flex items-center gap-2.5">
-                <Clock className="w-4 h-4 text-cyan-400" />
-                <span>Recently Played</span>
-              </div>
-              <span className="text-[10px] px-1.5 py-0.2 rounded bg-zinc-800 text-zinc-400 font-mono">
-                {recentItems.length}
-              </span>
-            </button>
+            <div className="relative group/recent flex items-center">
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveTab('recent');
+                  setActivePlaylistId(null);
+                }}
+                className={`w-full px-3 py-2 rounded-xl text-xs font-semibold flex items-center justify-between transition-all cursor-pointer ${
+                  activeTab === 'recent'
+                    ? 'bg-amber-500/15 text-amber-300 border border-amber-500/30 font-bold'
+                    : 'text-zinc-300 hover:bg-zinc-900 hover:text-zinc-100'
+                }`}
+              >
+                <div className="flex items-center gap-2.5">
+                  <Clock className="w-4 h-4 text-cyan-400" />
+                  <span>Recently Played</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] px-1.5 py-0.2 rounded bg-zinc-800 text-zinc-400 font-mono">
+                    {recentItems.length}
+                  </span>
+                </div>
+              </button>
+              {recentItems.length > 0 && (
+                <button
+                  type="button"
+                  id="sidebar-clear-recent-btn"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleClearRecentlyPlayed();
+                  }}
+                  title="Clear recently played history"
+                  className="absolute right-8 p-1 rounded-md text-zinc-400 hover:text-rose-400 hover:bg-zinc-800/90 transition-all opacity-0 group-hover/recent:opacity-100 cursor-pointer"
+                >
+                  <Trash2 className="w-3 h-3" />
+                </button>
+              )}
+            </div>
 
             <button
               type="button"
@@ -1596,8 +1622,21 @@ export const MediaPlayerView: React.FC<MediaPlayerViewProps> = ({
                   </p>
                 </div>
 
-                {directedFolders.length > 0 && (
-                  <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2">
+                  {activeTab === 'recent' && recentItems.length > 0 && (
+                    <button
+                      type="button"
+                      id="clear-recently-played-btn"
+                      onClick={handleClearRecentlyPlayed}
+                      className="px-3 py-1.5 rounded-xl bg-zinc-850 hover:bg-rose-950/50 text-zinc-300 hover:text-rose-300 border border-zinc-750 hover:border-rose-500/40 text-xs font-semibold flex items-center gap-1.5 transition-all shadow-xs cursor-pointer active:scale-95"
+                      title="Clear all recently played tracks"
+                    >
+                      <Trash2 className="w-3.5 h-3.5 text-zinc-400 hover:text-rose-400" />
+                      <span>Clear History</span>
+                    </button>
+                  )}
+
+                  {directedFolders.length > 0 && activeTab === 'library' && (
                     <button
                       type="button"
                       onClick={() => handleDirectDeviceFolder('add')}
@@ -1607,8 +1646,8 @@ export const MediaPlayerView: React.FC<MediaPlayerViewProps> = ({
                       <FolderPlus className="w-3.5 h-3.5 text-amber-400" />
                       <span>Add Folder</span>
                     </button>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
 
               {/* Full Interactive Search & Filter Bar */}
@@ -2078,6 +2117,8 @@ export const MediaPlayerView: React.FC<MediaPlayerViewProps> = ({
                     ? `No media matches your search & filter criteria.`
                     : activeTab === 'favorites'
                     ? 'No favorite tracks saved yet. Click the heart on any song!'
+                    : activeTab === 'recent'
+                    ? 'No recently played tracks yet. Play any song or video to start building your history!'
                     : 'No tracks found.'
                 }
               />
