@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { RegistrationMemoryPreset, StyleSection } from '../types/arranger';
-import { Bookmark, Lock, Save, Sparkles } from 'lucide-react';
+import { Bookmark, Lock, Save, Sparkles, Check } from 'lucide-react';
 
 interface RegistrationMemoryProps {
   currentStyleId: string;
@@ -32,13 +33,27 @@ export const RegistrationMemory: React.FC<RegistrationMemoryProps> = ({
   const [activeSlot, setActiveSlot] = useState<number | null>(null);
   const [isArmingStore, setIsArmingStore] = useState(false);
   const [isFreezeActive, setIsFreezeActive] = useState(false);
+  
+  // Animation state for preset load feedback
+  const [justLoadedSlot, setJustLoadedSlot] = useState<number | null>(null);
+  const [justSavedSlot, setJustSavedSlot] = useState<number | null>(null);
+  const [loadAnimationKey, setLoadAnimationKey] = useState<number>(0);
+  const [feedbackMessage, setFeedbackMessage] = useState<{ text: string; type: 'load' | 'save' | 'warn' } | null>(null);
 
   // Stored registration presets (1 to 8)
   const [presets, setPresets] = useState<Record<number, RegistrationMemoryPreset>>(() => {
-    const saved = localStorage.getItem('arranger_reg_memory');
+    const saved = localStorage.getItem('arranger_reg_memory') || localStorage.getItem('yamaha_registration_memory');
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          const dict: Record<number, RegistrationMemoryPreset> = {};
+          parsed.forEach((p: RegistrationMemoryPreset) => {
+            if (p && p.id) dict[p.id] = p;
+          });
+          return dict;
+        }
+        return parsed;
       } catch {
         // Fallback
       }
@@ -76,8 +91,68 @@ export const RegistrationMemory: React.FC<RegistrationMemoryProps> = ({
         harmonyEnabled: true,
         transpose: 0,
       },
+      3: {
+        id: 3,
+        name: 'Worship Praise Strings',
+        styleId: 'style_contemporary_worship',
+        tempo: 74,
+        section: 'main_a',
+        r1Voice: 'piano',
+        r2Voice: 'strings',
+        lVoice: 'synth_pad',
+        r2Enabled: true,
+        lEnabled: true,
+        splitPoint: 54,
+        acmpEnabled: true,
+        harmonyEnabled: false,
+        transpose: 0,
+      },
+      4: {
+        id: 4,
+        name: 'Gospel Rotary Organ',
+        styleId: 'style_gospel_shout',
+        tempo: 132,
+        section: 'main_c',
+        r1Voice: 'organ',
+        r2Voice: 'brass',
+        lVoice: 'acoustic_bass',
+        r2Enabled: false,
+        lEnabled: true,
+        splitPoint: 54,
+        acmpEnabled: true,
+        harmonyEnabled: true,
+        transpose: 0,
+      },
     };
   });
+
+  // Auto-clear highlight animation state after completion
+  useEffect(() => {
+    if (justLoadedSlot !== null) {
+      const timer = setTimeout(() => {
+        setJustLoadedSlot(null);
+      }, 750);
+      return () => clearTimeout(timer);
+    }
+  }, [justLoadedSlot, loadAnimationKey]);
+
+  useEffect(() => {
+    if (justSavedSlot !== null) {
+      const timer = setTimeout(() => {
+        setJustSavedSlot(null);
+      }, 750);
+      return () => clearTimeout(timer);
+    }
+  }, [justSavedSlot]);
+
+  useEffect(() => {
+    if (feedbackMessage) {
+      const timer = setTimeout(() => {
+        setFeedbackMessage(null);
+      }, 2500);
+      return () => clearTimeout(timer);
+    }
+  }, [feedbackMessage]);
 
   const handleSlotClick = (slotNum: number) => {
     if (isArmingStore) {
@@ -102,27 +177,77 @@ export const RegistrationMemory: React.FC<RegistrationMemoryProps> = ({
       const updated = { ...presets, [slotNum]: newPreset };
       setPresets(updated);
       localStorage.setItem('arranger_reg_memory', JSON.stringify(updated));
+      localStorage.setItem('yamaha_registration_memory', JSON.stringify(Object.values(updated)));
       setIsArmingStore(false);
       setActiveSlot(slotNum);
+      setJustSavedSlot(slotNum);
+      setFeedbackMessage({ text: `Saved setup to Slot ${slotNum}`, type: 'save' });
     } else {
-      // Recall
-      setActiveSlot(slotNum);
+      // Recall / Load Preset
       const target = presets[slotNum];
       if (target) {
-        onRecallPreset(target);
+        setActiveSlot(slotNum);
+        // Trigger highlight & scale animation
+        setJustLoadedSlot(slotNum);
+        setLoadAnimationKey(k => k + 1);
+        setFeedbackMessage({ text: `Loaded: ${target.name}`, type: 'load' });
+
+        if (isFreezeActive) {
+          onRecallPreset({
+            ...target,
+            styleId: currentStyleId,
+            tempo: currentTempo,
+            section: currentSection,
+          });
+        } else {
+          onRecallPreset(target);
+        }
+      } else {
+        setFeedbackMessage({ text: `Slot ${slotNum} is empty. Arm MEMORY to store`, type: 'warn' });
       }
     }
   };
+
+  const activePreset = activeSlot ? presets[activeSlot] : null;
 
   return (
     <div className="bg-zinc-900/90 border border-zinc-800 rounded-2xl p-3 text-zinc-100 shadow-md flex flex-col gap-2.5">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-1.5">
-          <Bookmark className="w-3.5 h-3.5 text-cyan-400" />
-          <span className="text-xs font-bold uppercase tracking-wider text-zinc-300">
-            REGISTRATION MEMORY
-          </span>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
+            <Bookmark className="w-3.5 h-3.5 text-cyan-400" />
+            <span className="text-xs font-bold uppercase tracking-wider text-zinc-300">
+              REGISTRATION MEMORY
+            </span>
+          </div>
+
+          {/* Feedback pill */}
+          <AnimatePresence mode="wait">
+            {feedbackMessage && (
+              <motion.div
+                key={feedbackMessage.text}
+                initial={{ opacity: 0, scale: 0.9, x: -4 }}
+                animate={{ opacity: 1, scale: 1, x: 0 }}
+                exit={{ opacity: 0, scale: 0.9, x: 4 }}
+                transition={{ duration: 0.2 }}
+                className={`hidden sm:flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium border ${
+                  feedbackMessage.type === 'load'
+                    ? 'bg-cyan-950/70 border-cyan-500/40 text-cyan-300'
+                    : feedbackMessage.type === 'save'
+                    ? 'bg-emerald-950/70 border-emerald-500/40 text-emerald-300'
+                    : 'bg-amber-950/70 border-amber-500/40 text-amber-300'
+                }`}
+              >
+                {feedbackMessage.type === 'load' ? (
+                  <Sparkles className="w-2.5 h-2.5 text-cyan-400" />
+                ) : feedbackMessage.type === 'save' ? (
+                  <Check className="w-2.5 h-2.5 text-emerald-400" />
+                ) : null}
+                <span className="truncate max-w-[140px]">{feedbackMessage.text}</span>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
         {/* Store & Freeze Buttons */}
@@ -130,12 +255,12 @@ export const RegistrationMemory: React.FC<RegistrationMemoryProps> = ({
           <button
             id="btn-reg-store"
             onClick={() => setIsArmingStore(a => !a)}
-            className={`px-2 py-0.5 rounded text-[11px] font-bold transition-all border flex items-center gap-1 ${
+            className={`px-2 py-0.5 rounded text-[11px] font-bold transition-all border flex items-center gap-1 cursor-pointer ${
               isArmingStore
                 ? 'bg-rose-600 text-white border-rose-400 animate-pulse'
                 : 'bg-zinc-950 text-zinc-400 border-zinc-800 hover:text-zinc-200'
             }`}
-            title="Arm Memory Store — click a button 1-8 to save"
+            title="Arm Memory Store — click a button 1-8 to save active sounds & style"
           >
             <Save className="w-3 h-3" />
             <span>MEMORY</span>
@@ -144,12 +269,12 @@ export const RegistrationMemory: React.FC<RegistrationMemoryProps> = ({
           <button
             id="btn-reg-freeze"
             onClick={() => setIsFreezeActive(f => !f)}
-            className={`px-2 py-0.5 rounded text-[11px] font-bold transition-all border flex items-center gap-1 ${
+            className={`px-2 py-0.5 rounded text-[11px] font-bold transition-all border flex items-center gap-1 cursor-pointer ${
               isFreezeActive
                 ? 'bg-cyan-500 text-zinc-950 border-cyan-300 font-bold'
                 : 'bg-zinc-950 text-zinc-400 border-zinc-800 hover:text-zinc-200'
             }`}
-            title="Freeze (keep current style & tempo when changing presets)"
+            title="Freeze (keep current style & tempo unchanged when recalling presets)"
           >
             <Lock className="w-3 h-3" />
             <span>FREEZE</span>
@@ -162,25 +287,141 @@ export const RegistrationMemory: React.FC<RegistrationMemoryProps> = ({
         {[1, 2, 3, 4, 5, 6, 7, 8].map(num => {
           const isPopulated = !!presets[num];
           const isSelected = activeSlot === num;
+          const isJustLoaded = justLoadedSlot === num;
+          const isJustSaved = justSavedSlot === num;
 
           return (
-            <button
+            <motion.button
               key={num}
               id={`btn-reg-slot-${num}`}
               onClick={() => handleSlotClick(num)}
-              className={`py-2 rounded-xl text-xs font-mono font-bold transition-all flex flex-col items-center justify-center border shadow-sm ${
+              animate={
+                isJustLoaded
+                  ? {
+                      scale: [1, 1.15, 1.05],
+                      transition: {
+                        duration: 0.45,
+                        ease: [0.34, 1.56, 0.64, 1], // Spring bounce
+                      },
+                    }
+                  : isJustSaved
+                  ? {
+                      scale: [1, 1.12, 1.05],
+                      transition: { duration: 0.35, ease: 'easeOut' },
+                    }
+                  : isSelected
+                  ? { scale: 1.05 }
+                  : { scale: 1 }
+              }
+              whileHover={{ scale: isSelected ? 1.07 : 1.03 }}
+              whileTap={{ scale: 0.95 }}
+              className={`relative py-2.5 rounded-xl text-xs font-mono font-bold flex flex-col items-center justify-center border shadow-xs select-none cursor-pointer transition-colors duration-200 overflow-hidden ${
                 isSelected
-                  ? 'bg-gradient-to-b from-cyan-400 to-cyan-500 text-zinc-950 border-cyan-300 shadow-md shadow-cyan-500/40 scale-105'
+                  ? 'bg-gradient-to-b from-cyan-400 to-cyan-500 text-zinc-950 border-cyan-300 shadow-md shadow-cyan-500/40'
                   : isPopulated
-                    ? 'bg-zinc-950 hover:bg-zinc-800 text-cyan-300 border-zinc-800'
-                    : 'bg-zinc-950/40 text-zinc-600 border-zinc-850 hover:border-zinc-700'
+                  ? 'bg-zinc-950 hover:bg-zinc-800/90 text-cyan-300 border-zinc-800 hover:border-zinc-700'
+                  : 'bg-zinc-950/40 text-zinc-600 border-zinc-850 hover:border-zinc-700 hover:text-zinc-500'
+              } ${
+                isJustLoaded
+                  ? 'ring-2 ring-cyan-300 ring-offset-2 ring-offset-zinc-900 shadow-[0_0_22px_rgba(6,182,212,0.85)]'
+                  : isJustSaved
+                  ? 'ring-2 ring-emerald-400 ring-offset-2 ring-offset-zinc-900 shadow-[0_0_18px_rgba(16,185,129,0.7)]'
+                  : ''
               }`}
+              title={
+                presets[num]
+                  ? `Slot ${num}: ${presets[num].name} • Tempo: ${presets[num].tempo} BPM • Click to recall`
+                  : `Slot ${num} (Empty) • Click MEMORY then slot ${num} to store current setup`
+              }
             >
-              <span>{num}</span>
-            </button>
+              {/* Slot Number */}
+              <span className="relative z-10 flex items-center justify-center">
+                {num}
+              </span>
+
+              {/* Dot indicator if slot contains a saved preset */}
+              {isPopulated && (
+                <span
+                  className={`w-1 h-1 rounded-full mt-0.5 transition-colors relative z-10 ${
+                    isSelected ? 'bg-zinc-950' : 'bg-cyan-400/80'
+                  }`}
+                />
+              )}
+
+              {/* Expanding Radiant Highlight Aura on Load */}
+              <AnimatePresence>
+                {isJustLoaded && (
+                  <motion.span
+                    key={`ring-${loadAnimationKey}`}
+                    initial={{ opacity: 0.9, scale: 0.75 }}
+                    animate={{ opacity: 0, scale: 1.45 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.65, ease: 'easeOut' }}
+                    className="absolute inset-0 rounded-xl pointer-events-none border-2 border-cyan-300 shadow-[0_0_20px_rgba(6,182,212,0.9)] z-20"
+                  />
+                )}
+              </AnimatePresence>
+
+              {/* Surface Flash Shimmer across Button Face */}
+              <AnimatePresence>
+                {isJustLoaded && (
+                  <motion.span
+                    key={`shimmer-${loadAnimationKey}`}
+                    initial={{ opacity: 0.7, scale: 0.9 }}
+                    animate={{ opacity: 0, scale: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.45, ease: 'easeOut' }}
+                    className="absolute inset-0 rounded-xl pointer-events-none bg-gradient-to-t from-cyan-200/40 via-white/50 to-transparent mix-blend-overlay z-20"
+                  />
+                )}
+              </AnimatePresence>
+
+              {/* Sparkle Icon when successfully loaded */}
+              <AnimatePresence>
+                {isJustLoaded && (
+                  <motion.span
+                    key={`sparkle-${loadAnimationKey}`}
+                    initial={{ scale: 0, opacity: 0, rotate: -20 }}
+                    animate={{ scale: 1, opacity: 1, rotate: 0 }}
+                    exit={{ scale: 0, opacity: 0 }}
+                    transition={{ duration: 0.25 }}
+                    className="absolute top-1 right-1 flex items-center justify-center text-zinc-950 z-30"
+                  >
+                    <Sparkles className="w-2.5 h-2.5 text-zinc-950 fill-zinc-950" />
+                  </motion.span>
+                )}
+              </AnimatePresence>
+            </motion.button>
           );
         })}
       </div>
+
+      {/* Active Preset Information Ribbon */}
+      {activePreset && (
+        <motion.div
+          key={activePreset.id}
+          initial={{ opacity: 0, y: 3 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex items-center justify-between px-2.5 py-1.5 rounded-xl bg-zinc-950/80 border border-zinc-800/80 text-[11px]"
+        >
+          <div className="flex items-center gap-1.5 truncate">
+            <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-cyan-500/20 text-cyan-300 font-mono text-[10px] font-bold">
+              {activePreset.id}
+            </span>
+            <span className="font-semibold text-zinc-200 truncate">
+              {activePreset.name}
+            </span>
+          </div>
+          <div className="flex items-center gap-2 text-zinc-400 text-[10px] font-mono shrink-0">
+            <span>{activePreset.tempo} BPM</span>
+            <span>•</span>
+            <span className="text-cyan-400 capitalize">
+              {activePreset.r1Voice.replace(/_/g, ' ')}
+            </span>
+          </div>
+        </motion.div>
+      )}
     </div>
   );
 };
+
