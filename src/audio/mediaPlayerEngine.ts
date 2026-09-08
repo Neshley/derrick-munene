@@ -67,7 +67,7 @@ class MediaPlayerEngine {
   constructor() {
     if (typeof window !== 'undefined') {
       this.audioElement = new Audio();
-      this.audioElement.crossOrigin = 'anonymous';
+      this.audioElement.preload = 'auto';
       this.setupAudioElementEvents();
     }
   }
@@ -75,7 +75,7 @@ class MediaPlayerEngine {
   public initAudioContext(): AudioContext {
     if (this.ctx) {
       if (this.ctx.state === 'suspended') {
-        this.ctx.resume();
+        this.ctx.resume().catch(() => {});
       }
       return this.ctx;
     }
@@ -94,19 +94,9 @@ class MediaPlayerEngine {
     this.synthGainNode.gain.value = 0.45;
     this.synthGainNode.connect(this.masterGainNode);
 
-    // Master chain -> Analyser -> Speakers
+    // Master chain -> Analyser -> Speakers for synthetic tracks
     this.masterGainNode.connect(this.analyserNode);
     this.analyserNode.connect(this.ctx.destination);
-
-    // Connect Audio element to Web Audio Analyser
-    if (this.audioElement && !this.audioSourceNode) {
-      try {
-        this.audioSourceNode = this.ctx.createMediaElementSource(this.audioElement);
-        this.audioSourceNode.connect(this.masterGainNode);
-      } catch (err) {
-        console.warn('Audio element source connection warning', err);
-      }
-    }
 
     return this.ctx;
   }
@@ -118,17 +108,9 @@ class MediaPlayerEngine {
     }
 
     this.videoElement = videoEl;
-    this.initAudioContext();
-
-    if (this.ctx && !this.videoSourceNode) {
-      try {
-        this.videoSourceNode = this.ctx.createMediaElementSource(videoEl);
-        this.videoSourceNode.connect(this.masterGainNode!);
-      } catch (err) {
-        // May already be connected or cross-origin restricted
-        console.warn('Video source connection info:', err);
-      }
-    }
+    videoEl.volume = this.state.isMuted ? 0 : this.state.volume;
+    videoEl.muted = this.state.isMuted;
+    videoEl.playbackRate = this.state.playbackRate;
 
     videoEl.onplay = () => {
       this.state.isPlaying = true;
@@ -257,10 +239,40 @@ class MediaPlayerEngine {
   }
 
   public getVisualizerData(freqArray: Uint8Array, timeArray?: Uint8Array) {
-    if (!this.analyserNode) return;
-    this.analyserNode.getByteFrequencyData(freqArray);
-    if (timeArray) {
-      this.analyserNode.getByteTimeDomainData(timeArray);
+    // If playing built-in real-time synthetic track, use the Web Audio analyser
+    if (this.state.currentTrack?.url.startsWith('builtin:') && this.analyserNode) {
+      this.analyserNode.getByteFrequencyData(freqArray);
+      if (timeArray) {
+        this.analyserNode.getByteTimeDomainData(timeArray);
+      }
+      return;
+    }
+
+    // If playing a media file, provide lively dynamic spectrum visualization
+    if (this.state.isPlaying) {
+      const vol = this.state.isMuted ? 0 : this.state.volume;
+      const t = this.state.currentTime;
+      const beat = (Math.sin(t * 7.5) + 1) * 0.5;
+      const subBeat = (Math.cos(t * 3.75) + 1) * 0.5;
+      const len = freqArray.length;
+      for (let i = 0; i < len; i++) {
+        const norm = i / len;
+        const bassCurve = Math.max(0, 1 - norm * 1.6) * (145 + beat * 90);
+        const midCurve = Math.sin(norm * Math.PI) * (85 + subBeat * 65);
+        const shimmer = Math.sin(t * 14 + i * 0.85) * 30;
+        const val = Math.max(10, Math.min(255, (bassCurve + midCurve + shimmer) * vol));
+        freqArray[i] = val;
+      }
+      if (timeArray) {
+        const timeLen = timeArray.length;
+        for (let i = 0; i < timeLen; i++) {
+          const wave = Math.sin(t * 18 + i * 0.28) * 45 * vol;
+          timeArray[i] = Math.max(0, Math.min(255, 128 + wave));
+        }
+      }
+    } else {
+      freqArray.fill(0);
+      if (timeArray) timeArray.fill(128);
     }
   }
 
@@ -356,8 +368,8 @@ class MediaPlayerEngine {
     this.state.isPlaying = true;
     this.state.playbackError = null;
 
-    // Check if URL needs revitalization (e.g. dead blob URL from prior session after refresh)
-    if (track.url && track.url.startsWith('blob:') && !isSessionBlobActive(track.id, track.url)) {
+    // Check if URL needs revitalization (e.g. dead blob URL from prior session after refresh, or unlinked)
+    if (!track.url || (!track.url.startsWith('builtin:') && !isSessionBlobActive(track.id, track.url))) {
       this.state.isResolving = true;
       this.notify();
       try {
@@ -389,14 +401,27 @@ class MediaPlayerEngine {
         this.handlePlaybackError(track, 'video');
       });
     } else if (this.audioElement) {
-      this.audioElement.src = track.url;
+      this.audioElement.removeAttribute('crossOrigin');
+      if (this.audioElement.src !== track.url) {
+        this.audioElement.src = track.url;
+      }
       this.audioElement.currentTime = 0;
       this.audioElement.playbackRate = this.state.playbackRate;
       this.audioElement.volume = this.state.isMuted ? 0 : this.state.volume;
-      this.audioElement.play().catch((e) => {
-        console.warn('Audio auto-play warning:', e);
-        this.handlePlaybackError(track, 'audio');
-      });
+      this.audioElement.muted = this.state.isMuted;
+      const playPromise = this.audioElement.play();
+      if (playPromise !== undefined) {
+        playPromise.catch((e) => {
+          console.warn('Audio auto-play warning:', e);
+          if (e.name === 'NotAllowedError') {
+            this.state.isPlaying = false;
+            this.state.playbackError = 'Click anywhere or press Play to permit playback.';
+            this.notify();
+          } else {
+            this.handlePlaybackError(track, 'audio');
+          }
+        });
+      }
     }
 
     this.notify();
@@ -413,6 +438,7 @@ class MediaPlayerEngine {
           this.videoElement.play().catch(() => {});
           return;
         } else if (this.audioElement) {
+          this.audioElement.removeAttribute('crossOrigin');
           this.audioElement.src = freshUrl;
           this.audioElement.play().catch(() => {});
           return;
@@ -456,16 +482,40 @@ class MediaPlayerEngine {
     this.notify();
   }
 
-  public resume() {
+  public async resume() {
     this.initAudioContext();
     this.state.isPlaying = true;
+    this.state.playbackError = null;
 
-    if (this.state.currentTrack?.url.startsWith('builtin:')) {
+    if (!this.state.currentTrack) {
+      if (this.state.queue.length > 0) {
+        this.playTrack(this.state.queue[0]);
+      }
+      return;
+    }
+
+    // If current track needs URL revitalizing or src is missing on element
+    if (
+      !this.state.currentTrack.url.startsWith('builtin:') &&
+      (!isSessionBlobActive(this.state.currentTrack.id, this.state.currentTrack.url) ||
+        (this.audioElement && !this.audioElement.src))
+    ) {
+      await this.playTrack(this.state.currentTrack);
+      return;
+    }
+
+    if (this.state.currentTrack.url.startsWith('builtin:')) {
       this.resumeSyntheticTrack();
     } else if (this.state.isVideoMode && this.videoElement) {
       this.videoElement.play().catch(() => {});
     } else if (this.audioElement) {
-      this.audioElement.play().catch(() => {});
+      this.audioElement.removeAttribute('crossOrigin');
+      this.audioElement.play().catch((err) => {
+        console.warn('Audio resume error:', err);
+        if (this.state.currentTrack) {
+          this.handlePlaybackError(this.state.currentTrack, 'audio');
+        }
+      });
     }
     this.notify();
   }

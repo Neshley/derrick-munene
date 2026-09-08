@@ -20,13 +20,17 @@ interface StoredHandleRecord {
 }
 
 // In-memory registry of blob URLs generated during THIS active browser session
+const activeSessionBlobUrls = new Set<string>();
 const sessionBlobUrlMap = new Map<string, string>();
+const inMemoryBlobMap = new Map<string, Blob>();
 
 /**
  * Register a newly minted blob URL for the current active window session.
  */
 export function registerSessionBlobUrl(trackId: string, url: string): void {
+  if (!url) return;
   sessionBlobUrlMap.set(trackId, url);
+  activeSessionBlobUrls.add(url);
 }
 
 /**
@@ -43,6 +47,16 @@ export function isSessionBlobActive(trackId: string, url: string): boolean {
   if (!url) return false;
   if (url.startsWith('builtin:')) return true;
   if (!url.startsWith('blob:')) return true; // http, https, data:
+  
+  // 1. Direct active set lookup: if the blob URL was created in this session, it's alive!
+  if (activeSessionBlobUrls.has(url)) {
+    if (trackId && !sessionBlobUrlMap.has(trackId)) {
+      sessionBlobUrlMap.set(trackId, url);
+    }
+    return true;
+  }
+
+  // 2. Lookup by trackId
   const activeUrl = sessionBlobUrlMap.get(trackId);
   return activeUrl !== undefined && activeUrl === url;
 }
@@ -99,6 +113,17 @@ export async function saveTrackBlob(
   fileName = '',
   mimeType = ''
 ): Promise<void> {
+  const actualFileName = fileName || (blobOrFile as File).name || trackId;
+  const actualMime = mimeType || blobOrFile.type || 'application/octet-stream';
+
+  // Cache in memory for instant zero-latency retrieval
+  inMemoryBlobMap.set(trackId, blobOrFile);
+  if (actualFileName) {
+    inMemoryBlobMap.set(actualFileName.toLowerCase(), blobOrFile);
+    const withoutExt = actualFileName.replace(/\.[^/.]+$/, '').toLowerCase();
+    inMemoryBlobMap.set(withoutExt, blobOrFile);
+  }
+
   const db = await openVaultDB();
   if (!db) return;
 
@@ -109,8 +134,8 @@ export async function saveTrackBlob(
       const record: StoredBlobRecord = {
         id: trackId,
         blob: blobOrFile,
-        fileName: fileName || (blobOrFile as File).name || trackId,
-        mimeType: mimeType || blobOrFile.type || 'application/octet-stream',
+        fileName: actualFileName,
+        mimeType: actualMime,
         timestamp: Date.now(),
       };
       const req = store.put(record);
@@ -134,6 +159,18 @@ export async function saveTrackBlobsBatch(
   items: { id: string; blob: Blob | File; fileName?: string; mimeType?: string }[]
 ): Promise<void> {
   if (items.length === 0) return;
+
+  // Cache all in memory immediately
+  for (const item of items) {
+    inMemoryBlobMap.set(item.id, item.blob);
+    const fname = item.fileName || (item.blob as File).name || item.id;
+    if (fname) {
+      inMemoryBlobMap.set(fname.toLowerCase(), item.blob);
+      const withoutExt = fname.replace(/\.[^/.]+$/, '').toLowerCase();
+      inMemoryBlobMap.set(withoutExt, item.blob);
+    }
+  }
+
   const db = await openVaultDB();
   if (!db) return;
 
@@ -171,9 +208,20 @@ export async function saveTrackBlobsBatch(
 }
 
 /**
- * Retrieve a persisted media Blob / File by track ID.
+ * Retrieve a persisted media Blob / File by track ID or fallback filename.
  */
-export async function getTrackBlob(trackId: string): Promise<Blob | null> {
+export async function getTrackBlob(trackId: string, fileName?: string): Promise<Blob | null> {
+  // Check in-memory fast cache first
+  if (inMemoryBlobMap.has(trackId)) {
+    return inMemoryBlobMap.get(trackId)!;
+  }
+  if (fileName) {
+    const lower = fileName.toLowerCase();
+    if (inMemoryBlobMap.has(lower)) return inMemoryBlobMap.get(lower)!;
+    const withoutExt = lower.replace(/\.[^/.]+$/, '');
+    if (inMemoryBlobMap.has(withoutExt)) return inMemoryBlobMap.get(withoutExt)!;
+  }
+
   const db = await openVaultDB();
   if (!db) return null;
 
@@ -185,7 +233,38 @@ export async function getTrackBlob(trackId: string): Promise<Blob | null> {
 
       req.onsuccess = () => {
         const record = req.result as StoredBlobRecord | undefined;
-        resolve(record?.blob || null);
+        if (record?.blob) {
+          inMemoryBlobMap.set(trackId, record.blob);
+          resolve(record.blob);
+          return;
+        }
+
+        // If not found by trackId, scan records by filename
+        if (fileName) {
+          const scanReq = store.openCursor();
+          const targetName = fileName.toLowerCase();
+          const targetClean = targetName.replace(/\.[^/.]+$/, '');
+
+          scanReq.onsuccess = () => {
+            const cursor = scanReq.result;
+            if (cursor) {
+              const rec = cursor.value as StoredBlobRecord;
+              const fName = (rec.fileName || '').toLowerCase();
+              const fClean = fName.replace(/\.[^/.]+$/, '');
+              if (fName === targetName || fClean === targetClean || (targetClean && fName.includes(targetClean))) {
+                inMemoryBlobMap.set(trackId, rec.blob);
+                resolve(rec.blob);
+                return;
+              }
+              cursor.continue();
+            } else {
+              resolve(null);
+            }
+          };
+          scanReq.onerror = () => resolve(null);
+        } else {
+          resolve(null);
+        }
       };
 
       req.onerror = () => {
@@ -377,7 +456,9 @@ export async function resolveFileFromDirectoryHandle(
  * Clears all media blobs and directory handles.
  */
 export async function clearAllMediaBlobs(): Promise<void> {
+  activeSessionBlobUrls.clear();
   sessionBlobUrlMap.clear();
+  inMemoryBlobMap.clear();
   const db = await openVaultDB();
   if (!db) return;
 
@@ -412,13 +493,19 @@ export async function resolveTrackBlobUrl(track: MediaTrack): Promise<string | n
   }
 
   // 3. Active session blob URL
+  if (track.url && activeSessionBlobUrls.has(track.url)) {
+    registerSessionBlobUrl(track.id, track.url);
+    return track.url;
+  }
+
   const existingActive = sessionBlobUrlMap.get(track.id);
   if (existingActive) {
     return existingActive;
   }
 
-  // 4. Retrieve Blob/File from IndexedDB vault
-  const storedBlob = await getTrackBlob(track.id);
+  // 4. Retrieve Blob/File from IndexedDB vault or memory cache (by ID, title, or filename)
+  const targetFileName = (track.folderPath?.split('/').pop()) || track.title;
+  const storedBlob = await getTrackBlob(track.id, targetFileName);
   if (storedBlob) {
     try {
       const freshUrl = URL.createObjectURL(storedBlob);
@@ -440,8 +527,8 @@ export async function resolveTrackBlobUrl(track: MediaTrack): Promise<string | n
           if (file) {
             const freshUrl = URL.createObjectURL(file);
             registerSessionBlobUrl(track.id, freshUrl);
-            // Save to IndexedDB if reasonably sized (< 60MB) for instant offline loading
-            if (file.size < 60 * 1024 * 1024) {
+            // Save to IndexedDB if reasonably sized (< 100MB) for instant offline loading
+            if (file.size < 100 * 1024 * 1024) {
               saveTrackBlob(track.id, file, file.name, track.mimeType).catch(() => {});
             }
             return freshUrl;

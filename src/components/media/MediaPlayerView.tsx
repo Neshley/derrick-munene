@@ -69,12 +69,123 @@ import {
 } from 'lucide-react';
 import { 
   hydrateCustomTracks, 
+  saveTrackBlob,
   saveTrackBlobsBatch, 
   deleteTrackBlob, 
   clearAllMediaBlobs, 
   saveDirectoryHandle, 
-  removeDirectoryHandle 
+  removeDirectoryHandle,
+  registerSessionBlobUrl 
 } from '../../utils/mediaBlobStorage';
+
+/**
+ * Helper to match previously registered tracks with freshly scanned tracks & files,
+ * registering active session blob URLs under the existing IDs, persisting them to IndexedDB,
+ * and clearing playback errors.
+ */
+function reconcileAndReactivateTracks(
+  prevTracks: MediaTrack[],
+  newTracks: MediaTrack[],
+  fileEntries: { file: File; relativePath: string; rootFolderName: string }[]
+): MediaTrack[] {
+  const cleanKey = (str: string) =>
+    (str || '')
+      .toLowerCase()
+      .replace(/\.[^/.]+$/, '')
+      .replace(/[^a-z0-9]/g, '');
+
+  const newByExactPath = new Map<string, MediaTrack>();
+  const newByPathEnd = new Map<string, MediaTrack>();
+  const newByCleanTitle = new Map<string, MediaTrack>();
+  const fileByCleanKey = new Map<string, File>();
+
+  for (const fe of fileEntries) {
+    const rawFname = fe.file.name.toLowerCase();
+    const cleanFname = cleanKey(fe.file.name);
+    const cleanRel = cleanKey(fe.relativePath);
+    fileByCleanKey.set(rawFname, fe.file);
+    fileByCleanKey.set(cleanFname, fe.file);
+    fileByCleanKey.set(cleanRel, fe.file);
+  }
+
+  for (const nt of newTracks) {
+    if (nt.folderPath) {
+      newByExactPath.set(nt.folderPath.toLowerCase(), nt);
+      const filename = nt.folderPath.split('/').pop() || '';
+      newByPathEnd.set(filename.toLowerCase(), nt);
+      newByPathEnd.set(cleanKey(filename), nt);
+    }
+    newByCleanTitle.set(cleanKey(nt.title), nt);
+    registerSessionBlobUrl(nt.id, nt.url);
+  }
+
+  const blobsToSaveBatch: { id: string; blob: Blob | File; fileName: string; mimeType?: string }[] = [];
+
+  const updatedExisting = prevTracks.map((oldTrack) => {
+    const oldPath = (oldTrack.folderPath || '').toLowerCase();
+    const oldFilename = (oldTrack.folderPath?.split('/').pop() || oldTrack.title).toLowerCase();
+    const oldClean = cleanKey(oldTrack.title);
+    const oldFileClean = cleanKey(oldFilename);
+
+    const match =
+      (oldPath ? newByExactPath.get(oldPath) : undefined) ||
+      newByPathEnd.get(oldFilename) ||
+      newByPathEnd.get(oldFileClean) ||
+      newByCleanTitle.get(oldClean);
+
+    if (match) {
+      // 1. Crucial: Register the active blob URL under the existing track's ID!
+      registerSessionBlobUrl(oldTrack.id, match.url);
+
+      // 2. Locate the file object to persist in IndexedDB under the existing track ID
+      const matchedFile =
+        fileByCleanKey.get(oldFilename) ||
+        fileByCleanKey.get(oldClean) ||
+        fileByCleanKey.get(oldFileClean) ||
+        fileEntries.find(
+          (fe) =>
+            fe.relativePath.toLowerCase() === match.folderPath?.toLowerCase() ||
+            fe.file.name.toLowerCase() === match.title.toLowerCase()
+        )?.file;
+
+      if (matchedFile) {
+        blobsToSaveBatch.push({
+          id: oldTrack.id,
+          blob: matchedFile,
+          fileName: matchedFile.name,
+          mimeType: oldTrack.mimeType,
+        });
+      }
+
+      // 3. If currently loaded track in engine matches, update its reference and clear errors
+      const current = mediaPlayerEngine.getState().currentTrack;
+      if (current && (current.id === oldTrack.id || cleanKey(current.title) === oldClean)) {
+        current.url = match.url;
+        mediaPlayerEngine.clearPlaybackError();
+      }
+
+      return {
+        ...oldTrack,
+        url: match.url,
+        duration: match.duration || oldTrack.duration,
+        fileSize: match.fileSize || oldTrack.fileSize,
+      };
+    }
+    return oldTrack;
+  });
+
+  if (blobsToSaveBatch.length > 0) {
+    saveTrackBlobsBatch(blobsToSaveBatch).catch((err) =>
+      console.warn('Error batch saving reconnected blobs:', err)
+    );
+  }
+
+  // Find brand new tracks not already present in library
+  const existingCleanKeys = new Set(prevTracks.map((t) => cleanKey(t.title)));
+  const brandNew = newTracks.filter((nt) => !existingCleanKeys.has(cleanKey(nt.title)));
+
+  return [...brandNew, ...updatedExisting];
+}
 
 interface MediaPlayerViewProps {
   onSwitchToWorkstation: () => void;
@@ -521,49 +632,13 @@ export const MediaPlayerView: React.FC<MediaPlayerViewProps> = ({
         if (mode === 'add') {
           // Re-link existing tracks and add new ones without breaking favorites or playlists
           setCustomTracks((prev) => {
-            const newByPath = new Map(newTracks.map((nt) => [nt.folderPath || nt.title, nt]));
-            const newByName = new Map(newTracks.map((nt) => [nt.title.toLowerCase(), nt]));
-
-            // Update matching existing tracks with fresh active blob URLs and save their blobs
-            const updatedExisting = prev.map((oldTrack) => {
-              const match = newByPath.get(oldTrack.folderPath || oldTrack.title) || newByName.get(oldTrack.title.toLowerCase());
-              if (match) {
-                const matchingFileEntry = fileEntries.find(
-                  (fe) => fe.relativePath === match.folderPath || fe.file.name.toLowerCase() === match.title.toLowerCase()
-                );
-                if (matchingFileEntry) {
-                  saveTrackBlobsBatch([{
-                    id: oldTrack.id,
-                    blob: matchingFileEntry.file,
-                    fileName: matchingFileEntry.file.name,
-                    mimeType: oldTrack.mimeType,
-                  }]).catch(() => {});
-                }
-                return {
-                  ...oldTrack,
-                  url: match.url,
-                  duration: match.duration || oldTrack.duration,
-                  fileSize: match.fileSize || oldTrack.fileSize,
-                };
-              }
-              return oldTrack;
-            });
-
-            // Add brand new tracks that don't exist yet
-            const existingPaths = new Set(prev.map((t) => `${t.folderName || ''}::${t.folderPath || t.title}`));
-            const existingTitles = new Set(prev.map((t) => `${t.folderName || ''}::${t.title.toLowerCase()}`));
-            const brandNew = newTracks.filter(
-              (t) =>
-                !existingPaths.has(`${t.folderName || ''}::${t.folderPath || t.title}`) &&
-                !existingTitles.has(`${t.folderName || ''}::${t.title.toLowerCase()}`)
-            );
-
-            const merged = [...brandNew, ...updatedExisting];
+            const merged = reconcileAndReactivateTracks(prev, newTracks, fileEntries);
             saveStoredCustomTracks(merged);
             return merged;
           });
 
           setUnlinkedCount(0);
+          mediaPlayerEngine.clearPlaybackError();
           const updatedFolders = Array.from(new Set([...directedFolders, dirHandle.name]));
           setDirectedFolders(updatedFolders);
           saveStoredDirectedFolders(updatedFolders);
@@ -575,6 +650,7 @@ export const MediaPlayerView: React.FC<MediaPlayerViewProps> = ({
           setCustomTracks(newTracks);
           saveStoredCustomTracks(newTracks);
           setUnlinkedCount(0);
+          mediaPlayerEngine.clearPlaybackError();
           const updatedFolders = [dirHandle.name];
           setDirectedFolders(updatedFolders);
           saveStoredDirectedFolders(updatedFolders);
@@ -639,47 +715,13 @@ export const MediaPlayerView: React.FC<MediaPlayerViewProps> = ({
 
       if (scanModeRef.current === 'add') {
         setCustomTracks((prev) => {
-          const newByPath = new Map(newTracks.map((nt) => [nt.folderPath || nt.title, nt]));
-          const newByName = new Map(newTracks.map((nt) => [nt.title.toLowerCase(), nt]));
-
-          const updatedExisting = prev.map((oldTrack) => {
-            const match = newByPath.get(oldTrack.folderPath || oldTrack.title) || newByName.get(oldTrack.title.toLowerCase());
-            if (match) {
-              const matchingFileEntry = fileEntries.find(
-                (fe) => fe.relativePath === match.folderPath || fe.file.name.toLowerCase() === match.title.toLowerCase()
-              );
-              if (matchingFileEntry) {
-                saveTrackBlobsBatch([{
-                  id: oldTrack.id,
-                  blob: matchingFileEntry.file,
-                  fileName: matchingFileEntry.file.name,
-                  mimeType: oldTrack.mimeType,
-                }]).catch(() => {});
-              }
-              return {
-                ...oldTrack,
-                url: match.url,
-                duration: match.duration || oldTrack.duration,
-                fileSize: match.fileSize || oldTrack.fileSize,
-              };
-            }
-            return oldTrack;
-          });
-
-          const existingPaths = new Set(prev.map((t) => `${t.folderName || ''}::${t.folderPath || t.title}`));
-          const existingTitles = new Set(prev.map((t) => `${t.folderName || ''}::${t.title.toLowerCase()}`));
-          const brandNew = newTracks.filter(
-            (t) =>
-              !existingPaths.has(`${t.folderName || ''}::${t.folderPath || t.title}`) &&
-              !existingTitles.has(`${t.folderName || ''}::${t.title.toLowerCase()}`)
-          );
-
-          const merged = [...brandNew, ...updatedExisting];
+          const merged = reconcileAndReactivateTracks(prev, newTracks, fileEntries);
           saveStoredCustomTracks(merged);
           return merged;
         });
 
         setUnlinkedCount(0);
+        mediaPlayerEngine.clearPlaybackError();
         const updatedFolders = Array.from(new Set([...directedFolders, rootFolderName]));
         setDirectedFolders(updatedFolders);
         saveStoredDirectedFolders(updatedFolders);
@@ -691,6 +733,7 @@ export const MediaPlayerView: React.FC<MediaPlayerViewProps> = ({
         setCustomTracks(newTracks);
         saveStoredCustomTracks(newTracks);
         setUnlinkedCount(0);
+        mediaPlayerEngine.clearPlaybackError();
         const updatedFolders = [rootFolderName];
         setDirectedFolders(updatedFolders);
         saveStoredDirectedFolders(updatedFolders);
