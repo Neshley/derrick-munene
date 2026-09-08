@@ -57,7 +57,10 @@ import {
   FolderOpen,
   Folder,
   RefreshCw,
-  HardDrive
+  HardDrive,
+  ChevronDown,
+  ChevronUp,
+  Info
 } from 'lucide-react';
 
 interface MediaPlayerViewProps {
@@ -76,6 +79,9 @@ export const MediaPlayerView: React.FC<MediaPlayerViewProps> = ({
   const [selectedSubfolder, setSelectedSubfolder] = useState<string>('all');
   const [isScanning, setIsScanning] = useState<boolean>(false);
   const [scanMessage, setScanMessage] = useState<string | null>(null);
+  const [isIntroExpanded, setIsIntroExpanded] = useState<boolean>(false);
+  const [isSubfoldersExpanded, setIsSubfoldersExpanded] = useState<boolean>(false);
+  const [isStatsExpanded, setIsStatsExpanded] = useState<boolean>(false);
 
   // All combined tracks (built-in + device files)
   const allTracks: MediaTrack[] = useMemo(() => {
@@ -1094,28 +1100,41 @@ export const MediaPlayerView: React.FC<MediaPlayerViewProps> = ({
               {activeTab === 'library' && (
                 <>
                   {directedFolderName ? (
-                    <div className="mb-4 p-3.5 rounded-2xl bg-zinc-900/90 border border-zinc-800 flex flex-col gap-3 shadow-md">
+                    <div className="mb-4 p-3.5 sm:p-4 rounded-2xl bg-zinc-900/90 border border-zinc-800 flex flex-col gap-3 shadow-md">
                       <div className="flex items-center justify-between gap-3 flex-wrap">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-10 h-10 rounded-xl bg-amber-500/15 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0 shadow-xs">
                             <FolderOpen className="w-5 h-5" />
                           </div>
-                          <div>
+                          <div className="min-w-0">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <span className="text-[11px] font-mono uppercase font-bold text-zinc-400">Searching Folder:</span>
-                              <span className="text-sm font-bold text-amber-300">📁 {directedFolderName}</span>
-                              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-950/80 text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
+                              <span className="text-[10px] font-mono uppercase font-bold text-zinc-400">Folder:</span>
+                              <span className="text-sm font-bold text-amber-300 truncate max-w-[200px] sm:max-w-md" title={directedFolderName}>
+                                📁 {directedFolderName}
+                              </span>
+                              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-950/80 text-emerald-400 border border-emerald-500/30 flex items-center gap-1 shrink-0">
                                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                                Direct Device Streaming
+                                Direct Streaming
                               </span>
                             </div>
-                            <p className="text-xs text-zinc-400 mt-0.5">
-                              Reading {customTracks.length} song(s) &amp; video(s) directly from your device. No server uploads.
-                            </p>
+                            <div className="flex items-center gap-2 text-xs text-zinc-400 mt-0.5 flex-wrap">
+                              <span>
+                                {customTracks.length} media file{customTracks.length === 1 ? '' : 's'} on device
+                              </span>
+                              <span>•</span>
+                              <button
+                                type="button"
+                                onClick={() => setIsStatsExpanded(!isStatsExpanded)}
+                                className="text-amber-400/90 hover:text-amber-300 font-medium flex items-center gap-0.5 cursor-pointer"
+                              >
+                                <span>{isStatsExpanded ? 'Hide info' : 'Show details'}</span>
+                                {isStatsExpanded ? <ChevronUp className="w-2.5 h-2.5" /> : <ChevronDown className="w-2.5 h-2.5" />}
+                              </button>
+                            </div>
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 shrink-0 ml-auto sm:ml-0">
                           <button
                             type="button"
                             onClick={handleDirectDeviceFolder}
@@ -1138,81 +1157,166 @@ export const MediaPlayerView: React.FC<MediaPlayerViewProps> = ({
                         </div>
                       </div>
 
-                      {/* Subfolder Filter Bar if multiple folders/albums found */}
+                      {/* Expandable Folder Details Panel */}
+                      {isStatsExpanded && (
+                        <div className="pt-2.5 border-t border-zinc-800/80 grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs animate-in fade-in slide-in-from-top-1">
+                          <div className="p-2 rounded-lg bg-zinc-950/60 border border-zinc-850">
+                            <span className="text-[10px] font-mono text-zinc-500 uppercase block">Audio Tracks</span>
+                            <span className="font-bold text-amber-300 text-sm">
+                              {customTracks.filter((t) => !t.isVideo).length}
+                            </span>
+                          </div>
+                          <div className="p-2 rounded-lg bg-zinc-950/60 border border-zinc-850">
+                            <span className="text-[10px] font-mono text-zinc-500 uppercase block">Video Tracks</span>
+                            <span className="font-bold text-cyan-300 text-sm">
+                              {customTracks.filter((t) => t.isVideo).length}
+                            </span>
+                          </div>
+                          <div className="p-2 rounded-lg bg-zinc-950/60 border border-zinc-850">
+                            <span className="text-[10px] font-mono text-zinc-500 uppercase block">Subfolders</span>
+                            <span className="font-bold text-zinc-200 text-sm">
+                              {availableSubfolders.length} detected
+                            </span>
+                          </div>
+                          <div className="p-2 rounded-lg bg-zinc-950/60 border border-zinc-850">
+                            <span className="text-[10px] font-mono text-zinc-500 uppercase block">Storage Mode</span>
+                            <span className="font-mono text-emerald-400 font-bold text-xs">Direct Device Blob</span>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Subfolder Filter Bar with Show More / Show Less */}
                       {availableSubfolders.length > 0 && (
-                        <div className="flex items-center gap-1.5 pt-2 border-t border-zinc-800/80 overflow-x-auto custom-scrollbar">
-                          <span className="text-[10px] font-mono uppercase text-zinc-500 mr-1 shrink-0">Subfolders:</span>
-                          <button
-                            type="button"
-                            onClick={() => setSelectedSubfolder('all')}
-                            className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer shrink-0 ${
-                              selectedSubfolder === 'all'
-                                ? 'bg-amber-500 text-zinc-950 font-bold'
-                                : 'bg-zinc-800 text-zinc-400 hover:text-zinc-200'
-                            }`}
-                          >
-                            All ({customTracks.length})
-                          </button>
-                          {availableSubfolders.map((sub) => {
-                            const count = customTracks.filter(
-                              (t) =>
-                                t.folderPath?.includes(`/${sub}/`) ||
-                                t.folderPath?.startsWith(`${sub}/`) ||
-                                t.album === sub
-                            ).length;
-                            return (
+                        <div className="flex flex-col gap-1.5 pt-2 border-t border-zinc-800/80">
+                          <div className="flex items-center justify-between text-[10px] font-mono text-zinc-500 uppercase">
+                            <span>Subfolders ({availableSubfolders.length})</span>
+                            {availableSubfolders.length > 4 && (
                               <button
-                                key={sub}
                                 type="button"
-                                onClick={() => setSelectedSubfolder(sub)}
-                                className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer shrink-0 flex items-center gap-1 ${
-                                  selectedSubfolder === sub
-                                    ? 'bg-amber-500 text-zinc-950 font-bold'
-                                    : 'bg-zinc-800 text-zinc-400 hover:text-zinc-200'
-                                }`}
+                                onClick={() => setIsSubfoldersExpanded(!isSubfoldersExpanded)}
+                                className="text-amber-400 hover:text-amber-300 flex items-center gap-1 font-semibold cursor-pointer lowercase first-letter:uppercase"
                               >
-                                <Folder className="w-3 h-3 text-amber-400/80" />
-                                <span>{sub}</span>
-                                <span className="text-[10px] opacity-70">({count})</span>
+                                <span>{isSubfoldersExpanded ? 'Show less' : `Show more (+${availableSubfolders.length - 4})`}</span>
+                                {isSubfoldersExpanded ? (
+                                  <ChevronUp className="w-2.5 h-2.5" />
+                                ) : (
+                                  <ChevronDown className="w-2.5 h-2.5" />
+                                )}
                               </button>
-                            );
-                          })}
+                            )}
+                          </div>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <button
+                              type="button"
+                              onClick={() => setSelectedSubfolder('all')}
+                              className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer shrink-0 ${
+                                selectedSubfolder === 'all'
+                                  ? 'bg-amber-500 text-zinc-950 font-bold'
+                                  : 'bg-zinc-800 text-zinc-400 hover:text-zinc-200'
+                              }`}
+                            >
+                              All ({customTracks.length})
+                            </button>
+                            {(isSubfoldersExpanded ? availableSubfolders : availableSubfolders.slice(0, 4)).map((sub) => {
+                              const count = customTracks.filter(
+                                (t) =>
+                                  t.folderPath?.includes(`/${sub}/`) ||
+                                  t.folderPath?.startsWith(`${sub}/`) ||
+                                  t.album === sub
+                              ).length;
+                              return (
+                                <button
+                                  key={sub}
+                                  type="button"
+                                  onClick={() => setSelectedSubfolder(sub)}
+                                  className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer shrink-0 flex items-center gap-1.5 ${
+                                    selectedSubfolder === sub
+                                      ? 'bg-amber-500 text-zinc-950 font-bold'
+                                      : 'bg-zinc-800 text-zinc-400 hover:text-zinc-200'
+                                  }`}
+                                >
+                                  <Folder className="w-3 h-3 text-amber-400/80" />
+                                  <span>{sub}</span>
+                                  <span className="text-[10px] opacity-70">({count})</span>
+                                </button>
+                              );
+                            })}
+                          </div>
                         </div>
                       )}
                     </div>
                   ) : customTracks.length === 0 ? (
-                    <div className="mb-5 p-5 sm:p-6 rounded-2xl bg-gradient-to-br from-zinc-900 via-zinc-900/90 to-zinc-950 border border-amber-500/20 shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
-                      <div className="flex items-start gap-4">
-                        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-500/20 to-rose-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0 shadow-md">
-                          <FolderOpen className="w-6 h-6" />
+                    <div className="mb-5 p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-zinc-900 via-zinc-900/95 to-zinc-950 border border-amber-500/20 shadow-xl flex flex-col gap-3">
+                      <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                        <div className="flex items-start gap-3.5">
+                          <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-amber-500/20 to-rose-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400 shrink-0 shadow-md">
+                            <FolderOpen className="w-5 h-5" />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <h3 className="text-sm sm:text-base font-bold text-zinc-100">
+                                Direct ARRANGIA to Your Media Folder
+                              </h3>
+                              <span className="text-[9px] font-mono px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/30 font-bold">
+                                Zero Upload Wait
+                              </span>
+                            </div>
+                            <p className="text-xs text-zinc-400 mt-0.5 max-w-xl">
+                              Play your songs and videos directly from local folders on your device with zero upload time.
+                            </p>
+                          </div>
                         </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <h3 className="text-base sm:text-lg font-bold text-zinc-100">
-                              Direct ARRANGIA to Your Media Folder
-                            </h3>
-                            <span className="text-[9px] font-mono px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/30 font-bold">
-                              No Import Needed
-                            </span>
-                          </div>
-                          <p className="text-xs text-zinc-400 mt-1 max-w-xl leading-relaxed">
-                            No file uploading or importing is required. Just direct ARRANGIA to search your device's music or video folder (e.g. Music, Videos, Downloads). The songs and videos remain directly on your device.
-                          </p>
-                          <div className="flex items-center gap-2 mt-2 text-[11px] text-zinc-500 font-mono">
-                            <span>Supported:</span>
-                            <span className="text-amber-300/80 font-semibold">MP3, WAV, FLAC, M4A, AAC, MP4, MKV, WEBM</span>
-                          </div>
+
+                        <div className="flex items-center gap-2 self-end md:self-center">
+                          <button
+                            type="button"
+                            onClick={() => setIsIntroExpanded(!isIntroExpanded)}
+                            className="px-2.5 py-1.5 rounded-xl bg-zinc-800/80 hover:bg-zinc-800 text-zinc-300 hover:text-amber-300 text-xs font-medium flex items-center gap-1.5 transition-colors cursor-pointer border border-zinc-700/60"
+                          >
+                            <span>{isIntroExpanded ? 'Show less' : 'Show more'}</span>
+                            {isIntroExpanded ? (
+                              <ChevronUp className="w-3.5 h-3.5" />
+                            ) : (
+                              <ChevronDown className="w-3.5 h-3.5" />
+                            )}
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={handleDirectDeviceFolder}
+                            className="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-zinc-950 font-bold text-xs sm:text-sm flex items-center gap-2 transition-all shadow-md shadow-amber-500/20 active:scale-95 cursor-pointer whitespace-nowrap"
+                          >
+                            <FolderOpen className="w-4 h-4" />
+                            <span>Select Folder</span>
+                          </button>
                         </div>
                       </div>
 
-                      <button
-                        type="button"
-                        onClick={handleDirectDeviceFolder}
-                        className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-zinc-950 font-bold text-xs sm:text-sm flex items-center gap-2 transition-all shadow-lg shadow-amber-500/25 active:scale-95 cursor-pointer whitespace-nowrap"
-                      >
-                        <FolderOpen className="w-4 h-4" />
-                        <span>Select Folder on Device</span>
-                      </button>
+                      {/* Expandable Intro Details */}
+                      {isIntroExpanded && (
+                        <div className="pt-3 border-t border-zinc-800/80 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs animate-in fade-in slide-in-from-top-1">
+                          <div className="p-3 rounded-xl bg-zinc-950/60 border border-zinc-800/70">
+                            <span className="font-bold text-amber-300 block mb-1">Direct Streaming</span>
+                            <p className="text-[11px] text-zinc-400 leading-relaxed">
+                              Files are streamed directly from your device storage using browser file handles. Your media is 100% private and never uploaded to a cloud server.
+                            </p>
+                          </div>
+                          <div className="p-3 rounded-xl bg-zinc-950/60 border border-zinc-800/70">
+                            <span className="font-bold text-amber-300 block mb-1">Supported Formats</span>
+                            <p className="text-[11px] text-zinc-400 leading-relaxed font-mono">
+                              Lossless: FLAC, WAV<br />
+                              Compressed: MP3, M4A, AAC<br />
+                              Video: MP4, MKV, WEBM
+                            </p>
+                          </div>
+                          <div className="p-3 rounded-xl bg-zinc-950/60 border border-zinc-800/70">
+                            <span className="font-bold text-amber-300 block mb-1">Folder Organization</span>
+                            <p className="text-[11px] text-zinc-400 leading-relaxed">
+                              Subfolders and album directories are automatically recognized as filter tabs for rapid navigation.
+                            </p>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ) : null}
                 </>
