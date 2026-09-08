@@ -522,7 +522,7 @@ export default function App() {
   }
 
   return (
-    <div className="h-screen w-screen max-h-screen overflow-hidden bg-zinc-950 text-zinc-100 flex flex-col selection:bg-amber-500 selection:text-black">
+    <div className="h-dvh w-full max-w-[100vw] overflow-hidden bg-zinc-950 text-zinc-100 flex flex-col selection:bg-amber-500 selection:text-black">
       {/* Top Workstation Header (Fixed) */}
       <WorkstationHeader
         appMode={appMode}
@@ -618,9 +618,9 @@ export default function App() {
           onMasterVolumeChange={handleMasterVolumeChange}
         />
 
-        {/* Main Console Workstation Surface (Independently Scrollable) */}
-        <div className="flex-1 flex flex-col overflow-y-auto overflow-x-hidden min-w-0 custom-scrollbar h-full">
-          <main className="max-w-7xl w-full mx-auto p-2 sm:p-4 flex flex-col gap-3.5 flex-1">
+        {/* Main Console Workstation Surface (Independently Scrollable with momentum & safe-area padding) */}
+        <div className="flex-1 flex flex-col overflow-y-auto overflow-x-hidden min-w-0 custom-scrollbar h-full scroll-smooth overscroll-y-contain">
+          <main className="max-w-7xl w-full mx-auto p-2 sm:p-3 md:p-4 pb-16 sm:pb-8 flex flex-col gap-3 sm:gap-3.5 flex-1">
             
             {/* LCD Screen Display */}
             <MainLcdDisplay

@@ -424,7 +424,7 @@ export const MainLcdDisplay: React.FC<MainLcdDisplayProps> = ({
         <div className="lg:col-span-5 bg-zinc-900/90 rounded-xl p-3 border border-zinc-800/80 flex flex-col justify-between gap-2.5">
           
           {/* Top Bar: Measure, Beat, Tempo, Ticker LEDs */}
-          <div className="flex items-center justify-between gap-2">
+          <div className="flex flex-wrap items-center justify-between gap-1.5 sm:gap-2">
             {/* Beat Ticker LEDs */}
             <div className="flex items-center gap-1.5 bg-zinc-950 px-2 sm:px-2.5 py-1 rounded-lg border border-zinc-800">
               <span className="text-[10px] text-zinc-400 font-mono mr-0.5 sm:mr-1">BEAT</span>
@@ -876,7 +876,7 @@ export const MainLcdDisplay: React.FC<MainLcdDisplayProps> = ({
           </div>
 
           {/* Center Chord Badge & Audio Spectrum Canvas */}
-          <div className="flex items-center justify-between gap-3 bg-zinc-950/80 rounded-lg p-2 border border-zinc-800/60">
+          <div className="flex items-center justify-between gap-2 sm:gap-3 bg-zinc-950/80 rounded-lg p-2 border border-zinc-800/60 flex-wrap sm:flex-nowrap">
             {/* Chord Badge */}
             <div className="flex-1 flex flex-col justify-center">
               <div className="flex items-center gap-1.5 flex-wrap">

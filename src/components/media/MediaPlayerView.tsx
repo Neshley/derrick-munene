@@ -462,8 +462,8 @@ export const MediaPlayerView: React.FC<MediaPlayerViewProps> = ({
       {/* Main Body: Left Sidebar + Center Workspace Stage */}
       <div className="flex-1 flex overflow-hidden min-h-0">
         
-        {/* Left Navigation Sidebar */}
-        <aside className="w-52 sm:w-60 bg-zinc-925/80 border-r border-zinc-800/80 flex flex-col p-3 gap-4 shrink-0 overflow-y-auto custom-scrollbar">
+        {/* Left Navigation Sidebar (Visible on md and larger) */}
+        <aside className="hidden md:flex w-52 sm:w-60 bg-zinc-925/80 border-r border-zinc-800/80 flex-col p-3 gap-4 shrink-0 overflow-y-auto custom-scrollbar">
           
           {/* Main Media Navigation */}
           <div className="flex flex-col gap-1">
@@ -686,8 +686,82 @@ export const MediaPlayerView: React.FC<MediaPlayerViewProps> = ({
         </aside>
 
         {/* Center Main Stage Content Area */}
-        <main className="flex-1 flex flex-col overflow-y-auto overflow-x-hidden min-w-0 custom-scrollbar p-3 sm:p-5 bg-zinc-950/90">
+        <main className="flex-1 flex flex-col overflow-y-auto overflow-x-hidden min-w-0 custom-scrollbar p-3 sm:p-5 bg-zinc-950/90 scroll-smooth">
           
+          {/* Mobile Navigation Strip for small screens (< md) */}
+          <div className="md:hidden flex items-center gap-1.5 pb-3 mb-2 border-b border-zinc-800/80 overflow-x-auto custom-scrollbar shrink-0 select-none">
+            <button
+              type="button"
+              onClick={() => { setActiveTab('library'); setActivePlaylistId(null); }}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap flex items-center gap-1.5 transition-all shrink-0 ${
+                activeTab === 'library' && !activePlaylistId ? 'bg-amber-500 text-zinc-950 font-bold shadow-sm' : 'bg-zinc-900 text-zinc-300 border border-zinc-800'
+              }`}
+            >
+              <Music className="w-3.5 h-3.5" />
+              <span>All ({allTracks.length})</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => { setActiveTab('favorites'); setActivePlaylistId(null); }}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap flex items-center gap-1.5 transition-all shrink-0 ${
+                activeTab === 'favorites' ? 'bg-rose-500 text-white font-bold shadow-sm' : 'bg-zinc-900 text-zinc-300 border border-zinc-800'
+              }`}
+            >
+              <Heart className="w-3.5 h-3.5 fill-current text-rose-400" />
+              <span>Fav ({favorites.size})</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => { setActiveTab('queue'); setActivePlaylistId(null); }}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap flex items-center gap-1.5 transition-all shrink-0 ${
+                activeTab === 'queue' ? 'bg-amber-500 text-zinc-950 font-bold shadow-sm' : 'bg-zinc-900 text-zinc-300 border border-zinc-800'
+              }`}
+            >
+              <ListMusic className="w-3.5 h-3.5" />
+              <span>Queue ({playerState.queue.length})</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('lyrics')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap flex items-center gap-1.5 transition-all shrink-0 ${
+                activeTab === 'lyrics' ? 'bg-amber-500 text-zinc-950 font-bold shadow-sm' : 'bg-zinc-900 text-zinc-300 border border-zinc-800'
+              }`}
+            >
+              <FileText className="w-3.5 h-3.5" />
+              <span>Lyrics</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('visualizer')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap flex items-center gap-1.5 transition-all shrink-0 ${
+                activeTab === 'visualizer' ? 'bg-amber-500 text-zinc-950 font-bold shadow-sm' : 'bg-zinc-900 text-zinc-300 border border-zinc-800'
+              }`}
+            >
+              <Radio className="w-3.5 h-3.5" />
+              <span>Visualizer</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('video')}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap flex items-center gap-1.5 transition-all shrink-0 ${
+                activeTab === 'video' ? 'bg-cyan-500 text-zinc-950 font-bold shadow-sm' : 'bg-zinc-900 text-zinc-300 border border-zinc-800'
+              }`}
+            >
+              <Film className="w-3.5 h-3.5" />
+              <span>Video</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => { setActiveTab('recent'); setActivePlaylistId(null); }}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap flex items-center gap-1.5 transition-all shrink-0 ${
+                activeTab === 'recent' ? 'bg-amber-500 text-zinc-950 font-bold shadow-sm' : 'bg-zinc-900 text-zinc-300 border border-zinc-800'
+              }`}
+            >
+              <Clock className="w-3.5 h-3.5" />
+              <span>Recent</span>
+            </button>
+          </div>
+
           {/* Format Filter Bar (shown on library/favorites/recent/playlists) */}
           {(activeTab === 'library' || activeTab === 'favorites' || activeTab === 'recent' || activeTab === 'playlists') && (
             <div className="flex items-center justify-between gap-3 mb-4 flex-wrap shrink-0">

@@ -659,7 +659,7 @@ export const ArrangerControls: React.FC<ArrangerControlsProps> = ({
         </div>
 
         {/* MAIN VARIATIONS A / B / C / D (with Illuminated Fill Buttons) */}
-        <div className="col-span-4 sm:col-span-4 md:col-span-4 lg:col-span-5 grid grid-cols-4 gap-1.5">
+        <div className="col-span-2 sm:col-span-4 md:col-span-4 lg:col-span-5 grid grid-cols-4 gap-1.5">
           {mainVariations.map(variation => {
             const isMainActive = currentSection === variation.id;
             const isFillActive = currentSection === variation.fillId;
@@ -730,7 +730,7 @@ export const ArrangerControls: React.FC<ArrangerControlsProps> = ({
         </div>
 
         {/* BREAK (Shows available vs unavailable state) */}
-        <div className="col-span-2 sm:col-span-2 md:col-span-2 lg:col-span-1">
+        <div className="col-span-1 sm:col-span-1 md:col-span-2 lg:col-span-1">
           <button
             id="btn-section-break"
             onClick={() => hasBreak && onTriggerBreak()}
@@ -758,7 +758,7 @@ export const ArrangerControls: React.FC<ArrangerControlsProps> = ({
         </div>
 
         {/* ENDING A / B / C */}
-        <div className="col-span-2 sm:col-span-2 md:col-span-2 lg:col-span-2 flex gap-1.5">
+        <div className="col-span-1 sm:col-span-3 md:col-span-2 lg:col-span-2 flex gap-1.5">
           {endings.map(ending => {
             const isActive = currentSection === ending.id;
             const isAvail = isSectionAvailable(ending.id);

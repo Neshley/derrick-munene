@@ -573,7 +573,7 @@ export const MixerSection: React.FC<MixerSectionProps> = ({
       </div>
 
       {/* Main 12-Channel Strips Console Grid: 8 Accompaniment + 3 Live Voices + 1 Master Bus */}
-      <div className="grid grid-cols-4 sm:grid-cols-6 md:grid-cols-12 gap-2 items-stretch">
+      <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-12 gap-2 items-stretch">
         
         {/* 8 Accompaniment Channels */}
         {acmpTracks.map(track => {
