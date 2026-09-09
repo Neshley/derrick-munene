@@ -47,21 +47,21 @@ export const AiTab: React.FC<AiTabProps> = ({
               </span>
             ) : (
               <span className="px-2 py-0.5 bg-amber-500/20 text-amber-400 border border-amber-500/30 text-[10px] font-mono rounded">
-                REQUIRED FOR AI GENERATION
+                SERVER KEY CONFIGURED / FALLBACK
               </span>
             )}
           </div>
           <p className="text-xs text-zinc-400 mt-1">
             {hasApiKey
-              ? 'Your Google Gemini API key is securely stored in local storage for generating Yamaha styles and worship chord charts.'
-              : 'Add your Gemini API key to enable AI style generation, auto-harmonization, and song creation.'}
+              ? 'Your Google Gemini API key is configured on the server (GEMINI_API_KEY) for generating Yamaha styles and worship chord charts.'
+              : 'Configure the GEMINI_API_KEY environment variable in Settings to enable live AI features, or use built-in musical theory heuristics.'}
           </p>
         </div>
         <button
           onClick={onOpenApiKeyModal}
-          className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold shadow-md shadow-indigo-900/30 transition flex-shrink-0"
+          className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-xs font-bold shadow-md shadow-indigo-900/30 transition flex-shrink-0 cursor-pointer"
         >
-          {hasApiKey ? 'Change Key' : 'Enter API Key'}
+          Check Connection
         </button>
       </div>
 
