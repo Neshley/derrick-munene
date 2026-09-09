@@ -81,6 +81,8 @@ export const AudioVisualizerCanvas: React.FC<AudioVisualizerCanvasProps> = ({
         }
       }
 
+      if (width <= 0 || height <= 0) return;
+
       ctx.clearRect(0, 0, width, height);
 
       // Visualizer Modes

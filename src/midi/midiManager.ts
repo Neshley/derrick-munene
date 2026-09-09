@@ -42,9 +42,15 @@ export class MidiManager {
   private isInitialized: boolean = false;
   private isInitializing: boolean = false;
 
-  private activeNotes: Map<number, ActiveMidiNote> = new Map();
+  private activeNotes: Map<string, ActiveMidiNote> = new Map();
   private lowerHeldKeys: Set<number> = new Set();
   private sustainPedalActive: boolean = false;
+  private sustainByChannel: Map<number, boolean> = new Map();
+
+  private getNoteKey(note: number, channel: number = 1, deviceId?: string): string {
+    const dev = deviceId || this.selectedDeviceId || 'default';
+    return `${dev}:${channel}:${note}`;
+  }
 
   // Configuration
   private liveConfig: LiveVoicesConfig = {
@@ -237,7 +243,7 @@ export class MidiManager {
         }
 
         if (event.data) {
-          this.processRawMidiData(event.data, event.timeStamp);
+          this.processRawMidiData(event.data, event.timeStamp, input.id);
         }
       };
     });
@@ -273,28 +279,28 @@ export class MidiManager {
   /**
    * Core MIDI Data Stream Processor.
    */
-  public processRawMidiData(data: Uint8Array | number[], timestamp?: number) {
+  public processRawMidiData(data: Uint8Array | number[], timestamp?: number, deviceId?: string) {
     const uint8 = data instanceof Uint8Array ? data : new Uint8Array(data);
     const parsedEvent = parseMidiMessage(uint8, timestamp, this.pitchBendRange);
 
     if (!parsedEvent) return;
 
-    this.handleParsedMidiEvent(parsedEvent);
+    this.handleParsedMidiEvent(parsedEvent, deviceId);
   }
 
   /**
    * Routes and executes fully parsed MIDI Events.
    */
-  public handleParsedMidiEvent(event: MidiEvent) {
+  public handleParsedMidiEvent(event: MidiEvent, deviceId?: string) {
     switch (event.type) {
       case 'noteon':
         midiAutomationRecorder.recordNoteOn(event.note, event.velocity, event.channel);
-        this.handleNoteOn(event.note, event.velocity, event.channel);
+        this.handleNoteOn(event.note, event.velocity, event.channel, deviceId);
         break;
 
       case 'noteoff':
         midiAutomationRecorder.recordNoteOff(event.note, event.channel);
-        this.handleNoteOff(event.note, event.channel);
+        this.handleNoteOff(event.note, event.channel, deviceId);
         break;
 
       case 'cc':
@@ -359,7 +365,7 @@ export class MidiManager {
   /**
    * Handles Note On with Split-point and Accompaniment Routing.
    */
-  public handleNoteOn(note: number, velocity: number = 100, channel: number = 1) {
+  public handleNoteOn(note: number, velocity: number = 100, channel: number = 1, deviceId?: string) {
     audioEngine.init();
 
     const isLowerZone = this.midiChannelFilter === 'split_ch1_ch2'
@@ -367,8 +373,10 @@ export class MidiManager {
       : note < this.liveConfig.splitPoint;
     const voiceHandles: AudioEngineActiveNote[] = [];
 
-    // Stop existing voice handles on the same note if held
-    const existing = this.activeNotes.get(note);
+    const noteKey = this.getNoteKey(note, channel, deviceId);
+
+    // Stop existing voice handles on the same exact key (device + channel + note) if held
+    const existing = this.activeNotes.get(noteKey);
     if (existing) {
       existing.voiceHandles.forEach(h => h.stop());
     }
@@ -401,8 +409,8 @@ export class MidiManager {
       }
     }
 
-    // Register active note
-    this.activeNotes.set(note, {
+    // Register active note using composite key
+    this.activeNotes.set(noteKey, {
       note,
       channel,
       velocity,
@@ -427,23 +435,30 @@ export class MidiManager {
   }
 
   /**
-   * Handles Note Off with full Sustain Pedal handling.
+   * Handles Note Off with full Channel-Aware Sustain Pedal handling.
    */
-  public handleNoteOff(note: number, channel: number = 1) {
-    const activeNote = this.activeNotes.get(note);
+  public handleNoteOff(note: number, channel: number = 1, deviceId?: string) {
+    const noteKey = this.getNoteKey(note, channel, deviceId);
+    const activeNote = this.activeNotes.get(noteKey);
     if (!activeNote) return;
 
     if (activeNote.zone === 'lower') {
-      this.lowerHeldKeys.delete(note);
+      const anyOtherLower = Array.from(this.activeNotes.entries()).some(
+        ([k, an]) => k !== noteKey && an.zone === 'lower' && an.note === note && !an.sustained
+      );
+      if (!anyOtherLower) {
+        this.lowerHeldKeys.delete(note);
+      }
     }
 
-    if (this.sustainPedalActive) {
-      // Sustain is active: do not stop voice yet, mark as sustained
+    const isSustainedOnChannel = this.isChannelSustained(channel);
+    if (isSustainedOnChannel) {
+      // Sustain is active for this channel: do not stop voice yet, mark as sustained
       activeNote.sustained = true;
     } else {
-      // Sustain is not active: stop voice immediately
+      // Sustain is not active for this channel: stop voice immediately
       activeNote.voiceHandles.forEach(h => h.stop());
-      this.activeNotes.delete(note);
+      this.activeNotes.delete(noteKey);
     }
 
     this.updateState({
@@ -490,10 +505,10 @@ export class MidiManager {
         break;
       }
 
-      // CC64: Sustain Pedal (respects sustainPolarity setting)
+      // CC64: Sustain Pedal (respects sustainPolarity setting, channel-aware)
       case MIDI_CC.SUSTAIN: {
         const isSustainOn = this.sustainPolarity === 'inverted' ? value < 64 : value >= 64;
-        this.setSustain(isSustainOn);
+        this.setSustain(isSustainOn, channel);
         break;
       }
 
@@ -613,28 +628,36 @@ export class MidiManager {
   // --- SUSTAIN PEDAL MANAGEMENT ---
 
   /**
-   * Sets Sustain pedal state and releases sustained notes when released.
+   * Checks whether sustain is active for a specific channel.
    */
-  public setSustain(sustainOn: boolean) {
-    this.sustainPedalActive = sustainOn;
+  public isChannelSustained(channel: number = 1): boolean {
+    return this.sustainByChannel.get(channel) ?? false;
+  }
+
+  /**
+   * Sets Sustain pedal state for a specific channel and releases sustained notes on that channel when released.
+   */
+  public setSustain(sustainOn: boolean, channel: number = 1) {
+    this.sustainByChannel.set(channel, sustainOn);
+    this.sustainPedalActive = Array.from(this.sustainByChannel.values()).some(Boolean);
 
     if (!sustainOn) {
-      // Release all notes that received Note Off while sustain pedal was held
-      const notesToDelete: number[] = [];
-      this.activeNotes.forEach((activeNote, note) => {
-        if (activeNote.sustained) {
+      // Release all notes on this specific channel that were marked sustained
+      const keysToDelete: string[] = [];
+      this.activeNotes.forEach((activeNote, key) => {
+        if (activeNote.channel === channel && activeNote.sustained) {
           activeNote.voiceHandles.forEach(h => h.stop());
-          notesToDelete.push(note);
+          keysToDelete.push(key);
         }
       });
 
-      notesToDelete.forEach(note => this.activeNotes.delete(note));
+      keysToDelete.forEach(k => this.activeNotes.delete(k));
     }
 
     this.updateState({
-      sustain: sustainOn,
+      sustain: this.sustainPedalActive,
       activeNotesCount: this.activeNotes.size,
-      lastMessageSummary: `Sustain Pedal: ${sustainOn ? 'ON (Hold)' : 'OFF (Release)'}`,
+      lastMessageSummary: `Sustain Pedal (Ch ${channel}): ${sustainOn ? 'ON (Hold)' : 'OFF (Release)'}`,
     });
 
     this.listeners.forEach(l => l.onSustainChange?.(sustainOn));
@@ -741,6 +764,7 @@ export class MidiManager {
 
     // 2. Reset sustain
     this.sustainPedalActive = false;
+    this.sustainByChannel.clear();
 
     // 3. Audio Engine emergency stop & pitch reset
     audioEngine.stopAllNotes();
@@ -768,6 +792,7 @@ export class MidiManager {
    */
   public resetControllers() {
     this.sustainPedalActive = false;
+    this.sustainByChannel.clear();
     audioEngine.setPitchBend(0);
     audioEngine.setModulation(0);
 
@@ -872,7 +897,7 @@ export class MidiManager {
   }
 
   public getActiveNotes(): Set<number> {
-    return new Set(this.activeNotes.keys());
+    return new Set(Array.from(this.activeNotes.values()).map(an => an.note));
   }
 
   private updateState(partial: Partial<MidiState>) {

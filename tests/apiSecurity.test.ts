@@ -78,4 +78,19 @@ describe('Server-Side AI Schemas & Route Validation', () => {
     const parsed = SongbookAiResponseSchema.safeParse(validSongbook);
     expect(parsed.success).toBe(true);
   });
+
+  it('should extract client IP correctly even when multiple forwarded IPs are present', async () => {
+    const { getClientIp } = await import('../src/server/aiRouter');
+    const mockReq = {
+      headers: { 'x-forwarded-for': '203.0.113.195, 70.41.3.18, 150.172.238.178' },
+      socket: { remoteAddress: '127.0.0.1' },
+    } as any;
+    expect(getClientIp(mockReq)).toBe('203.0.113.195');
+
+    const mockReqDirect = {
+      headers: {},
+      socket: { remoteAddress: '192.168.1.50' },
+    } as any;
+    expect(getClientIp(mockReqDirect)).toBe('192.168.1.50');
+  });
 });

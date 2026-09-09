@@ -66,4 +66,30 @@ describe('ChordEngine & Transposition Engine', () => {
     const transposed = transposeProgression(progression, 2);
     expect(transposed).toEqual(['D', 'A/C#', 'Bm', 'G']);
   });
+
+  it('should parse complex chord progressions with various delimiters and jazz notation', () => {
+    // Jazz notation with -7 and -
+    const jazzChords = ChordEngine.parseProgressionString('D-7 -> G7 -> Cmaj7');
+    expect(jazzChords.length).toBe(3);
+    expect(jazzChords[0].root).toBe('D');
+    expect(jazzChords[0].type).toBe('min7');
+    expect(jazzChords[1].root).toBe('G');
+    expect(jazzChords[1].type).toBe('7');
+    expect(jazzChords[2].root).toBe('C');
+    expect(jazzChords[2].type).toBe('maj7');
+
+    // Hyphens as chord separators with slash chords and brackets
+    const bracketed = ChordEngine.parseProgressionString('[C] - [G/B] - [A-] - [F]');
+    expect(bracketed.length).toBe(4);
+    expect(bracketed[0].root).toBe('C');
+    expect(bracketed[1].root).toBe('G');
+    expect(bracketed[1].bass).toBe('B');
+    expect(bracketed[2].root).toBe('A');
+    expect(bracketed[2].type).toBe('min');
+    expect(bracketed[3].root).toBe('F');
+
+    // Bar line separated with multi-chord measures
+    const barChords = ChordEngine.parseProgressionString('| C G | Am F |');
+    expect(barChords.map(c => c.displayName)).toEqual(['C', 'G', 'Am', 'F']);
+  });
 });

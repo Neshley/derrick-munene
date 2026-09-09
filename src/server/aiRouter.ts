@@ -30,20 +30,55 @@ interface RateLimitRecord {
 const ipRateLimits = new Map<string, RateLimitRecord>();
 const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute
 const MAX_REQUESTS_PER_WINDOW = 30; // 30 AI requests per minute
+const MAX_RATE_LIMIT_ENTRIES = 10000; // Cap map size to prevent memory exhaustion DoS
+
+export function clearRateLimits() {
+  ipRateLimits.clear();
+}
+
+export function getClientIp(req: Request): string {
+  const forwarded = req.headers['x-forwarded-for'];
+  if (typeof forwarded === 'string' && forwarded.length > 0) {
+    const firstIp = forwarded.split(',')[0].trim();
+    if (firstIp) return firstIp;
+  }
+  return req.socket?.remoteAddress || req.ip || 'unknown-client';
+}
 
 function rateLimiter(req: Request, res: Response, next: NextFunction) {
-  const ip = (req.headers['x-forwarded-for'] as string) || req.socket.remoteAddress || 'unknown-client';
+  const ip = getClientIp(req);
   const now = Date.now();
   const record = ipRateLimits.get(ip);
 
+  // If map exceeds capacity, evict expired entries first
+  if (ipRateLimits.size >= MAX_RATE_LIMIT_ENTRIES) {
+    for (const [trackedIp, rec] of ipRateLimits.entries()) {
+      if (now > rec.resetTime) {
+        ipRateLimits.delete(trackedIp);
+      }
+    }
+    // If still over capacity, evict oldest entry to prevent memory exhaustion
+    if (ipRateLimits.size >= MAX_RATE_LIMIT_ENTRIES) {
+      const oldestKey = ipRateLimits.keys().next().value;
+      if (oldestKey) ipRateLimits.delete(oldestKey);
+    }
+  }
+
   if (!record || now > record.resetTime) {
-    ipRateLimits.set(ip, { count: 1, resetTime: now + RATE_LIMIT_WINDOW_MS });
+    const newRecord = { count: 1, resetTime: now + RATE_LIMIT_WINDOW_MS };
+    ipRateLimits.set(ip, newRecord);
+    res.setHeader('X-RateLimit-Limit', MAX_REQUESTS_PER_WINDOW.toString());
+    res.setHeader('X-RateLimit-Remaining', (MAX_REQUESTS_PER_WINDOW - 1).toString());
+    res.setHeader('X-RateLimit-Reset', Math.ceil(newRecord.resetTime / 1000).toString());
     return next();
   }
 
   if (record.count >= MAX_REQUESTS_PER_WINDOW) {
     const retryAfterSec = Math.ceil((record.resetTime - now) / 1000);
     res.setHeader('Retry-After', retryAfterSec.toString());
+    res.setHeader('X-RateLimit-Limit', MAX_REQUESTS_PER_WINDOW.toString());
+    res.setHeader('X-RateLimit-Remaining', '0');
+    res.setHeader('X-RateLimit-Reset', Math.ceil(record.resetTime / 1000).toString());
     return res.status(429).json({
       success: false,
       error: 'Too many requests. Please wait a moment before trying again.',
@@ -52,11 +87,14 @@ function rateLimiter(req: Request, res: Response, next: NextFunction) {
   }
 
   record.count++;
+  res.setHeader('X-RateLimit-Limit', MAX_REQUESTS_PER_WINDOW.toString());
+  res.setHeader('X-RateLimit-Remaining', (MAX_REQUESTS_PER_WINDOW - record.count).toString());
+  res.setHeader('X-RateLimit-Reset', Math.ceil(record.resetTime / 1000).toString());
   next();
 }
 
-// Clean up old rate limit records periodically
-setInterval(() => {
+// Clean up old rate limit records periodically without keeping Node alive
+const rateLimitCleanupInterval = setInterval(() => {
   const now = Date.now();
   for (const [ip, rec] of ipRateLimits.entries()) {
     if (now > rec.resetTime) {
@@ -64,6 +102,10 @@ setInterval(() => {
     }
   }
 }, 5 * 60 * 1000);
+
+if (typeof rateLimitCleanupInterval.unref === 'function') {
+  rateLimitCleanupInterval.unref();
+}
 
 // --- Server-Side Only Gemini Client ---
 let genAIClient: GoogleGenAI | null = null;

@@ -55,6 +55,7 @@ export class StylePlayer {
   private endingTimeoutId: number | null = null;
   private nextStepTime: number = 0;
   private currentStep: number = 0; // absolute 16th steps elapsed
+  private currentStepInSection: number = 0; // 16th step within the currently active section
   private lookaheadMs: number = 25;
   private scheduleAheadTime: number = 0.1; // 100ms lookahead in Web Audio
 
@@ -213,6 +214,9 @@ export class StylePlayer {
     if (wasPlaying) this.stop();
     this.currentStyle = style;
     this.setTempo(style.tempo);
+    this.currentStep = 0;
+    this.currentStepInSection = 0;
+    this.nextQueuedSection = null;
 
     // Reset to Main A if available, else first available section
     if (style.sections['main_a']) {
@@ -256,6 +260,10 @@ export class StylePlayer {
 
   public getIsPlaying(): boolean {
     return this.isPlaying;
+  }
+
+  public setIsPlaying(val: boolean) {
+    this.isPlaying = val;
   }
 
   public getSyncStart(): boolean {
@@ -352,6 +360,14 @@ export class StylePlayer {
     return this.currentSection;
   }
 
+  public getNextQueuedSection(): StyleSection | null {
+    return this.nextQueuedSection;
+  }
+
+  public getCurrentStepInSection(): number {
+    return this.currentStepInSection;
+  }
+
   public getCurrentChord(): DetectedChord {
     return this.currentChord;
   }
@@ -380,7 +396,8 @@ export class StylePlayer {
 
     if (!this.isPlaying) {
       this.currentSection = targetSection;
-      this.nextQueuedSection = targetSection;
+      this.nextQueuedSection = null;
+      this.currentStepInSection = 0;
       this.notifySectionChanged(targetSection);
       if (autoStartIfStopped) {
         await this.start();
@@ -401,6 +418,7 @@ export class StylePlayer {
         this.isFilling = true;
         this.currentSection = fillKey;
         this.nextQueuedSection = targetSection;
+        this.currentStepInSection = 0;
         this.notifySectionChanged(this.currentSection);
         return;
       }
@@ -427,6 +445,7 @@ export class StylePlayer {
         this.isFilling = true;
         this.currentSection = fillKey;
         this.nextQueuedSection = targetSection;
+        this.currentStepInSection = 0;
         this.notifySectionChanged(this.currentSection);
         return;
       }
@@ -450,6 +469,7 @@ export class StylePlayer {
       if (this.currentStyle.sections['break']) {
         this.currentSection = 'break';
         this.nextQueuedSection = 'main_a';
+        this.currentStepInSection = 0;
         this.notifySectionChanged(this.currentSection);
       }
       return;
@@ -460,6 +480,7 @@ export class StylePlayer {
       this.isFilling = true;
       this.currentSection = 'break';
       this.nextQueuedSection = returnSection;
+      this.currentStepInSection = 0;
       this.notifySectionChanged(this.currentSection);
     }
   }
@@ -509,6 +530,7 @@ export class StylePlayer {
     if (!this.isPlaying) {
       this.currentSection = targetSection;
       this.nextQueuedSection = returnSection;
+      this.currentStepInSection = 0;
       this.notifySectionChanged(targetSection);
       return { decision, targetSection, intensity };
     }
@@ -516,6 +538,7 @@ export class StylePlayer {
     this.isFilling = true;
     this.currentSection = targetSection;
     this.nextQueuedSection = returnSection;
+    this.currentStepInSection = 0;
     this.notifySectionChanged(this.currentSection);
 
     return { decision, targetSection, intensity };
@@ -541,6 +564,7 @@ export class StylePlayer {
     this.stopStandaloneMetronome();
     this.isPlaying = true;
     this.currentStep = 0;
+    this.currentStepInSection = 0;
     this.nextStepTime = ctx.currentTime + 0.05;
 
     this.listeners.forEach(l => l.onPlaybackStateChanged?.(true));
@@ -551,6 +575,8 @@ export class StylePlayer {
   public stop() {
     this.stopStandaloneMetronome();
     this.isPlaying = false;
+    this.currentStep = 0;
+    this.currentStepInSection = 0;
     if (this.timerId !== null) {
       clearTimeout(this.timerId);
       this.timerId = null;
@@ -590,8 +616,9 @@ export class StylePlayer {
     this.timerId = window.setTimeout(this.schedulerLoop, this.lookaheadMs);
   };
 
-  private scheduleStep(step: number, time: number) {
-    let sectionData = this.currentStyle.sections[this.currentSection];
+  public scheduleStep(step: number = this.currentStep, time: number = 0) {
+    const scheduledSection = this.currentSection;
+    let sectionData = this.currentStyle.sections[scheduledSection];
     if (!sectionData) {
       sectionData = this.currentStyle.sections['main_a'] 
         || this.currentStyle.sections['main_b'] 
@@ -601,7 +628,7 @@ export class StylePlayer {
 
     const measures = sectionData.measures || 1;
     const totalStepsInSection = Math.max(16, measures * 16);
-    const stepInSection = step % totalStepsInSection;
+    const stepInSection = this.currentStepInSection % totalStepsInSection;
     const measure = Math.floor(stepInSection / 16) + 1;
     const beat = Math.floor((stepInSection % 16) / 4) + 1;
     const stepInMeasure = stepInSection % 16;
@@ -617,26 +644,7 @@ export class StylePlayer {
       }
     }
 
-    // Check for section completion / queued transitions
-    if (stepInMeasure === 15) {
-      if (this.nextQueuedSection) {
-        this.currentSection = this.nextQueuedSection;
-        this.nextQueuedSection = null;
-        this.isFilling = false;
-        this.notifySectionChanged(this.currentSection);
-      } else if (this.currentSection.startsWith('intro_')) {
-        this.currentSection = 'main_a';
-        this.notifySectionChanged(this.currentSection);
-      } else if (this.currentSection.startsWith('ending_') && measure >= measures) {
-        if (this.endingTimeoutId !== null) clearTimeout(this.endingTimeoutId);
-        this.endingTimeoutId = window.setTimeout(() => {
-          this.stop();
-          this.endingTimeoutId = null;
-        }, 500);
-      }
-    }
-
-    // Schedule each of the 8 accompaniment tracks
+    // Schedule each of the 8 accompaniment tracks for the scheduled section FIRST
     const trackKeys = Object.keys(sectionData.tracks) as TrackType[];
     const hasSolo = trackKeys.some(t => this.trackSettings[t]?.solo);
 
@@ -653,12 +661,36 @@ export class StylePlayer {
         return;
       }
 
-      // Find notes starting at this 16th step
+      // Find notes starting at this 16th step in the section
       const notes = trackData.notes.filter(n => n.step === stepInSection);
       notes.forEach(noteEvent => {
         this.playTrackNote(trackKey, trackData.voiceId, noteEvent, time);
       });
     });
+
+    // Check for section completion / queued transitions AFTER scheduling this step's notes
+    const isFinalStepInSection = stepInSection === totalStepsInSection - 1;
+
+    if (isFinalStepInSection) {
+      if (this.nextQueuedSection) {
+        this.currentSection = this.nextQueuedSection;
+        this.nextQueuedSection = null;
+        this.isFilling = false;
+        this.notifySectionChanged(this.currentSection);
+      } else if (this.currentSection.startsWith('intro_')) {
+        this.currentSection = 'main_a';
+        this.notifySectionChanged(this.currentSection);
+      } else if (this.currentSection.startsWith('ending_')) {
+        if (this.endingTimeoutId !== null) clearTimeout(this.endingTimeoutId);
+        this.endingTimeoutId = window.setTimeout(() => {
+          this.stop();
+          this.endingTimeoutId = null;
+        }, 500);
+      }
+      this.currentStepInSection = 0;
+    } else {
+      this.currentStepInSection++;
+    }
   }
 
   private playTrackNote(trackKey: TrackType, voiceId: string, noteEvent: NoteEvent, audioTime: number) {

@@ -52,6 +52,11 @@ export function gmProgramToVoiceId(program: number, isDrum: boolean = false): st
 
 export class StyParser {
   public static readonly SUPPORTED_EXTENSIONS = ['.sty', '.prs', '.sst', '.bcf', '.pst', '.fps', '.mid', '.midi'];
+  public static readonly MAX_ZIP_FILE_SIZE_BYTES = 50 * 1024 * 1024; // 50MB archive limit
+  public static readonly MAX_ZIP_TOTAL_FILES = 500; // max entries in zip
+  public static readonly MAX_ZIP_UNCOMPRESSED_FILE_BYTES = 10 * 1024 * 1024; // 10MB per file limit
+  public static readonly MAX_ZIP_TOTAL_DECOMPRESSED_BYTES = 100 * 1024 * 1024; // 100MB total decompressed limit
+  public static readonly MAX_ZIP_STYLES_COUNT = 100; // max styles to extract
 
   public static isZipFile(file: File | string): boolean {
     const filename = typeof file === 'string' ? file : file.name;
@@ -70,39 +75,73 @@ export class StyParser {
 
   /**
    * Unzips a .zip archive and parses all embedded Yamaha style files (.sty, .prs, .sst, etc.)
+   * Enforces security limits on archive size, entry counts, decompressed byte totals, and zip-slip paths.
    */
   public static async parseZipFile(file: File | ArrayBuffer, zipFileName: string = 'Archive.zip'): Promise<ZipParseResult> {
     const zipName = file instanceof File ? file.name : zipFileName;
     const arrayBuffer = file instanceof File ? await file.arrayBuffer() : file;
+
+    if (arrayBuffer.byteLength > this.MAX_ZIP_FILE_SIZE_BYTES) {
+      throw new Error(`Zip archive "${zipName}" exceeds maximum allowed size of 50MB (${(arrayBuffer.byteLength / (1024 * 1024)).toFixed(1)}MB).`);
+    }
     
     const zip = await JSZip.loadAsync(arrayBuffer);
     const styles: ArrangerStyle[] = [];
     const errors: { filename: string; error: string }[] = [];
     let totalFilesScanned = 0;
+    let totalDecompressedBytes = 0;
 
     const entries = Object.keys(zip.files);
+    if (entries.length > this.MAX_ZIP_TOTAL_FILES) {
+      throw new Error(`Zip archive "${zipName}" contains too many files (${entries.length}, max ${this.MAX_ZIP_TOTAL_FILES}).`);
+    }
 
     for (const relativePath of entries) {
       const entry = zip.files[relativePath];
       
-      // Skip directories and macOS resource fork files
-      if (entry.dir || relativePath.includes('__MACOSX') || relativePath.startsWith('.') || relativePath.includes('/.')) {
+      // Zip Slip / Directory Traversal protection & skip metadata files
+      if (
+        relativePath.includes('..') ||
+        relativePath.startsWith('/') ||
+        relativePath.startsWith('\\') ||
+        entry.dir ||
+        relativePath.includes('__MACOSX') ||
+        relativePath.startsWith('.') ||
+        relativePath.includes('/.')
+      ) {
         continue;
       }
 
       const fileName = relativePath.split('/').pop() || relativePath;
 
       if (this.isStyleFileName(fileName)) {
+        if (styles.length >= this.MAX_ZIP_STYLES_COUNT) {
+          errors.push({
+            filename: relativePath,
+            error: `Maximum style import limit of ${this.MAX_ZIP_STYLES_COUNT} styles reached per archive.`,
+          });
+          break;
+        }
+
         totalFilesScanned++;
         try {
           const fileBuffer = await entry.async('arraybuffer');
+          if (fileBuffer.byteLength > this.MAX_ZIP_UNCOMPRESSED_FILE_BYTES) {
+            throw new Error(`Decompressed style file "${fileName}" exceeds 10MB limit.`);
+          }
+
+          totalDecompressedBytes += fileBuffer.byteLength;
+          if (totalDecompressedBytes > this.MAX_ZIP_TOTAL_DECOMPRESSED_BYTES) {
+            throw new Error(`Total decompressed archive data exceeds safe limit of 100MB.`);
+          }
+
           const cleanName = fileName.replace(/\.(sty|prs|sst|bcf|pst|fps|mid|midi)$/i, '').replace(/_/g, ' ');
           const parsedStyle = this.parseStyBuffer(fileBuffer, cleanName, fileName);
           styles.push(parsedStyle);
         } catch (err: any) {
           errors.push({
             filename: relativePath,
-            error: err.message || 'Corrupted or unreadable style format'
+            error: err.message || 'Corrupted or unreadable style format',
           });
         }
       }

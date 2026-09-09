@@ -278,47 +278,55 @@ export class ChordEngine {
     if (!rootMatch) return null;
 
     let rawRoot = rootMatch[1].toUpperCase();
-    // Normalize flats to sharps
+    // Normalize flats and enharmonics to sharps
     if (rawRoot === 'DB') rawRoot = 'C#';
     else if (rawRoot === 'EB') rawRoot = 'D#';
     else if (rawRoot === 'GB') rawRoot = 'F#';
     else if (rawRoot === 'AB') rawRoot = 'G#';
     else if (rawRoot === 'BB') rawRoot = 'A#';
+    else if (rawRoot === 'CB') rawRoot = 'B';
+    else if (rawRoot === 'FB') rawRoot = 'E';
+    else if (rawRoot === 'B#') rawRoot = 'C';
+    else if (rawRoot === 'E#') rawRoot = 'F';
 
     const rootIndex = NOTE_NAMES.indexOf(rawRoot);
     if (rootIndex === -1) return null;
 
-    rest = rootMatch[2].trim().toLowerCase();
+    rest = rootMatch[2].trim().replace(/[()]/g, '').toLowerCase();
 
     let type: ChordType = 'maj';
-    if (rest === 'm' || rest === 'min' || rest === '-') type = 'min';
+    if (rest === 'm' || rest === 'min' || rest === '-' || rest === 'minor') type = 'min';
     else if (rest === '7' || rest === 'dom7') type = '7';
-    else if (rest === 'maj7' || rest === 'm7+' || rest === 'ma7' || rest === 'major7') type = 'maj7';
+    else if (rest === 'maj7' || rest === 'm7+' || rest === 'ma7' || rest === 'major7' || rest === 'maj') type = 'maj7';
     else if (rest === 'm7' || rest === 'min7' || rest === '-7') type = 'min7';
     else if (rest === 'sus4' || rest === 'sus') type = 'sus4';
     else if (rest === 'sus2') type = 'sus2';
     else if (rest === 'add9' || rest === '2') type = 'add9';
     else if (rest === 'maj9') type = 'maj9';
-    else if (rest === 'm9' || rest === 'min9') type = 'min9';
+    else if (rest === 'm9' || rest === 'min9' || rest === '-9') type = 'min9';
     else if (rest === '9') type = '9';
     else if (rest === '6') type = '6';
-    else if (rest === 'm6' || rest === 'min6') type = 'm6';
+    else if (rest === 'm6' || rest === 'min6' || rest === '-6') type = 'm6';
     else if (rest === 'dim' || rest === 'o') type = 'dim';
     else if (rest === 'dim7' || rest === 'o7') type = 'dim7';
     else if (rest === 'aug' || rest === '+') type = 'aug';
-    else if (rest === 'm7b5' || rest === 'ø') type = 'm7b5';
+    else if (rest === 'm7b5' || rest === 'ø' || rest === '-7b5') type = 'm7b5';
     else if (rest === '7sus4' || rest === '7sus') type = '7sus4';
     else if (rest === '5') type = '1+5';
 
     let bassName: string | undefined;
     let bassIndex: number | undefined;
     if (slashBass) {
-      let bNorm = slashBass.toUpperCase();
+      let bNorm = slashBass.toUpperCase().replace(/[()]/g, '');
       if (bNorm === 'DB') bNorm = 'C#';
       else if (bNorm === 'EB') bNorm = 'D#';
       else if (bNorm === 'GB') bNorm = 'F#';
       else if (bNorm === 'AB') bNorm = 'G#';
       else if (bNorm === 'BB') bNorm = 'A#';
+      else if (bNorm === 'CB') bNorm = 'B';
+      else if (bNorm === 'FB') bNorm = 'E';
+      else if (bNorm === 'B#') bNorm = 'C';
+      else if (bNorm === 'E#') bNorm = 'F';
       const bIdx = NOTE_NAMES.indexOf(bNorm);
       if (bIdx !== -1) {
         bassName = bNorm;
@@ -341,17 +349,27 @@ export class ChordEngine {
     };
   }
 
-  // Parse a text string of chord progressions like "Cmaj7 | Am7 | Fmaj7 | Gsus4"
+  // Parse a text string of chord progressions like "Cmaj7 | Am7 | Fmaj7 | Gsus4", "C - G - Am - F", "D-7 -> G7 -> Cmaj7"
   public static parseProgressionString(text: string): DetectedChord[] {
-    const rawTokens = text.split(/[|\-,;\n\t]+/).map(s => s.trim()).filter(Boolean);
+    if (!text || typeof text !== 'string') return [];
+
+    // Clean delimiters: replace arrows (->, =>), bar lines (|), commas, semicolons, brackets, and newlines
+    // Distinguish delimiters from chord hyphens (e.g. ' - ' or hyphen followed by note letter like 'C-G' vs 'D-7')
+    const normalized = text
+      .replace(/->|=>|-->/g, ' ')
+      .replace(/[|;,:\n\r\t]/g, ' ')
+      .replace(/[[\]]/g, ' ')
+      .replace(/\s+-\s+/g, ' ') // whitespace-isolated hyphens are separators
+      .replace(/-(?=[A-G])/g, ' '); // hyphen directly preceding a root note name (e.g. "C-G-Am") is a separator
+
+    const rawTokens = normalized.split(/\s+/).map(s => s.trim()).filter(Boolean);
     const chords: DetectedChord[] = [];
     for (const token of rawTokens) {
-      // Split spaces within segment if any
-      const subTokens = token.split(/\s+/).filter(Boolean);
-      for (const st of subTokens) {
-        const parsed = this.parseChordSymbol(st);
-        if (parsed) chords.push(parsed);
-      }
+      // Clean leading/trailing punctuation except chord notation characters
+      const cleanToken = token.replace(/^[^\w#bø+\-]+|[^\w#bø+\-/]+$/g, '');
+      if (!cleanToken) continue;
+      const parsed = this.parseChordSymbol(cleanToken);
+      if (parsed) chords.push(parsed);
     }
     return chords;
   }

@@ -6,6 +6,7 @@
 import React, { useState } from 'react';
 import { Database, Download, Upload, Trash2, RefreshCw, AlertTriangle, Check, Disc, Music, Layers, Sliders } from 'lucide-react';
 import { SystemSettings, resetSettingsGroup } from '../../utils/systemSettings';
+import { validateBackupPayload } from '../../utils/backupValidation';
 
 interface BackupTabProps {
   settings: SystemSettings;
@@ -55,10 +56,23 @@ export const BackupTab: React.FC<BackupTabProps> = ({
     const file = e.target.files?.[0];
     if (!file) return;
 
+    if (!file.name.endsWith('.json') && file.type !== 'application/json') {
+      showToast('Please select a valid .json backup file.');
+      return;
+    }
+
     const reader = new FileReader();
     reader.onload = (event) => {
       try {
-        const data = JSON.parse(event.target?.result as string);
+        const parsed = JSON.parse(event.target?.result as string);
+        const validation = validateBackupPayload(parsed);
+
+        if (!validation.valid || !validation.data) {
+          showToast(validation.error || 'Invalid backup structure');
+          return;
+        }
+
+        const data = validation.data;
         if (data.customStyles) localStorage.setItem('yamaha_custom_styles', JSON.stringify(data.customStyles));
         if (data.userSongbooks) localStorage.setItem('yamaha_user_songbooks', JSON.stringify(data.userSongbooks));
         if (data.registrationMemory) localStorage.setItem('yamaha_registration_memory', JSON.stringify(data.registrationMemory));
@@ -66,11 +80,14 @@ export const BackupTab: React.FC<BackupTabProps> = ({
         if (data.customPrayerPads) localStorage.setItem('yamaha_custom_prayer_pads', JSON.stringify(data.customPrayerPads));
         if (data.systemSettings) localStorage.setItem('yamaha_system_settings', JSON.stringify(data.systemSettings));
 
-        showToast('Backup restored successfully! Reloading workstation...');
+        showToast('Backup verified & restored successfully! Reloading workstation...');
         setTimeout(() => window.location.reload(), 1200);
-      } catch (err) {
-        showToast('Invalid backup file format');
+      } catch (err: any) {
+        showToast(`Corrupted backup file: ${err.message || 'Syntax error in JSON'}`);
       }
+    };
+    reader.onerror = () => {
+      showToast('Failed to read the selected backup file.');
     };
     reader.readAsText(file);
   };

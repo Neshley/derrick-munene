@@ -54,8 +54,8 @@ export const UserGuideModal: React.FC<UserGuideModalProps> = ({
   const [selectedTab, setSelectedTab] = useState<TabSelection>('Getting Started');
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedIds, setExpandedIds] = useState<Set<string>>(() => {
-    // Open the first 2 sections of Getting Started by default
-    return new Set(['welcome', 'quickstart-guide']);
+    // Open the first 2 chapters of Getting Started by default
+    return new Set(['chapter-1-overview', 'chapter-2-quickstart']);
   });
   const [downloadingDocx, setDownloadingDocx] = useState(false);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
@@ -238,6 +238,17 @@ export const UserGuideModal: React.FC<UserGuideModalProps> = ({
               {downloadingDocx ? <Check className="w-3.5 h-3.5 animate-bounce" /> : <FileText className="w-3.5 h-3.5" />}
               <span className="hidden sm:inline">{downloadingDocx ? 'Saving Word...' : 'Download Word'}</span>
               <span className="sm:hidden">Word</span>
+            </button>
+
+            <button
+              id="btn-download-markdown-guide"
+              onClick={downloadMarkdown}
+              className="px-3 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 hover:text-white font-medium text-xs flex items-center gap-1.5 shadow-sm transition-all active:scale-95 cursor-pointer border border-zinc-700"
+              title="Download full guide as Markdown (.md)"
+            >
+              <FileDown className="w-3.5 h-3.5 text-amber-400" />
+              <span className="hidden sm:inline">Markdown (.md)</span>
+              <span className="sm:hidden">.MD</span>
             </button>
 
             <button

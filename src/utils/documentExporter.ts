@@ -1,6 +1,13 @@
 import JSZip from 'jszip';
 import { jsPDF } from 'jspdf';
-import { WORSHIP_GUIDE_SECTIONS, WORSHIP_GUIDE_TITLE, WORSHIP_GUIDE_SUBTITLE, RAW_MARKDOWN_GUIDE } from './worshipGuideContent';
+import { 
+  WORSHIP_GUIDE_SECTIONS, 
+  WORSHIP_GUIDE_TITLE, 
+  WORSHIP_GUIDE_SUBTITLE, 
+  WORSHIP_GUIDE_VERSION,
+  WORSHIP_GUIDE_LAST_UPDATED,
+  RAW_MARKDOWN_GUIDE 
+} from './worshipGuideContent';
 
 /**
  * Downloads the User Guide as a Microsoft Word document (.docx)
@@ -94,7 +101,7 @@ export async function downloadWordDocx(): Promise<void> {
     <w:p>
       <w:pPr>
         <w:jc w:val="center"/>
-        <w:spacing w:after="360"/>
+        <w:spacing w:after="120"/>
       </w:pPr>
       <w:r>
         <w:rPr>
@@ -103,6 +110,19 @@ export async function downloadWordDocx(): Promise<void> {
           <w:color w:val="71717A"/>
         </w:rPr>
         <w:t>${xmlEscape(WORSHIP_GUIDE_SUBTITLE)}</w:t>
+      </w:r>
+    </w:p>
+    <w:p>
+      <w:pPr>
+        <w:jc w:val="center"/>
+        <w:spacing w:after="360"/>
+      </w:pPr>
+      <w:r>
+        <w:rPr>
+          <w:sz w:val="20"/>
+          <w:color w:val="A1A1AA"/>
+        </w:rPr>
+        <w:t>${xmlEscape(WORSHIP_GUIDE_VERSION)} • ${xmlEscape(WORSHIP_GUIDE_LAST_UPDATED)} • Lead Architect: Derrick Munene</w:t>
       </w:r>
     </w:p>`;
 
@@ -383,7 +403,13 @@ export function downloadPdf(): void {
   doc.setFontSize(13);
   doc.setTextColor(80, 80, 80);
   doc.text(WORSHIP_GUIDE_SUBTITLE, margin, cursorY);
-  cursorY += 6;
+  cursorY += 5;
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(130, 130, 130);
+  doc.text(`${WORSHIP_GUIDE_VERSION} • ${WORSHIP_GUIDE_LAST_UPDATED} • Lead Architect: Derrick Munene`, margin, cursorY);
+  cursorY += 5;
 
   doc.setDrawColor(200, 200, 200);
   doc.setLineWidth(0.5);
@@ -593,6 +619,9 @@ export function printUserGuide(): void {
       <body>
         <h1>${WORSHIP_GUIDE_TITLE}</h1>
         <h2>${WORSHIP_GUIDE_SUBTITLE}</h2>
+        <p style="color: #71717a; font-size: 0.85rem; margin-top: -1rem; margin-bottom: 2rem;">
+          <strong>Version:</strong> ${WORSHIP_GUIDE_VERSION} • <strong>Last Updated:</strong> ${WORSHIP_GUIDE_LAST_UPDATED} • <strong>Lead Architect:</strong> Derrick Munene
+        </p>
         ${(() => {
           let lastCat = '';
           return WORSHIP_GUIDE_SECTIONS.map((sec) => {

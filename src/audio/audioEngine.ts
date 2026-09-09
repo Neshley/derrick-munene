@@ -1932,12 +1932,12 @@ export class AudioEngine {
     lfo.connect(lfoGain);
     lfo.start(t);
 
-    const oscs: OscillatorNode[] = [];
+    const oscs: Array<{ osc: OscillatorNode; baseDetuneCents: number }> = [];
 
     const applyPitchAndMod = (osc: OscillatorNode, baseDetuneCents: number = 0) => {
       osc.detune.setValueAtTime(baseDetuneCents + initialPitchBend * 100, t);
       lfoGain.connect(osc.detune);
-      oscs.push(osc);
+      oscs.push({ osc, baseDetuneCents });
     };
 
     let stopVoiceFn: (releaseTime?: number) => void = () => {};
@@ -2308,9 +2308,9 @@ export class AudioEngine {
       },
       setPitchBend: (semitones: number) => {
         if (!this.ctx) return;
-        oscs.forEach((o) => {
+        oscs.forEach(({ osc, baseDetuneCents }) => {
           try {
-            o.detune.setTargetAtTime(semitones * 100, this.ctx!.currentTime, 0.015);
+            osc.detune.setTargetAtTime(baseDetuneCents + semitones * 100, this.ctx!.currentTime, 0.015);
           } catch {
             // Ignored
           }
