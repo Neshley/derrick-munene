@@ -140,28 +140,37 @@ export const CreatorMessageModal: React.FC<CreatorMessageModalProps> = ({ isOpen
 
               {/* Personal Story */}
               <section className="space-y-3.5">
-                <h3 className="text-base sm:text-lg font-bold text-zinc-100 flex items-center gap-2">
-                  <span className="w-1.5 h-4 bg-amber-500 rounded-full inline-block"></span>
-                  Why I Created DM ARRANGIA
-                </h3>
-                <p className="text-zinc-300 text-xs sm:text-sm">
-                  Hello, I’m <strong>Derrick Munene</strong>. As a keyboardist, church music director, and software engineer based in Kenya, I’ve spent years experiencing firsthand the joys and the struggles of live musical performance.
-                </p>
-                <p className="text-zinc-300 text-xs sm:text-sm">
-                  For decades, high-end arranger keyboards—like the Yamaha Genos, Tyros, and PSR-S/SX series—have been the undisputed gold standard for solo performers, church keyboardists, and songwriters. Their ability to take a single left-hand chord and orchestrate a full live band in real time with dynamic variations, bass lines, and drum fills is sheer musical magic.
-                </p>
-                <p className="text-zinc-300 text-xs sm:text-sm">
-                  However, these hardware flagships cost between <strong>$2,000 and $5,000+ USD</strong>. For countless talented young musicians, church fellowships, worship leaders, and aspiring producers in developing nations and across the globe, that hardware is simply out of reach.
-                </p>
-                <div className="p-4 rounded-xl bg-zinc-900/80 border border-zinc-800 space-y-2">
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-amber-400 flex items-center gap-2">
-                    <Sparkles className="w-3.5 h-3.5" /> The Spark Behind The Code
-                  </h4>
-                  <p className="text-xs text-zinc-300">
-                    I asked myself a radical question: <em>"Why can't an ordinary laptop, tablet, or phone running a modern browser deliver that same rich, interactive, polyphonic arranger experience—completely free, low latency, and zero install required?"</em>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-base sm:text-lg font-bold text-zinc-100 flex items-center gap-2">
+                    <span className="w-1.5 h-4 bg-amber-500 rounded-full inline-block"></span>
+                    Why I Created DM ARRANGIA
+                  </h3>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                    Full &amp; Short Versions
+                  </span>
+                </div>
+
+                {/* Full Creator Message */}
+                <div className="p-4 rounded-xl bg-zinc-900/90 border border-zinc-800 space-y-3 text-xs sm:text-sm text-zinc-300">
+                  <p>
+                    Hello, I’m <strong>Derrick Munene</strong>. As a church worship keyboardist and software engineer in Kenya, I grew up experiencing firsthand how powerful and life-giving arranger keyboards are for live ministry. Instruments like the Yamaha Genos, Tyros, and PSR series allow a single player to orchestrate an entire band with feeling, nuance, and spontaneous musical freedom. But hardware flagships costing upwards of $2,000 to $5,000 remain far out of reach for countless churches, community fellowships, young musicians, and bedroom producers across the world.
                   </p>
-                  <p className="text-xs text-zinc-400 italic">
-                    DM ARRANGIA is the fruit of that question. It isn’t a collection of static MP3 loops or a toy piano. It is a full-fledged real-time accompaniment sequencer, algorithmic synthesizer, and worship workstation crafted note-by-note.
+                  <p>
+                    I built DM ARRANGIA to dismantle that barrier from the ground up: to deliver an expressive, zero-latency arranger workstation and worship companion directly inside any modern web browser—completely free, with no bulky drivers, expensive sound cards, or high-end hardware needed. Every single layer of this software—from the Yamaha .STY binary parser and microsecond audio scheduling to the procedural synthesizers, Selah prayer drones, and AI musical assistance—was built with deep love, purpose, and a builder’s obsession with serving musicians.
+                  </p>
+                  <p>
+                    Whether you are leading Sunday morning praise, providing altar ministry atmosphere, rehearsing in your room, or sketching song ideas on an old laptop, my hope is that DM ARRANGIA equips you with confidence and inspires your creativity. If this workstation has blessed your music or ministry and you would like to help keep development active, support server hosting, and fund new styles, you can support the project via PayPal (<span className="text-amber-300 font-mono">derrickmunene2025@gmail.com</span>), M-Pesa (<span className="text-emerald-300 font-mono">+254 704 034 278</span>), or by starring and contributing on GitHub. Thank you for making music with DM ARRANGIA.
+                  </p>
+                </div>
+
+                {/* Short Summary Version */}
+                <div className="p-3.5 rounded-xl bg-gradient-to-r from-amber-950/20 via-zinc-900 to-zinc-900 border border-amber-500/30 space-y-1.5">
+                  <div className="flex items-center gap-1.5 text-amber-400 font-bold text-xs">
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>Quick Summary (50–80 words)</span>
+                  </div>
+                  <p className="text-xs text-zinc-300 italic leading-relaxed">
+                    “I built DM ARRANGIA out of my journey as a worship keyboardist and builder in Kenya. Professional arranger keyboards unlock immense musical expression, but steep hardware prices keep them out of reach for many. DM ARRANGIA brings that dynamic arranger band and worship atmosphere straight into your browser for free. If this platform blesses your rehearsals or ministry, thank you for supporting the journey via PayPal, M-Pesa, or GitHub.”
                   </p>
                 </div>
               </section>

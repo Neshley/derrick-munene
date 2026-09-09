@@ -80,8 +80,36 @@ export const WORSHIP_GUIDE_CATEGORIES: GuideCategoryMeta[] = [
 
 export const WORSHIP_GUIDE_SECTIONS: GuideSection[] = [
   // =========================================================================
-  // CATEGORY 1: GETTING STARTED (Chapters 1 - 7)
+  // CATEGORY 1: GETTING STARTED (Preface & Chapters 1 - 7)
   // =========================================================================
+  {
+    id: "preface-creator-message",
+    title: "Preface: A Personal Message from the Creator (Derrick Munene)",
+    category: "Getting Started",
+    level: 1,
+    summary: "The heart, origins, and motivation behind DM ARRANGIA, with personal messages from creator Derrick Munene and project support channels.",
+    content: [
+      "A Personal Message from Derrick Munene (Lead Architect & Worship Keyboardist):",
+      "Hello, I’m Derrick Munene. As a church worship keyboardist and software engineer in Kenya, I grew up experiencing firsthand how powerful and life-giving arranger keyboards are for live ministry. Instruments like the Yamaha Genos, Tyros, and PSR series allow a single player to orchestrate an entire band with feeling, nuance, and spontaneous musical freedom. But hardware flagships costing upwards of $2,000 to $5,000 remain far out of reach for countless churches, community fellowships, young musicians, and bedroom producers across the world.",
+      "I built DM ARRANGIA to dismantle that barrier from the ground up: to deliver an expressive, zero-latency arranger workstation and worship companion directly inside any modern web browser—completely free, with no bulky drivers, expensive sound cards, or high-end hardware needed. Every single layer of this software—from the Yamaha .STY binary parser and microsecond audio scheduling to the procedural synthesizers, Selah prayer drones, and AI musical assistance—was built with deep love, purpose, and a builder’s obsession with serving musicians.",
+      "Whether you are leading Sunday morning praise, providing altar ministry atmosphere, rehearsing in your room, or sketching song ideas on an old laptop, my hope is that DM ARRANGIA equips you with confidence and inspires your creativity. If this workstation has blessed your music or ministry and you would like to help keep development active, support server hosting, and fund new styles, you can support the project via PayPal (derrickmunene2025@gmail.com), M-Pesa (+254 704 034 278), or by starring and contributing on GitHub (https://github.com/Neshley/derrick-munene). Thank you for making music with DM ARRANGIA.",
+      "Short Summary Version:",
+      "“I built DM ARRANGIA out of my journey as a worship keyboardist and builder in Kenya. Professional arranger keyboards unlock immense musical expression, but steep hardware prices keep them out of reach for many. DM ARRANGIA brings that dynamic arranger band and worship atmosphere straight into your browser for free. If this platform blesses your rehearsals or ministry, thank you for supporting the journey via PayPal, M-Pesa, or GitHub.”",
+      "Ways to Support Ongoing Development:",
+      "• PayPal: derrickmunene2025@gmail.com\n• M-Pesa: +254 704 034 278\n• GitHub: https://github.com/Neshley/derrick-munene"
+    ],
+    tips: [
+      "You can open the full 'Message from the Creator' dialog at any time by clicking 'Support the Creator' in the sidebar Tools tab or clicking 'CREATOR' in the collapsed sidebar rail."
+    ],
+    table: {
+      headers: ["Support Channel", "Details / Address", "Purpose"],
+      rows: [
+        ["PayPal", "derrickmunene2025@gmail.com", "International contributions, hosting & server maintenance"],
+        ["M-Pesa (Kenya)", "+254 704 034 278 (Derrick Munene)", "Local mobile support & equipment coffee fund"],
+        ["GitHub Repository", "https://github.com/Neshley/derrick-munene", "Star the project, report issues, and view open source code"]
+      ]
+    }
+  },
   {
     id: "chapter-1-overview",
     title: "Chapter 1: Welcome & System Architecture Overview",
@@ -587,16 +615,18 @@ export const WORSHIP_GUIDE_SECTIONS: GuideSection[] = [
   // =========================================================================
   {
     id: "chapter-23-arrangia-ai-studio",
-    title: "Chapter 23: ARRANGIA AI Studio (6 Generative Music Tools)",
+    title: "Chapter 23: AI Co-Producer Studio (6 Generative Music Tools)",
     category: "Advanced Studio Features",
     level: 3,
     summary: "Comprehensive guide to the 6 dedicated AI tools: Style Generator, Chord Reharmonizer, Songbook Master, Voice Designer, Auto-Mixer, and Multi-Pads.",
     content: [
-      "ARRANGIA AI Studio harnesses Google's Gemini models to provide an intelligent musical co-producer directly inside your workstation.",
+      "The AI Co-Producer Studio harnesses Google's Gemini models to provide an intelligent musical copilot directly inside your workstation.",
+      "Accessing AI Co-Producer:",
+      "Click the single 'AI Co-Producer' button in the sidebar (or the glowing Sparkles icon in the collapsed rail). This opens the full AI Co-Producer Studio modal with 6 specialized generative modules.",
       "The 6 Dedicated AI Studio Tools:",
       "1. AI Arranger Style Generator: Type natural language prompts (e.g. 'African Gospel Praise with Highlife Brass & Slap Bass at 124 BPM' or 'Gentle Ambient Ballad with Acoustic Guitar & Cello'). The AI composes a full multi-track style with Main A/B variations, fills, drum patterns, and OTS voice pairings that you can audition and apply directly to your workstation.\n2. Chord Reharmonizer & Gospel Chops: Enter a musical key (e.g. Eb) and style (Gospel 2-5-1, Neo-Soul Passing Chords, Sebene Turnaround). The AI generates rich harmonic progressions with Roman numerals, voicings, and musical explanations. Includes an interactive live playback audition tool.\n3. Songbook Master: Search for any worship anthem or hymn. The AI generates a complete chord chart with lyrics, verse/chorus structure, suggested tempo, and recommended style pairing, with an instant 'Save to Songbook' button.\n4. Voice Sound Designer: Describe a target timbre (e.g. 'Warm 80s analog brass with lush chorus and gentle filter sweep'). The AI designs custom synthesis parameters (oscillator shapes, envelope attacks, filter resonance) and assigns the resulting voice directly to Right 1, Right 2, or Left.\n5. Auto-Mix & Master Console: Select a mix target (Worship Balance, Heavy Bass, Punchy Praise, Broadcast Master). The AI analyzes your active tracks and automatically balances fader levels, stereo pans, and master limiter compression.\n6. Multi-Pad Studio: Generates custom 4-pad loop collections (e.g. rhythmic guitar strums, ambient shimmer pads, shaker loops) matching your current song tempo and key.",
-      "Architecture & Privacy:",
-      "All AI requests are handled securely server-side. If running completely offline or without an active internet connection, DM ARRANGIA automatically engages its built-in algorithmic fallback engine to provide musical chord suggestions and style templates without disruption."
+      "API Configuration & Offline Fallback:",
+      "• Dedicated Configuration: Gemini API keys and AI server status are managed in the Tools tab ('Manage Gemini Key') or under Settings -> 'ARRANGIA AI' tab, keeping the main AI Co-Producer button focused purely on creative flow.\n• Algorithmic Fallback: If you are playing offline or have not configured an API key, DM ARRANGIA automatically engages its built-in algorithmic music engine to provide chord recommendations, style grooves, and voice presets without interruption."
     ],
     tips: [
       "You can audition any generated chord progression directly inside the AI Studio modal before deciding to apply it to your live keyboard."
@@ -734,6 +764,30 @@ export const WORSHIP_GUIDE_SECTIONS: GuideSection[] = [
     tips: [
       "Export a fresh JSON backup to a USB drive before every major church conference or tour so you can instantly restore your complete rig on any borrowed laptop or computer."
     ]
+  },
+  {
+    id: "support-project",
+    title: "Appendix: Supporting the DM ARRANGIA Project & Creator Links",
+    category: "Advanced Studio Features",
+    level: 3,
+    summary: "Voluntary support options, coffee sponsorship, PayPal, M-Pesa, and GitHub repository links.",
+    content: [
+      "DM ARRANGIA is completely free and open to musicians, church worship leaders, and bedroom producers worldwide without licensing fees or subscription walls.",
+      "If DM ARRANGIA has blessed your ministry, rehearsals, or songwriting, and you would like to help maintain server hosting, develop new styles, and keep the project thriving, your voluntary support is deeply appreciated:",
+      "• PayPal: derrickmunene2025@gmail.com\n• M-Pesa: +254 704 034 278\n• GitHub: https://github.com/Neshley/derrick-munene",
+      "Thank you for being part of this musical journey! Soli Deo Gloria."
+    ],
+    tips: [
+      "Starring the repository on GitHub is completely free and helps other church keyboardists and musicians discover DM ARRANGIA."
+    ],
+    table: {
+      headers: ["Support Channel", "Recipient / Account", "Purpose"],
+      rows: [
+        ["PayPal", "derrickmunene2025@gmail.com", "International contributions, hosting & server maintenance"],
+        ["M-Pesa (Kenya)", "+254 704 034 278 (Derrick Munene)", "Local mobile support & equipment coffee fund"],
+        ["GitHub Repository", "https://github.com/Neshley/derrick-munene", "Star the project, report issues, and view open source code"]
+      ]
+    }
   }
 ];
 
@@ -745,6 +799,7 @@ export const RAW_MARKDOWN_GUIDE = `# DM ARRANGIA
 ---
 
 # TABLE OF CONTENTS
+- [Preface: A Personal Message from the Creator (Derrick Munene)](#preface-a-personal-message-from-the-creator-derrick-munene)
 - [Chapter 1: Welcome & System Architecture Overview](#chapter-1-welcome--system-architecture-overview)
 - [Chapter 2: The 3-Minute Quickstart (Start Playing Instantly)](#chapter-2-the-3-minute-quickstart-start-playing-instantly)
 - [Chapter 3: Arranger Keyboards Explained for Total Beginners](#chapter-3-arranger-keyboards-explained-for-total-beginners)
@@ -767,7 +822,7 @@ export const RAW_MARKDOWN_GUIDE = `# DM ARRANGIA
 - [Chapter 20: Computer Keyboard QWERTY Piano & Hotkeys Cheatsheet](#chapter-20-computer-keyboard-qwerty-piano--hotkeys-cheatsheet)
 - [Chapter 21: Low-Latency Audio Engine & Buffer Tuning (<15ms)](#chapter-21-low-latency-audio-engine--buffer-tuning-15ms)
 - [Chapter 22: Complete MIDI Troubleshooting & Diagnostic Fixes](#chapter-22-complete-midi-troubleshooting--diagnostic-fixes)
-- [Chapter 23: ARRANGIA AI Studio (6 Generative Music Tools)](#chapter-23-arrangia-ai-studio-6-generative-music-tools)
+- [Chapter 23: AI Co-Producer Studio (6 Generative Music Tools)](#chapter-23-ai-co-producer-studio-6-generative-music-tools)
 - [Chapter 24: AI Music Director Panel (Live Harmony & Flow Assistant)](#chapter-24-ai-music-director-panel-live-harmony--flow-assistant)
 - [Chapter 25: Selah Continuous Prayer & Worship Atmosphere Pad](#chapter-25-selah-continuous-prayer--worship-atmosphere-pad)
 - [Chapter 26: Studio DSP Effects Rack & Vocal Workstation Channel Strip](#chapter-26-studio-dsp-effects-rack--vocal-workstation-channel-strip)
@@ -775,10 +830,30 @@ export const RAW_MARKDOWN_GUIDE = `# DM ARRANGIA
 - [Chapter 28: LARK·MEDIA Player, Audio Visualizers & Synchronized Lyrics](#chapter-28-larkmedia-player-audio-visualizers--synchronized-lyrics)
 - [Chapter 29: System Settings, 7 Theme Archetypes & Display Customization](#chapter-29-system-settings-7-theme-archetypes--display-customization)
 - [Chapter 30: Save, Full JSON Backup, Selective Reset & Live Stage Checklist](#chapter-30-save-full-json-backup-selective-reset--live-stage-checklist)
+- [Appendix: Supporting the DM ARRANGIA Project & Creator Links](#appendix-supporting-the-dm-arrangia-project--creator-links)
 
 ---
 
 # SECTION 1: GETTING STARTED
+
+## Preface: A Personal Message from the Creator (Derrick Munene)
+
+### The Creator's Story (Full Version)
+Hello, I’m Derrick Munene. As a church worship keyboardist and software engineer in Kenya, I grew up experiencing firsthand how powerful and life-giving arranger keyboards are for live ministry. Instruments like the Yamaha Genos, Tyros, and PSR series allow a single player to orchestrate an entire band with feeling, nuance, and spontaneous musical freedom. But hardware flagships costing upwards of $2,000 to $5,000 remain far out of reach for countless churches, community fellowships, young musicians, and bedroom producers across the world.
+
+I built DM ARRANGIA to dismantle that barrier from the ground up: to deliver an expressive, zero-latency arranger workstation and worship companion directly inside any modern web browser—completely free, with no bulky drivers, expensive sound cards, or high-end hardware needed. Every single layer of this software—from the Yamaha .STY binary parser and microsecond audio scheduling to the procedural synthesizers, Selah prayer drones, and AI musical assistance—was built with deep love, purpose, and a builder’s obsession with serving musicians.
+
+Whether you are leading Sunday morning praise, providing altar ministry atmosphere, rehearsing in your room, or sketching song ideas on an old laptop, my hope is that DM ARRANGIA equips you with confidence and inspires your creativity. If this workstation has blessed your music or ministry and you would like to help keep development active, support server hosting, and fund new styles, you can support the project via PayPal (derrickmunene2025@gmail.com), M-Pesa (+254 704 034 278), or by starring and contributing on GitHub (https://github.com/Neshley/derrick-munene). Thank you for making music with DM ARRANGIA.
+
+### Short Summary Version
+"I built DM ARRANGIA out of my journey as a worship keyboardist and builder in Kenya. Professional arranger keyboards unlock immense musical expression, but steep hardware prices keep them out of reach for many. DM ARRANGIA brings that dynamic arranger band and worship atmosphere straight into your browser for free. If this platform blesses your rehearsals or ministry, thank you for supporting the journey via PayPal, M-Pesa, or GitHub."
+
+### Direct Creator Support Channels:
+* **PayPal:** \`derrickmunene2025@gmail.com\` (International support, server costs & maintenance)
+* **M-Pesa (Kenya):** \`+254 704 034 278\` (Derrick Munene - mobile coffee fund & local support)
+* **GitHub Repository:** \`https://github.com/Neshley/derrick-munene\` (Star the repo, report feedback, view code)
+
+---
 
 ## Chapter 1: Welcome & System Architecture Overview
 Welcome to DM ARRANGIA (Version 2.5.0 Professional Edition), conceived and architected by Derrick Munene (Lead Architect & Worship Keyboardist). DM ARRANGIA is an advanced, browser-native arranger workstation and live performance companion engineered specifically for solo musicians, church worship keyboardists, vocalists, and music producers.
@@ -989,13 +1064,16 @@ Unlike standard synthesizers or digital pianos, an Arranger Keyboard functions a
 
 # SECTION 4: ADVANCED STUDIO FEATURES
 
-## Chapter 23: ARRANGIA AI Studio (6 Generative Music Tools)
-1. AI Style Creator: Generates custom arranger styles from English prompts.
-2. Chord Reharmonizer: Generates gospel passing chords and substitutions with live audition player.
-3. Songbook Master: Generates complete chord sheets, lyrics, and style pairings.
-4. Voice Sound Designer: Generates custom subtractive/FM synthesizer parameters.
-5. Auto-Mixer: Balances 8-track accompaniment volumes, pans, and master compression.
-6. Multi-Pad Studio: Generates custom 4-pad loop collections.
+## Chapter 23: AI Co-Producer Studio (6 Generative Music Tools)
+* Launch from the dedicated "AI Co-Producer" sidebar button or collapsed rail sparkles icon.
+* 1. AI Style Creator: Generates custom multi-track arranger styles from English prompts (BPM, groove, voices).
+* 2. Chord Reharmonizer: Generates gospel passing chords, jazz substitutions, and turnarounds with interactive audition.
+* 3. Songbook Master: Generates complete chord sheets, lyrics, verse/chorus structure, and style pairings with one-click songbook saving.
+* 4. Voice Sound Designer: Generates custom subtractive/FM synthesizer parameters applied to R1, R2, or Left.
+* 5. Auto-Mix & Master: Balances 8-track accompaniment faders, pans, and master compression presets.
+* 6. Multi-Pad Studio: Generates custom 4-pad loop collections matching active key and tempo.
+* Dedicated API Configuration: Key and server connection are managed under the Tools tab ("Manage Gemini Key") or Settings ("ARRANGIA AI").
+* Algorithmic Offline Fallback: Operates seamlessly even without an API key or when playing offline.
 
 ---
 
@@ -1052,6 +1130,17 @@ Unlike standard synthesizers or digital pianos, an Arranger Keyboard functions a
 * Backup Restore with automatic schema verification.
 * Selective Reset: Reset only Audio, only MIDI, only Styles, or full Factory Reset.
 * Live Stage Checklist: Audio cables, Screen Wake Lock on, MIDI connection check, Split Point check, Registration Memory 1-4 verified, Panic button located.
+
+---
+
+## Appendix: Supporting the DM ARRANGIA Project & Creator Links
+DM ARRANGIA is completely free and open to church musicians, worship leaders, and music creators across the world.
+If DM ARRANGIA has blessed your ministry, rehearsals, or songwriting, and you would like to help maintain server hosting, develop new styles, and keep the project thriving, your voluntary support is deeply appreciated:
+* **PayPal:** \`derrickmunene2025@gmail.com\` (International support, server costs & maintenance)
+* **M-Pesa (Kenya):** \`+254 704 034 278\` (Derrick Munene - mobile coffee fund & local support)
+* **GitHub Repository:** \`https://github.com/Neshley/derrick-munene\` (Star the project, report feedback, view code)
+
+Thank you for being part of this musical journey! Soli Deo Gloria.
 
 ---
 **DM ARRANGIA** • Designed & Engineered with dedication for church musicians and keyboardists worldwide.

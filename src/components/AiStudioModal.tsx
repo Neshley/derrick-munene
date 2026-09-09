@@ -415,7 +415,7 @@ export const AiStudioModal: React.FC<AiStudioModalProps> = ({
             <div>
               <div className="flex items-center gap-2">
                 <h2 className="text-base sm:text-lg font-bold font-mono uppercase tracking-wider text-zinc-100 flex items-center gap-2">
-                  <span>ARRANGIA AI</span>
+                  <span>AI CO-PRODUCER STUDIO</span>
                 </h2>
                 <span className="flex items-center gap-1 text-[11px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-950/80 text-emerald-300 border border-emerald-500/40">
                   <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />

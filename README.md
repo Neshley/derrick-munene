@@ -87,12 +87,16 @@
 - Interactive real-time audio visualizer canvas with multi-color frequency bars.
 - Playlist queue management with shuffle, repeat, and playlist persistence.
 
-### 🧠 Server-Side AI Music Director (Gemini)
-- **Secure Server-Side AI Architecture**: All AI requests are securely proxied through `/api/gemini/*` backend endpoints. Your `GEMINI_API_KEY` remains strictly protected on the server and is never exposed to the client browser.
-- **AI Arranger Style Creator**: Generate custom accompaniment patterns, groove descriptions, and basslines using Google Gemini.
-- **AI Reharmonization & Chord Assistant**: Analyze chord charts and suggest jazz substitutions, gospel passing chords, and worship transitions.
-- **AI Song Arranger & Transcriber**: Generate chord charts and structure suggestions from song lyrics or themes.
-- **Algorithmic Fallbacks**: If the AI service is offline or an API key is not configured, the engine seamlessly falls back to built-in musical theory algorithms without interruption.
+### 🧠 AI Co-Producer Studio (6 Generative Music Tools)
+- **Unified Entry Point**: Access the full AI Co-Producer Studio modal with a single click on the "AI Co-Producer" sidebar button.
+- **6 Dedicated Creative Tools**:
+  - **AI Style Creator**: Generate custom accompaniment patterns, groove descriptions, and basslines from natural language prompts.
+  - **Chord Reharmonizer**: Analyze chord charts and suggest jazz substitutions, gospel passing chords, and worship transitions with interactive preview.
+  - **Songbook Master**: Generate chord charts and structure suggestions from song lyrics or themes, saved straight to your songbook.
+  - **Voice Sound Designer**: Procedurally generate subtractive/FM synth voices based on descriptive timbres.
+  - **Auto-Mixer & Master Console**: Balance accompaniment volume faders, stereo panning, and master limiter compression.
+  - **Multi-Pad Studio**: Generate 4-pad loop collections tailored to your active key and tempo.
+- **Dedicated Key Management & Offline Fallback**: API keys are securely managed in the Tools tab and Settings. If offline or unconfigured, the workstation automatically falls back to built-in music theory algorithms without interruption.
 
 ### 📱 Progressive Web App (PWA) & Offline Support
 - Installable as a native standalone application on Windows, macOS, Linux, Android, and iOS.
@@ -331,10 +335,17 @@ Test Files  7 passed (7)
 > *“Technology should never be a barrier to creativity; it should be a quiet, responsive servant that brings out the heart of music.”*  
 > — **Derrick Munene** (Lead Architect & Worship Keyboardist)
 
-### 📖 The Heart & Vision
-DM ARRANGIA was born out of a desire to solve a real-world dilemma: flagship arranger keyboards (such as the Yamaha Genos, Tyros, and PSR-SX series) offer remarkable musical orchestration, but their **$2,000–$5,000+** price tag makes them inaccessible for countless young musicians, church worship leaders, and music students in Kenya, Africa, and around the world.
+### 📖 A Personal Message from the Creator (Derrick Munene)
 
-DM ARRANGIA proves that modern web technology (Web Audio API, Web MIDI, and TypeScript) can deliver that same polyphonic, interactive arranger experience inside a standard web browser—**100% free, low-latency, and cross-platform**, running without expensive hardware or subscription paywalls.
+#### Full Creator Message
+Hello, I’m Derrick Munene. As a church worship keyboardist and software engineer in Kenya, I grew up experiencing firsthand how powerful and life-giving arranger keyboards are for live ministry. Instruments like the Yamaha Genos, Tyros, and PSR series allow a single player to orchestrate an entire band with feeling, nuance, and spontaneous musical freedom. But hardware flagships costing upwards of $2,000 to $5,000 remain far out of reach for countless churches, community fellowships, young musicians, and bedroom producers across the world.
+
+I built DM ARRANGIA to dismantle that barrier from the ground up: to deliver an expressive, zero-latency arranger workstation and worship companion directly inside any modern web browser—completely free, with no bulky drivers, expensive sound cards, or high-end hardware needed. Every single layer of this software—from the Yamaha .STY binary parser and microsecond audio scheduling to the procedural synthesizers, Selah prayer drones, and AI musical assistance—was built with deep love, purpose, and a builder’s obsession with serving musicians.
+
+Whether you are leading Sunday morning praise, providing altar ministry atmosphere, rehearsing in your room, or sketching song ideas on an old laptop, my hope is that DM ARRANGIA equips you with confidence and inspires your creativity. If this workstation has blessed your music or ministry and you would like to help keep development active, support server hosting, and fund new styles, you can support the project via PayPal (`derrickmunene2025@gmail.com`), M-Pesa (`+254 704 034 278`), or by starring and contributing on GitHub. Thank you for making music with DM ARRANGIA.
+
+#### Short Summary Version
+> *“I built DM ARRANGIA out of my journey as a worship keyboardist and builder in Kenya. Professional arranger keyboards unlock immense musical expression, but steep hardware prices keep them out of reach for many. DM ARRANGIA brings that dynamic arranger band and worship atmosphere straight into your browser for free. If this platform blesses your rehearsals or ministry, thank you for supporting the journey via PayPal, M-Pesa, or GitHub.”*
 
 ### 💖 How Your Support Fuels The Project
 DM ARRANGIA is completely free and open. If this application has blessed your personal devotional times, helped your church worship team during Sunday services, powered your band rehearsals, or simplified your music production, you are warmly invited to **buy the creator a coffee**.

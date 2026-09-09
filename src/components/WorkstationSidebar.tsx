@@ -283,15 +283,15 @@ export const WorkstationSidebar: React.FC<WorkstationSidebarProps> = ({
         {isCollapsed ? (
           <div className="flex-1 py-3 flex flex-col items-center justify-between gap-3 overflow-y-auto custom-scrollbar">
             <div className="flex flex-col items-center gap-2 w-full px-1.5">
-              {/* Quick AI Studio Button */}
+              {/* Single AI Co-Producer Launcher (Rail / Collapsed) */}
               {onOpenAiStudio && (
                 <button
                   id="btn-sidebar-rail-ai-studio"
                   onClick={onOpenAiStudio}
                   className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500/30 to-cyan-500/20 hover:from-amber-500/40 hover:to-cyan-500/30 text-amber-300 border border-amber-500/50 flex flex-col items-center justify-center gap-0.5 transition-all shadow-md shadow-amber-500/20 group cursor-pointer"
-                  title="Open Arrangia AI Studio"
+                  title="Open AI Co-Producer"
                 >
-                  <Sparkles className="w-4 h-4 text-amber-400 animate-pulse" />
+                  <Sparkles className="w-4 h-4 text-amber-400 animate-pulse group-hover:scale-110 transition-transform" />
                   <span className="text-[8px] font-mono font-bold leading-none text-amber-300">AI</span>
                 </button>
               )}
@@ -363,19 +363,6 @@ export const WorkstationSidebar: React.FC<WorkstationSidebarProps> = ({
                 />
                 <span className="text-[8px] font-mono uppercase leading-none font-bold">SYNC</span>
               </button>
-
-              {/* AI Co-Producer Studio Quick Launcher */}
-              {onOpenAiStudio && (
-                <button
-                  id="btn-sidebar-rail-ai-studio"
-                  onClick={onOpenAiStudio}
-                  className="w-10 h-10 rounded-xl bg-gradient-to-tr from-purple-950/60 via-amber-950/60 to-cyan-950/60 hover:from-purple-900/80 hover:to-amber-900/80 text-amber-300 border border-amber-500/50 flex flex-col items-center justify-center gap-0.5 transition-all shadow-xs cursor-pointer group"
-                  title="Open Arrangia AI Studio"
-                >
-                  <Sparkles className="w-4 h-4 text-amber-400 animate-pulse group-hover:scale-110 transition-transform" />
-                  <span className="text-[8px] font-mono font-bold leading-none text-amber-200">AI</span>
-                </button>
-              )}
 
               {/* Worship Companion & User Guide Button */}
               {onOpenUserGuide && (
