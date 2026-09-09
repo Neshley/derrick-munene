@@ -40,6 +40,7 @@ import { SettingsPage } from './components/SettingsPage';
 import { StyleCreatorModal } from './components/StyleCreatorModal';
 import { MediaPlayerView } from './components/media/MediaPlayerView';
 import { StartupLoadingScreen } from './components/StartupLoadingScreen';
+import { DesktopTitleBar } from './components/DesktopTitleBar';
 import { addMultiPadBank } from './audio/multiPads';
 import { applyThemeToDom, getStoredSystemSettings } from './utils/systemSettings';
 import { 
@@ -673,6 +674,9 @@ export default function App() {
 
   return (
     <div className="h-dvh w-full max-w-[100vw] overflow-hidden bg-zinc-950 text-zinc-100 flex flex-col selection:bg-amber-500 selection:text-black">
+      {/* Desktop Native Window Title Bar (active on Desktop and Standalone PWA) */}
+      <DesktopTitleBar />
+
       {/* Top Workstation Header (Fixed) */}
       <WorkstationHeader
         appMode={appMode}

@@ -2,6 +2,7 @@
 
 import { EffectsRackSettings, ReverbType, VocalWorkstationSettings } from '../types/arranger';
 import { SystemSettings, getStoredSystemSettings, subscribeSystemSettings } from '../utils/systemSettings';
+import { microphoneService } from '../services/microphoneService';
 
 export interface AudioEngineActiveNote {
   stop: (releaseTime?: number) => void;
@@ -469,16 +470,10 @@ export class AudioEngine {
     if (!this.ctx) return false;
 
     try {
-      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      this.micStream = await microphoneService.requestStream();
+      if (!this.micStream) {
         return false;
       }
-      this.micStream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: false,
-        },
-      });
 
       this.micSourceNode = this.ctx.createMediaStreamSource(this.micStream);
       this.micGainNode = this.ctx.createGain();
@@ -547,9 +542,7 @@ export class AudioEngine {
 
   public disableMicrophone() {
     if (this.micStream) {
-      this.micStream.getTracks().forEach((t) => {
-        try { t.stop(); } catch {}
-      });
+      microphoneService.stopStream(this.micStream);
       this.micStream = null;
     }
     if (this.micSourceNode) {

@@ -1783,10 +1783,28 @@ export const MediaPlayerView: React.FC<MediaPlayerViewProps> = ({
                 currentTrack={playerState.currentTrack}
                 isPlaying={playerState.isPlaying}
                 onPlayTrack={handlePlayTrack}
+                onPauseTrack={() => mediaPlayerEngine.pause()}
+                onResumeTrack={() => mediaPlayerEngine.resume()}
                 onToggleFavorite={handleToggleFavorite}
                 onPlayNext={handlePlayNext}
                 onAddToQueue={handleAddToQueue}
                 onAddToPlaylist={handleAddToPlaylist}
+                onCreatePlaylist={() => {
+                  setEditingPlaylist(null);
+                  setIsPlaylistModalOpen(true);
+                }}
+                onShowLyrics={(track) => {
+                  handlePlayTrack(track);
+                  setActiveTab('lyrics');
+                }}
+                onOpenVideo={(track) => {
+                  handlePlayTrack(track);
+                  setActiveTab('video');
+                }}
+                onToastFeedback={(msg) => {
+                  setUploadNotification(msg);
+                  setTimeout(() => setUploadNotification(null), 3500);
+                }}
                 playlists={playlists}
                 emptyMessage="Queue is empty. Add songs from your library!"
               />
@@ -2100,10 +2118,28 @@ export const MediaPlayerView: React.FC<MediaPlayerViewProps> = ({
                 currentTrack={playerState.currentTrack}
                 isPlaying={playerState.isPlaying}
                 onPlayTrack={handlePlayTrack}
+                onPauseTrack={() => mediaPlayerEngine.pause()}
+                onResumeTrack={() => mediaPlayerEngine.resume()}
                 onToggleFavorite={handleToggleFavorite}
                 onPlayNext={handlePlayNext}
                 onAddToQueue={handleAddToQueue}
                 onAddToPlaylist={handleAddToPlaylist}
+                onCreatePlaylist={() => {
+                  setEditingPlaylist(null);
+                  setIsPlaylistModalOpen(true);
+                }}
+                onShowLyrics={(track) => {
+                  handlePlayTrack(track);
+                  setActiveTab('lyrics');
+                }}
+                onOpenVideo={(track) => {
+                  handlePlayTrack(track);
+                  setActiveTab('video');
+                }}
+                onToastFeedback={(msg) => {
+                  setUploadNotification(msg);
+                  setTimeout(() => setUploadNotification(null), 3500);
+                }}
                 onDeleteTrack={handleDeleteTrack}
                 onDirectFolder={handleDirectDeviceFolder}
                 onSelectFolder={(folder) => setSelectedFolderFilter(folder)}

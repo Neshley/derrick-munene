@@ -9,6 +9,7 @@ import { midiAutomationRecorder } from './midiAutomationRecorder';
 import { DEFAULT_MIDI_CHANNELS, MIDI_CC, MIDI_PITCH_BEND } from './midiConstants';
 import { parseMidiMessage } from './midiParser';
 import { transformVelocity, SystemSettings, getStoredSystemSettings, subscribeSystemSettings } from '../utils/systemSettings';
+import { capabilities, isDesktop } from '../platform';
 import {
   ActiveMidiNote,
   MidiChannelMapping,
@@ -87,7 +88,7 @@ export class MidiManager {
 
   // Internal State
   private state: MidiState = {
-    isSupported: typeof navigator !== 'undefined' && 'requestMIDIAccess' in navigator,
+    isSupported: capabilities.midi,
     permissionGranted: false,
     isConnected: false,
     selectedDeviceId: null,
@@ -141,10 +142,12 @@ export class MidiManager {
     if (this.isInitialized) return true;
     if (this.isInitializing) return false;
 
-    if (typeof navigator === 'undefined' || !('requestMIDIAccess' in navigator)) {
+    if (!capabilities.midi) {
       this.updateState({
         isSupported: false,
-        error: 'Web MIDI API is not supported in this browser. Please use Chrome, Edge, or Opera.',
+        error: isDesktop()
+          ? 'No MIDI subsystem detected on this desktop system.'
+          : 'Web MIDI API is not supported in this browser. Please use Chrome, Edge, or Opera.',
       });
       return false;
     }

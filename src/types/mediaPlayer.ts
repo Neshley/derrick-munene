@@ -45,6 +45,8 @@ export interface MediaTrack {
   isBuiltIn?: boolean;
   folderPath?: string; // Relative path on device (e.g. "Music/Worship/Song.mp3")
   folderName?: string; // Directed root directory name (e.g. "Music" or "Worship")
+  nativePath?: string; // Absolute path on current desktop machine (e.g. "D:\Music\Worship\Song.mp3")
+  folderId?: string; // Logical folder ID mapping to desktop folder path
 }
 
 export interface Playlist {

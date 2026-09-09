@@ -9,6 +9,9 @@
     "start": "node dist/server.cjs",
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
+    "desktop:dev": "electron desktop/main.cjs",
+    "desktop:build": "vite build",
+    "desktop:package": "vite build",
     "lint": "tsc --noEmit",
     "test": "vitest run"
   },

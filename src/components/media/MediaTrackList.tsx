@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { MediaTrack, Playlist } from '../../types/mediaPlayer';
 import { 
   Play, 
@@ -24,16 +24,28 @@ import {
   Search,
   RotateCcw
 } from 'lucide-react';
+import { MediaTrackContextMenu } from './MediaTrackContextMenu';
+import { TrackInfoModal } from './TrackInfoModal';
+import { copyTrackFilePath, showTrackInFolder } from '../../services/mediaService/mediaActions';
 
-interface MediaTrackListProps {
+export interface MediaTrackListProps {
   tracks: MediaTrack[];
   currentTrack: MediaTrack | null;
   isPlaying: boolean;
   onPlayTrack: (track: MediaTrack) => void;
+  onPauseTrack?: () => void;
+  onResumeTrack?: () => void;
   onToggleFavorite: (trackId: string) => void;
   onPlayNext: (track: MediaTrack) => void;
   onAddToQueue: (track: MediaTrack) => void;
   onAddToPlaylist?: (track: MediaTrack, playlistId: string) => void;
+  onCreatePlaylist?: () => void;
+  onShowLyrics?: (track: MediaTrack) => void;
+  onOpenVideo?: (track: MediaTrack) => void;
+  onShowTrackInfo?: (track: MediaTrack) => void;
+  onShowInFolder?: (track: MediaTrack) => void;
+  onCopyFilePath?: (track: MediaTrack) => void;
+  onToastFeedback?: (message: string) => void;
   onDeleteTrack?: (trackId: string) => void;
   onDirectFolder?: () => void;
   onSelectFolder?: (folder: string) => void;
@@ -50,10 +62,19 @@ export const MediaTrackList: React.FC<MediaTrackListProps> = ({
   currentTrack,
   isPlaying,
   onPlayTrack,
+  onPauseTrack,
+  onResumeTrack,
   onToggleFavorite,
   onPlayNext,
   onAddToQueue,
   onAddToPlaylist,
+  onCreatePlaylist,
+  onShowLyrics,
+  onOpenVideo,
+  onShowTrackInfo,
+  onShowInFolder,
+  onCopyFilePath,
+  onToastFeedback,
   onDeleteTrack,
   onDirectFolder,
   onSelectFolder,
@@ -64,9 +85,75 @@ export const MediaTrackList: React.FC<MediaTrackListProps> = ({
   playlists = [],
   emptyMessage = 'No tracks found in this category',
 }) => {
-  const [activeMenuTrackId, setActiveMenuTrackId] = useState<string | null>(null);
+  const [contextMenu, setContextMenu] = useState<{
+    isOpen: boolean;
+    x: number;
+    y: number;
+    track: MediaTrack;
+  } | null>(null);
+
+  const [infoTrack, setInfoTrack] = useState<MediaTrack | null>(null);
   const [expandedTrackIds, setExpandedTrackIds] = useState<Set<string>>(new Set());
   const [copiedTrackId, setCopiedTrackId] = useState<string | null>(null);
+  const [localToast, setLocalToast] = useState<string | null>(null);
+
+  const touchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const touchPosRef = useRef<{ x: number; y: number } | null>(null);
+
+  const triggerToast = useCallback((msg: string) => {
+    if (onToastFeedback) {
+      onToastFeedback(msg);
+    }
+    setLocalToast(msg);
+    setTimeout(() => {
+      setLocalToast((prev) => (prev === msg ? null : prev));
+    }, 2800);
+  }, [onToastFeedback]);
+
+  const openContextMenu = useCallback((x: number, y: number, track: MediaTrack) => {
+    setContextMenu({
+      isOpen: true,
+      x,
+      y,
+      track,
+    });
+  }, []);
+
+  const closeContextMenu = useCallback(() => {
+    setContextMenu(null);
+  }, []);
+
+  // Touch long-press handling for mobile devices
+  const handleTouchStart = (e: React.TouchEvent, track: MediaTrack) => {
+    if (e.touches.length !== 1) return;
+    const touch = e.touches[0];
+    touchPosRef.current = { x: touch.clientX, y: touch.clientY };
+
+    if (touchTimerRef.current) clearTimeout(touchTimerRef.current);
+    touchTimerRef.current = setTimeout(() => {
+      openContextMenu(touch.clientX, touch.clientY, track);
+    }, 500);
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (!touchPosRef.current || e.touches.length !== 1) return;
+    const touch = e.touches[0];
+    const dx = Math.abs(touch.clientX - touchPosRef.current.x);
+    const dy = Math.abs(touch.clientY - touchPosRef.current.y);
+    if (dx > 10 || dy > 10) {
+      if (touchTimerRef.current) {
+        clearTimeout(touchTimerRef.current);
+        touchTimerRef.current = null;
+      }
+    }
+  };
+
+  const handleTouchEnd = () => {
+    if (touchTimerRef.current) {
+      clearTimeout(touchTimerRef.current);
+      touchTimerRef.current = null;
+    }
+  };
 
   const toggleExpandTrack = (trackId: string) => {
     setExpandedTrackIds((prev) => {
@@ -190,7 +277,7 @@ export const MediaTrackList: React.FC<MediaTrackListProps> = ({
       <div className="flex flex-col divide-y divide-zinc-850">
         {tracks.map((track, idx) => {
           const isCurrent = currentTrack?.id === track.id;
-          const isMenuOpen = activeMenuTrackId === track.id;
+          const isMenuOpen = Boolean(contextMenu?.isOpen && contextMenu?.track?.id === track.id);
           const isExpanded = expandedTrackIds.has(track.id);
 
           return (
@@ -199,13 +286,20 @@ export const MediaTrackList: React.FC<MediaTrackListProps> = ({
                 className={`group grid grid-cols-12 gap-2 items-center px-3 sm:px-4 py-2.5 rounded-xl transition-all cursor-pointer relative ${
                   isCurrent
                     ? 'bg-amber-500/10 border border-amber-500/30'
+                    : isMenuOpen
+                    ? 'bg-zinc-800/90 border border-amber-500/40 shadow-md'
                     : 'hover:bg-zinc-900/80 border border-transparent'
                 }`}
                 onClick={() => onPlayTrack(track)}
                 onContextMenu={(e) => {
                   e.preventDefault();
-                  setActiveMenuTrackId(isMenuOpen ? null : track.id);
+                  e.stopPropagation();
+                  openContextMenu(e.clientX, e.clientY, track);
                 }}
+                onTouchStart={(e) => handleTouchStart(e, track)}
+                onTouchMove={handleTouchMove}
+                onTouchEnd={handleTouchEnd}
+                onTouchCancel={handleTouchEnd}
               >
                 {/* Index or Equalizer / Play button */}
                 <div className="col-span-1 flex items-center justify-center text-xs font-mono text-zinc-500 group-hover:text-amber-400">
@@ -366,108 +460,16 @@ export const MediaTrackList: React.FC<MediaTrackListProps> = ({
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
-                      setActiveMenuTrackId(isMenuOpen ? null : track.id);
+                      const rect = e.currentTarget.getBoundingClientRect();
+                      openContextMenu(rect.left, rect.bottom + 4, track);
                     }}
                     className="p-1 rounded text-zinc-500 hover:text-zinc-200 hover:bg-zinc-800 transition-colors cursor-pointer"
+                    title="Track actions"
+                    aria-label="Track actions"
                   >
                     <MoreVertical className="w-3.5 h-3.5" />
                   </button>
                 </div>
-
-                {/* Floating Context Dropdown */}
-                {isMenuOpen && (
-                  <div
-                    className="absolute right-4 top-12 z-30 w-52 rounded-xl bg-zinc-900 border border-zinc-700 shadow-2xl p-1.5 flex flex-col gap-0.5 animate-in fade-in zoom-in-95 text-xs text-zinc-200"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <button
-                      type="button"
-                      onClick={() => {
-                        onPlayTrack(track);
-                        setActiveMenuTrackId(null);
-                      }}
-                      className="w-full px-2.5 py-1.5 rounded-lg bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 font-semibold flex items-center gap-2 text-left cursor-pointer border border-amber-500/30 mb-0.5"
-                    >
-                      <Play className="w-3.5 h-3.5 text-amber-400 fill-current" />
-                      <span>Open with Media Player</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        onPlayNext(track);
-                        setActiveMenuTrackId(null);
-                      }}
-                      className="w-full px-2.5 py-1.5 rounded-lg hover:bg-zinc-800 flex items-center gap-2 text-left cursor-pointer"
-                    >
-                      <Plus className="w-3.5 h-3.5 text-amber-400" />
-                      <span>Play Next</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        onAddToQueue(track);
-                        setActiveMenuTrackId(null);
-                      }}
-                      className="w-full px-2.5 py-1.5 rounded-lg hover:bg-zinc-800 flex items-center gap-2 text-left cursor-pointer"
-                    >
-                      <ListPlus className="w-3.5 h-3.5 text-amber-400" />
-                      <span>Add to Queue</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        toggleExpandTrack(track.id);
-                        setActiveMenuTrackId(null);
-                      }}
-                      className="w-full px-2.5 py-1.5 rounded-lg hover:bg-zinc-800 flex items-center gap-2 text-left cursor-pointer text-amber-300"
-                    >
-                      <Info className="w-3.5 h-3.5 text-amber-400" />
-                      <span>{isExpanded ? 'Hide Details' : 'View Full Details'}</span>
-                    </button>
-
-                    {/* Playlists sub-menu */}
-                    {playlists.length > 0 && onAddToPlaylist && (
-                      <div className="border-t border-zinc-800 pt-1 mt-1">
-                        <div className="px-2 py-1 text-[10px] font-mono text-zinc-500 uppercase">
-                          Add to Playlist
-                        </div>
-                        {playlists.slice(0, 4).map((pl) => (
-                          <button
-                            key={pl.id}
-                            type="button"
-                            onClick={() => {
-                              onAddToPlaylist(track, pl.id);
-                              setActiveMenuTrackId(null);
-                            }}
-                            className="w-full px-2.5 py-1.5 rounded-lg hover:bg-zinc-800 flex items-center gap-2 text-left text-zinc-300 truncate cursor-pointer"
-                          >
-                            <FolderPlus className="w-3.5 h-3.5 text-zinc-400" />
-                            <span className="truncate">{pl.name}</span>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-
-                    {onDeleteTrack && !track.isBuiltIn && (
-                      <div className="border-t border-zinc-800 pt-1 mt-1">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            onDeleteTrack(track.id);
-                            setActiveMenuTrackId(null);
-                          }}
-                          className="w-full px-2.5 py-1.5 rounded-lg hover:bg-rose-950/50 text-rose-400 flex items-center gap-2 text-left cursor-pointer"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                          <span>Remove from Library</span>
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                )}
               </div>
 
               {/* Expandable Full Track Details View */}
@@ -641,6 +643,64 @@ export const MediaTrackList: React.FC<MediaTrackListProps> = ({
           );
         })}
       </div>
+
+      {/* Global Viewport-Safe Track Context Menu */}
+      <MediaTrackContextMenu
+        isOpen={Boolean(contextMenu?.isOpen)}
+        x={contextMenu?.x ?? 0}
+        y={contextMenu?.y ?? 0}
+        track={contextMenu?.track ?? null}
+        currentTrack={currentTrack}
+        isPlaying={isPlaying}
+        playlists={playlists}
+        onClose={closeContextMenu}
+        onPlayTrack={onPlayTrack}
+        onPauseTrack={onPauseTrack}
+        onResumeTrack={onResumeTrack}
+        onPlayNext={onPlayNext}
+        onAddToQueue={onAddToQueue}
+        onToggleFavorite={onToggleFavorite}
+        onAddToPlaylist={onAddToPlaylist || (() => {})}
+        onCreatePlaylist={onCreatePlaylist}
+        onShowLyrics={onShowLyrics}
+        onOpenVideo={onOpenVideo}
+        onShowTrackInfo={(t) => {
+          setInfoTrack(t);
+        }}
+        onShowInFolder={async (t) => {
+          if (onShowInFolder) {
+            onShowInFolder(t);
+          } else {
+            const res = await showTrackInFolder(t, { onSelectFolder });
+            triggerToast(res.message);
+          }
+        }}
+        onCopyFilePath={async (t) => {
+          if (onCopyFilePath) {
+            onCopyFilePath(t);
+          } else {
+            const res = await copyTrackFilePath(t);
+            triggerToast(res.message);
+          }
+        }}
+        onToastFeedback={triggerToast}
+      />
+
+      {/* Verified Track Information Modal */}
+      <TrackInfoModal
+        isOpen={Boolean(infoTrack)}
+        track={infoTrack}
+        onClose={() => setInfoTrack(null)}
+        onToastFeedback={triggerToast}
+      />
+
+      {/* Floating Action Feedback Toast */}
+      {localToast && (
+        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[75] px-4 py-2 rounded-xl bg-zinc-900/95 border border-amber-500/40 text-amber-300 font-semibold text-xs shadow-2xl shadow-black/80 flex items-center gap-2 animate-in fade-in slide-in-from-bottom-2 duration-150 pointer-events-none">
+          <Check className="w-4 h-4 text-emerald-400 shrink-0" />
+          <span>{localToast}</span>
+        </div>
+      )}
     </div>
   );
 };

@@ -18,6 +18,8 @@ const BackupPayloadSchema = z.object({
   effectsRack: SafeObjectSchema.optional(),
   customPrayerPads: z.array(z.record(z.string(), z.unknown())).max(200).optional(),
   systemSettings: SafeObjectSchema.optional(),
+  larkMediaPlaylists: z.array(z.record(z.string(), z.unknown())).max(500).optional(),
+  larkMediaCustomTracks: z.array(z.record(z.string(), z.unknown())).max(5000).optional(),
 }).passthrough();
 
 export type ValidatedBackup = z.infer<typeof BackupPayloadSchema>;
@@ -65,7 +67,9 @@ export function validateBackupPayload(raw: unknown): BackupValidationResult {
     Boolean(data.registrationMemory?.length) ||
     Boolean(data.customPrayerPads?.length) ||
     (data.effectsRack && Object.keys(data.effectsRack).length > 0) ||
-    (data.systemSettings && Object.keys(data.systemSettings).length > 0);
+    (data.systemSettings && Object.keys(data.systemSettings).length > 0) ||
+    Boolean(data.larkMediaPlaylists?.length) ||
+    Boolean(data.larkMediaCustomTracks?.length);
 
   if (!hasData) {
     return {

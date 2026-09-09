@@ -1,5 +1,7 @@
 // PWA Registration & Connectivity Tracker
 
+import { isDesktop } from './platform/platformDetection';
+
 export interface PwaStatus {
   isInstalled: boolean;
   canInstall: boolean;
@@ -60,6 +62,25 @@ export function promptPwaInstall(): Promise<boolean> {
 
 export function initPwa() {
   if (typeof window === 'undefined') return;
+
+  // On desktop native runtime, bypass PWA install prompts and service-worker caching
+  if (isDesktop()) {
+    currentStatus.isInstalled = true;
+    currentStatus.canInstall = false;
+    currentStatus.isServiceWorkerReady = false;
+    currentStatus.isOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
+    notifyListeners();
+
+    window.addEventListener('online', () => {
+      currentStatus.isOnline = true;
+      notifyListeners();
+    });
+    window.addEventListener('offline', () => {
+      currentStatus.isOnline = false;
+      notifyListeners();
+    });
+    return;
+  }
 
   // Check if running as installed standalone PWA
   const isStandalone =
