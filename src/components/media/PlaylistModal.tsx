@@ -7,6 +7,7 @@ interface PlaylistModalProps {
   onClose: () => void;
   onSavePlaylist: (playlist: Playlist) => void;
   editingPlaylist?: Playlist | null;
+  initialTrackId?: string | null;
 }
 
 const GRADIENT_PRESETS = [
@@ -23,12 +24,19 @@ export const PlaylistModal: React.FC<PlaylistModalProps> = ({
   onClose,
   onSavePlaylist,
   editingPlaylist,
+  initialTrackId,
 }) => {
-  const [name, setName] = useState(editingPlaylist?.name || '');
-  const [description, setDescription] = useState(editingPlaylist?.description || '');
-  const [selectedGradient, setSelectedGradient] = useState(
-    editingPlaylist?.coverGradient || GRADIENT_PRESETS[0].value
-  );
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [selectedGradient, setSelectedGradient] = useState(GRADIENT_PRESETS[0].value);
+
+  React.useEffect(() => {
+    if (isOpen) {
+      setName(editingPlaylist?.name || '');
+      setDescription(editingPlaylist?.description || '');
+      setSelectedGradient(editingPlaylist?.coverGradient || GRADIENT_PRESETS[0].value);
+    }
+  }, [isOpen, editingPlaylist]);
 
   if (!isOpen) return null;
 
@@ -41,7 +49,7 @@ export const PlaylistModal: React.FC<PlaylistModalProps> = ({
       name: name.trim(),
       description: description.trim() || undefined,
       coverGradient: selectedGradient,
-      trackIds: editingPlaylist?.trackIds || [],
+      trackIds: editingPlaylist?.trackIds || (initialTrackId ? [initialTrackId] : []),
       createdAt: editingPlaylist?.createdAt || Date.now(),
     };
 

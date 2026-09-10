@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { 
   MediaTrack, 
   Playlist, 
@@ -6,6 +6,7 @@ import {
   VisualizerMode, 
   MediaFormat 
 } from '../../types/mediaPlayer';
+import { copyTrackFilePath } from '../../services/mediaService/mediaActions';
 import { 
   BUILT_IN_TRACKS, 
   getStoredCustomTracks, 
@@ -286,6 +287,7 @@ export const MediaPlayerView: React.FC<MediaPlayerViewProps> = ({
   const [isCinemaMode, setIsCinemaMode] = useState(false);
   const [isPlaylistModalOpen, setIsPlaylistModalOpen] = useState(false);
   const [editingPlaylist, setEditingPlaylist] = useState<Playlist | null>(null);
+  const [initialPlaylistTrackId, setInitialPlaylistTrackId] = useState<string | null>(null);
   const [isDropZoneActive, setIsDropZoneActive] = useState(false);
   const [uploadNotification, setUploadNotification] = useState<string | null>(null);
 
@@ -555,6 +557,22 @@ export const MediaPlayerView: React.FC<MediaPlayerViewProps> = ({
       setActivePlaylistId(null);
     }
   };
+
+  const handleShowInFolder = useCallback(async (track: MediaTrack) => {
+    if (track.folderName) {
+      setSelectedFolderFilter(track.folderName);
+      setActiveTab('library');
+      setUploadNotification(`Filtered library to folder: "${track.folderName}"`);
+      setTimeout(() => setUploadNotification(null), 3500);
+    } else if (track.folderPath) {
+      const res = await copyTrackFilePath(track);
+      setUploadNotification(res.message || `Location copied: ${track.folderPath}`);
+      setTimeout(() => setUploadNotification(null), 3500);
+    } else {
+      setUploadNotification(track.isBuiltIn ? 'Built-in worship track (application bundle)' : 'Device storage path unavailable');
+      setTimeout(() => setUploadNotification(null), 3500);
+    }
+  }, []);
 
   const handleDeleteTrack = (trackId: string) => {
     deleteTrackBlob(trackId).catch(() => {});
@@ -1789,8 +1807,9 @@ export const MediaPlayerView: React.FC<MediaPlayerViewProps> = ({
                 onPlayNext={handlePlayNext}
                 onAddToQueue={handleAddToQueue}
                 onAddToPlaylist={handleAddToPlaylist}
-                onCreatePlaylist={() => {
+                onCreatePlaylist={(track) => {
                   setEditingPlaylist(null);
+                  setInitialPlaylistTrackId(track?.id || null);
                   setIsPlaylistModalOpen(true);
                 }}
                 onShowLyrics={(track) => {
@@ -1801,6 +1820,24 @@ export const MediaPlayerView: React.FC<MediaPlayerViewProps> = ({
                   handlePlayTrack(track);
                   setActiveTab('video');
                 }}
+                onOpenVisualizer={(track) => {
+                  handlePlayTrack(track);
+                  setActiveTab('visualizer');
+                }}
+                onShowInFolder={handleShowInFolder}
+                onSelectFolder={(folder) => {
+                  setSelectedFolderFilter(folder);
+                  setActiveTab('library');
+                }}
+                onSelectCodec={(codec) => {
+                  setCodecFilter(codec);
+                  setActiveTab('library');
+                }}
+                onSelectFormat={(fmt) => {
+                  setFormatFilter(fmt);
+                  setActiveTab('library');
+                }}
+                onResetFilters={handleResetFilters}
                 onToastFeedback={(msg) => {
                   setUploadNotification(msg);
                   setTimeout(() => setUploadNotification(null), 3500);
@@ -2124,8 +2161,9 @@ export const MediaPlayerView: React.FC<MediaPlayerViewProps> = ({
                 onPlayNext={handlePlayNext}
                 onAddToQueue={handleAddToQueue}
                 onAddToPlaylist={handleAddToPlaylist}
-                onCreatePlaylist={() => {
+                onCreatePlaylist={(track) => {
                   setEditingPlaylist(null);
+                  setInitialPlaylistTrackId(track?.id || null);
                   setIsPlaylistModalOpen(true);
                 }}
                 onShowLyrics={(track) => {
@@ -2136,6 +2174,11 @@ export const MediaPlayerView: React.FC<MediaPlayerViewProps> = ({
                   handlePlayTrack(track);
                   setActiveTab('video');
                 }}
+                onOpenVisualizer={(track) => {
+                  handlePlayTrack(track);
+                  setActiveTab('visualizer');
+                }}
+                onShowInFolder={handleShowInFolder}
                 onToastFeedback={(msg) => {
                   setUploadNotification(msg);
                   setTimeout(() => setUploadNotification(null), 3500);
@@ -2237,9 +2280,14 @@ export const MediaPlayerView: React.FC<MediaPlayerViewProps> = ({
       {/* Playlist Modal */}
       <PlaylistModal
         isOpen={isPlaylistModalOpen}
-        onClose={() => setIsPlaylistModalOpen(false)}
+        onClose={() => {
+          setIsPlaylistModalOpen(false);
+          setEditingPlaylist(null);
+          setInitialPlaylistTrackId(null);
+        }}
         onSavePlaylist={handleSavePlaylist}
         editingPlaylist={editingPlaylist}
+        initialTrackId={initialPlaylistTrackId}
       />
     </div>
   );

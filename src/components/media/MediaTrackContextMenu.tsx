@@ -46,9 +46,10 @@ export interface MediaTrackContextMenuProps {
   onAddToQueue: (track: MediaTrack) => void;
   onToggleFavorite: (trackId: string) => void;
   onAddToPlaylist: (track: MediaTrack, playlistId: string) => void;
-  onCreatePlaylist?: () => void;
+  onCreatePlaylist?: (track?: MediaTrack) => void;
   onShowLyrics?: (track: MediaTrack) => void;
   onOpenVideo?: (track: MediaTrack) => void;
+  onOpenVisualizer?: (track: MediaTrack) => void;
   onShowTrackInfo?: (track: MediaTrack) => void;
   onShowInFolder?: (track: MediaTrack) => void;
   onCopyFilePath?: (track: MediaTrack) => void;
@@ -74,6 +75,7 @@ export const MediaTrackContextMenu: React.FC<MediaTrackContextMenuProps> = ({
   onCreatePlaylist,
   onShowLyrics,
   onOpenVideo,
+  onOpenVisualizer,
   onShowTrackInfo,
   onShowInFolder,
   onCopyFilePath,
@@ -325,14 +327,14 @@ export const MediaTrackContextMenu: React.FC<MediaTrackContextMenuProps> = ({
 
   const handleCreateNewPlaylist = () => {
     if (onCreatePlaylist) {
-      onCreatePlaylist();
+      onCreatePlaylist(track);
     }
     setIsSubmenuOpen(false);
     onClose();
   };
 
   const handleShowLyrics = () => {
-    if (hasLyrics && onShowLyrics) {
+    if (onShowLyrics) {
       onShowLyrics(track);
     }
     onClose();
@@ -341,6 +343,13 @@ export const MediaTrackContextMenu: React.FC<MediaTrackContextMenuProps> = ({
   const handleOpenVideo = () => {
     if (isVideo && onOpenVideo) {
       onOpenVideo(track);
+    }
+    onClose();
+  };
+
+  const handleOpenVisualizer = () => {
+    if (onOpenVisualizer) {
+      onOpenVisualizer(track);
     }
     onClose();
   };
@@ -580,21 +589,16 @@ export const MediaTrackContextMenu: React.FC<MediaTrackContextMenuProps> = ({
           type="button"
           data-menuitem="true"
           role="menuitem"
-          disabled={!hasLyrics}
           onClick={handleShowLyrics}
-          className={`w-full px-2.5 py-1.5 rounded-xl flex items-center gap-2.5 text-left transition-colors ${
-            hasLyrics
-              ? 'hover:bg-zinc-800/90 text-zinc-300 hover:text-white cursor-pointer'
-              : 'opacity-40 text-zinc-400 cursor-not-allowed'
-          }`}
-          title={hasLyrics ? 'View synchronized lyrics' : 'No lyrics found for this track'}
+          className="w-full px-2.5 py-1.5 rounded-xl hover:bg-zinc-800/90 focus-visible:bg-zinc-800/90 focus-visible:ring-1 focus-visible:ring-amber-500/50 flex items-center gap-2.5 text-left text-zinc-300 hover:text-white cursor-pointer transition-colors"
+          title={hasLyrics ? 'View synchronized lyrics' : 'Open lyrics viewer & editor'}
         >
           <FileText className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-          <span>{hasLyrics ? 'Show Lyrics' : 'Lyrics Unavailable'}</span>
+          <span>{hasLyrics ? 'Show Lyrics' : 'View / Edit Lyrics'}</span>
         </button>
 
-        {/* Video Action (Context-Aware: Only rendered if media is video) */}
-        {isVideo && (
+        {/* Video / Visualizer Action */}
+        {isVideo ? (
           <button
             type="button"
             data-menuitem="true"
@@ -603,7 +607,18 @@ export const MediaTrackContextMenu: React.FC<MediaTrackContextMenuProps> = ({
             className="w-full px-2.5 py-1.5 rounded-xl hover:bg-cyan-950/40 text-cyan-300 hover:text-cyan-200 flex items-center gap-2.5 text-left cursor-pointer transition-colors"
           >
             <Film className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
-            <span className="font-medium">Open Video</span>
+            <span className="font-medium">Open Video Stage</span>
+          </button>
+        ) : (
+          <button
+            type="button"
+            data-menuitem="true"
+            role="menuitem"
+            onClick={handleOpenVisualizer}
+            className="w-full px-2.5 py-1.5 rounded-xl hover:bg-amber-500/15 text-amber-300 hover:text-amber-200 flex items-center gap-2.5 text-left cursor-pointer transition-colors"
+          >
+            <Radio className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+            <span className="font-medium">Open in Visualizer</span>
           </button>
         )}
 

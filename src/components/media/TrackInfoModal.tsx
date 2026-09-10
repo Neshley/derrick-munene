@@ -16,7 +16,9 @@ import {
   HardDrive, 
   FileCode, 
   Tag,
-  Radio
+  Radio,
+  Play,
+  FileText
 } from 'lucide-react';
 import { copyTrackFilePath } from '../../services/mediaService/mediaActions';
 
@@ -25,6 +27,10 @@ interface TrackInfoModalProps {
   isOpen: boolean;
   onClose: () => void;
   onToastFeedback?: (message: string) => void;
+  onPlayTrack?: (track: MediaTrack) => void;
+  onShowLyrics?: (track: MediaTrack) => void;
+  onOpenVideo?: (track: MediaTrack) => void;
+  onShowInFolder?: (track: MediaTrack) => void;
 }
 
 export const TrackInfoModal: React.FC<TrackInfoModalProps> = ({
@@ -32,6 +38,10 @@ export const TrackInfoModal: React.FC<TrackInfoModalProps> = ({
   isOpen,
   onClose,
   onToastFeedback,
+  onPlayTrack,
+  onShowLyrics,
+  onOpenVideo,
+  onShowInFolder,
 }) => {
   const [copied, setCopied] = React.useState(false);
 
@@ -226,12 +236,70 @@ export const TrackInfoModal: React.FC<TrackInfoModalProps> = ({
           )}
         </div>
 
-        {/* Footer */}
-        <div className="p-4 bg-zinc-900/90 border-t border-zinc-800 flex justify-end">
+        {/* Footer with Actions */}
+        <div className="p-4 bg-zinc-900/90 border-t border-zinc-800 flex items-center justify-between gap-2 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap">
+            {onPlayTrack && (
+              <button
+                type="button"
+                onClick={() => {
+                  onPlayTrack(track);
+                  onClose();
+                }}
+                className="px-3.5 py-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-zinc-950 text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs cursor-pointer active:scale-95"
+              >
+                <Play className="w-3.5 h-3.5 fill-current" />
+                <span>Play Track</span>
+              </button>
+            )}
+
+            {track.isVideo && onOpenVideo && (
+              <button
+                type="button"
+                onClick={() => {
+                  onOpenVideo(track);
+                  onClose();
+                }}
+                className="px-3 py-1.5 rounded-xl bg-cyan-950/60 hover:bg-cyan-900/60 text-cyan-300 border border-cyan-500/30 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+              >
+                <Film className="w-3.5 h-3.5" />
+                <span>Open Video Stage</span>
+              </button>
+            )}
+
+            {!track.isVideo && onShowLyrics && (
+              <button
+                type="button"
+                onClick={() => {
+                  onShowLyrics(track);
+                  onClose();
+                }}
+                className="px-3 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+              >
+                <FileText className="w-3.5 h-3.5 text-amber-400" />
+                <span>{track.lyrics ? 'Show Lyrics' : 'View / Add Lyrics'}</span>
+              </button>
+            )}
+
+            {(track.folderName || track.folderPath) && onShowInFolder && (
+              <button
+                type="button"
+                onClick={() => {
+                  onShowInFolder(track);
+                  onClose();
+                }}
+                className="px-3 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+              >
+                <Folder className="w-3.5 h-3.5 text-amber-400" />
+                <span>Show in Folder</span>
+              </button>
+            )}
+          </div>
+
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-semibold transition-colors cursor-pointer"
+            className="px-4 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-semibold transition-colors cursor-pointer ml-auto"
           >
             Close
           </button>

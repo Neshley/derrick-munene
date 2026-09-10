@@ -39,9 +39,10 @@ export interface MediaTrackListProps {
   onPlayNext: (track: MediaTrack) => void;
   onAddToQueue: (track: MediaTrack) => void;
   onAddToPlaylist?: (track: MediaTrack, playlistId: string) => void;
-  onCreatePlaylist?: () => void;
+  onCreatePlaylist?: (track?: MediaTrack) => void;
   onShowLyrics?: (track: MediaTrack) => void;
   onOpenVideo?: (track: MediaTrack) => void;
+  onOpenVisualizer?: (track: MediaTrack) => void;
   onShowTrackInfo?: (track: MediaTrack) => void;
   onShowInFolder?: (track: MediaTrack) => void;
   onCopyFilePath?: (track: MediaTrack) => void;
@@ -71,6 +72,7 @@ export const MediaTrackList: React.FC<MediaTrackListProps> = ({
   onCreatePlaylist,
   onShowLyrics,
   onOpenVideo,
+  onOpenVisualizer,
   onShowTrackInfo,
   onShowInFolder,
   onCopyFilePath,
@@ -664,6 +666,7 @@ export const MediaTrackList: React.FC<MediaTrackListProps> = ({
         onCreatePlaylist={onCreatePlaylist}
         onShowLyrics={onShowLyrics}
         onOpenVideo={onOpenVideo}
+        onOpenVisualizer={onOpenVisualizer}
         onShowTrackInfo={(t) => {
           setInfoTrack(t);
         }}
@@ -692,6 +695,13 @@ export const MediaTrackList: React.FC<MediaTrackListProps> = ({
         track={infoTrack}
         onClose={() => setInfoTrack(null)}
         onToastFeedback={triggerToast}
+        onPlayTrack={onPlayTrack}
+        onShowLyrics={onShowLyrics}
+        onOpenVideo={onOpenVideo}
+        onShowInFolder={onShowInFolder ? (t) => onShowInFolder(t) : async (t) => {
+          const res = await showTrackInFolder(t, { onSelectFolder });
+          triggerToast(res.message);
+        }}
       />
 
       {/* Floating Action Feedback Toast */}
