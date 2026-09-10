@@ -1,10 +1,18 @@
-import { useState, useRef, useCallback, useEffect, TouchEvent } from 'react';
+import { useState, useRef, useCallback, useEffect, TouchEvent, MouseEvent } from 'react';
 import { ConsolePanelId, SWIPEABLE_PANELS } from '../components/ConsolePanelNav';
 
 interface UseConsoleSwipeOptions {
   initialPanel?: ConsolePanelId;
   onPanelChange?: (panel: ConsolePanelId) => void;
 }
+
+const PANEL_LABELS: Record<ConsolePanelId, string> = {
+  lcd: 'LCD & Chords',
+  arranger: 'Arranger Matrix',
+  keys: 'Keys & Voices',
+  mixer: 'Digital Mixer',
+  all: 'All Sections',
+};
 
 export function useConsoleSwipe({
   initialPanel = 'lcd',
@@ -23,9 +31,28 @@ export function useConsoleSwipe({
 
   const [swipeDirection, setSwipeDirection] = useState<number>(1);
   const [isSwiping, setIsSwiping] = useState<boolean>(false);
+  const [isDragging, setIsDragging] = useState<boolean>(false);
+  const [dragDx, setDragDx] = useState<number>(0);
   const [swipeToast, setSwipeToast] = useState<{ message: string; panel: ConsolePanelId } | null>(null);
 
   const toastTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const dragFadeTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Compute adjacent panels for directional indicators
+  const currentIdx = SWIPEABLE_PANELS.indexOf(activePanel as any);
+  let prevPanelId: ConsolePanelId = 'mixer';
+  let nextPanelId: ConsolePanelId = 'arranger';
+
+  if (currentIdx === -1) {
+    prevPanelId = 'mixer';
+    nextPanelId = 'lcd';
+  } else {
+    prevPanelId = currentIdx > 0 ? SWIPEABLE_PANELS[currentIdx - 1] : SWIPEABLE_PANELS[SWIPEABLE_PANELS.length - 1];
+    nextPanelId = currentIdx < SWIPEABLE_PANELS.length - 1 ? SWIPEABLE_PANELS[currentIdx + 1] : SWIPEABLE_PANELS[0];
+  }
+
+  const prevPanelName = PANEL_LABELS[prevPanelId];
+  const nextPanelName = PANEL_LABELS[nextPanelId];
 
   const showToast = useCallback((panel: ConsolePanelId) => {
     const titles: Record<ConsolePanelId, string> = {
@@ -72,14 +99,12 @@ export function useConsoleSwipe({
   const goToNextPanel = useCallback(() => {
     const currentIdx = SWIPEABLE_PANELS.indexOf(activePanel as any);
     if (currentIdx === -1) {
-      // If currently on 'all', jump to the first panel 'lcd'
       selectPanel('lcd', 1);
       return;
     }
     if (currentIdx < SWIPEABLE_PANELS.length - 1) {
       selectPanel(SWIPEABLE_PANELS[currentIdx + 1], 1);
     } else {
-      // Loop or bounce back to LCD
       selectPanel(SWIPEABLE_PANELS[0], 1);
     }
   }, [activePanel, selectPanel]);
@@ -87,14 +112,12 @@ export function useConsoleSwipe({
   const goToPrevPanel = useCallback(() => {
     const currentIdx = SWIPEABLE_PANELS.indexOf(activePanel as any);
     if (currentIdx === -1) {
-      // If on 'all', jump to 'mixer'
       selectPanel('mixer', -1);
       return;
     }
     if (currentIdx > 0) {
       selectPanel(SWIPEABLE_PANELS[currentIdx - 1], -1);
     } else {
-      // Loop or bounce to last panel
       selectPanel(SWIPEABLE_PANELS[SWIPEABLE_PANELS.length - 1], -1);
     }
   }, [activePanel, selectPanel]);
@@ -120,7 +143,7 @@ export function useConsoleSwipe({
     const touch = e.touches[0];
     const target = e.target as HTMLElement | null;
 
-    // Critical: Never hijack touch events originating from interactive piano keys,
+    // Never hijack touch events originating from interactive piano keys,
     // sliders, range faders, dropdowns, or explicitly ignored controls
     const isInteractive = target && (
       target.closest('input[type="range"]') !== null ||
@@ -137,6 +160,16 @@ export function useConsoleSwipe({
       isIgnored: Boolean(isInteractive),
       isVerticalScroll: false,
     };
+
+    if (!isInteractive) {
+      if (dragFadeTimerRef.current) clearTimeout(dragFadeTimerRef.current);
+      // Initiate drag overlay briefly on touch start in workstation
+      setIsDragging(true);
+      setDragDx(0);
+      dragFadeTimerRef.current = setTimeout(() => {
+        setIsDragging(false);
+      }, 2200);
+    }
   }, []);
 
   const handleTouchMove = useCallback((e: TouchEvent) => {
@@ -148,11 +181,23 @@ export function useConsoleSwipe({
     const dx = touch.clientX - touchStartRef.current.x;
     const dy = touch.clientY - touchStartRef.current.y;
 
-    // If vertical movement dominates, consider this a natural page scroll and cancel swipe tracking
+    // If vertical movement dominates, consider this a natural page scroll and cancel drag indicators
     if (Math.abs(dy) > Math.abs(dx) && Math.abs(dy) > 12) {
       touchStartRef.current.isVerticalScroll = true;
       setIsSwiping(false);
+      setIsDragging(false);
       return;
+    }
+
+    // Horizontal drag initiated
+    if (Math.abs(dx) > 4) {
+      setIsDragging(true);
+      setDragDx(dx);
+
+      if (dragFadeTimerRef.current) clearTimeout(dragFadeTimerRef.current);
+      dragFadeTimerRef.current = setTimeout(() => {
+        setIsDragging(false);
+      }, 2000);
     }
 
     // If horizontal movement is prominent, mark as swiping
@@ -162,6 +207,10 @@ export function useConsoleSwipe({
   }, []);
 
   const handleTouchEnd = useCallback((e: TouchEvent) => {
+    if (dragFadeTimerRef.current) clearTimeout(dragFadeTimerRef.current);
+    setIsDragging(false);
+    setDragDx(0);
+
     if (touchStartRef.current.isIgnored || touchStartRef.current.isVerticalScroll) {
       setIsSwiping(false);
       return;
@@ -180,9 +229,6 @@ export function useConsoleSwipe({
     setIsSwiping(false);
 
     // Criteria for valid swipe:
-    // 1. Horizontal displacement >= 45px
-    // 2. Clear horizontal angle dominance (|dx| > |dy| * 1.2)
-    // 3. Fast enough gesture (elapsed < 750ms) OR significant distance (>= 75px)
     const isValidSwipe = 
       Math.abs(dx) >= 45 &&
       Math.abs(dx) > Math.abs(dy) * 1.2 &&
@@ -200,8 +246,102 @@ export function useConsoleSwipe({
   }, [goToNextPanel, goToPrevPanel]);
 
   const handleTouchCancel = useCallback(() => {
+    if (dragFadeTimerRef.current) clearTimeout(dragFadeTimerRef.current);
     setIsSwiping(false);
+    setIsDragging(false);
+    setDragDx(0);
   }, []);
+
+  // Mouse drag tracking for desktop trackpad/mouse preview testing
+  const mouseStartRef = useRef<{
+    x: number;
+    y: number;
+    time: number;
+    isMouseDown: boolean;
+    isIgnored: boolean;
+  }>({
+    x: 0,
+    y: 0,
+    time: 0,
+    isMouseDown: false,
+    isIgnored: false,
+  });
+
+  const handleMouseDown = useCallback((e: MouseEvent) => {
+    if (e.button !== 0) return; // Only primary left click
+    const target = e.target as HTMLElement | null;
+    const isInteractive = target && (
+      target.closest('button') !== null ||
+      target.closest('input') !== null ||
+      target.closest('select') !== null ||
+      target.closest('textarea') !== null ||
+      target.closest('a') !== null ||
+      target.closest('[data-midi-note]') !== null ||
+      target.closest('[data-no-swipe]') !== null ||
+      target.closest('.touch-none') !== null ||
+      target.closest('.cursor-pointer') !== null
+    );
+
+    if (isInteractive) {
+      mouseStartRef.current.isIgnored = true;
+      mouseStartRef.current.isMouseDown = false;
+      return;
+    }
+
+    mouseStartRef.current = {
+      x: e.clientX,
+      y: e.clientY,
+      time: Date.now(),
+      isMouseDown: true,
+      isIgnored: false,
+    };
+
+    if (dragFadeTimerRef.current) clearTimeout(dragFadeTimerRef.current);
+    setIsDragging(true);
+    setDragDx(0);
+    dragFadeTimerRef.current = setTimeout(() => {
+      setIsDragging(false);
+    }, 2200);
+  }, []);
+
+  const handleMouseMove = useCallback((e: MouseEvent) => {
+    if (!mouseStartRef.current.isMouseDown || mouseStartRef.current.isIgnored) return;
+    const dx = e.clientX - mouseStartRef.current.x;
+    const dy = e.clientY - mouseStartRef.current.y;
+
+    if (Math.abs(dx) > 6 && Math.abs(dx) > Math.abs(dy)) {
+      setIsDragging(true);
+      setDragDx(dx);
+
+      if (dragFadeTimerRef.current) clearTimeout(dragFadeTimerRef.current);
+      dragFadeTimerRef.current = setTimeout(() => {
+        setIsDragging(false);
+      }, 2000);
+    }
+  }, []);
+
+  const handleMouseUp = useCallback((e: MouseEvent) => {
+    if (!mouseStartRef.current.isMouseDown || mouseStartRef.current.isIgnored) {
+      mouseStartRef.current.isMouseDown = false;
+      return;
+    }
+
+    const dx = e.clientX - mouseStartRef.current.x;
+    const elapsed = Date.now() - mouseStartRef.current.time;
+    mouseStartRef.current.isMouseDown = false;
+
+    if (dragFadeTimerRef.current) clearTimeout(dragFadeTimerRef.current);
+    setIsDragging(false);
+    setDragDx(0);
+
+    if (Math.abs(dx) >= 60 && elapsed < 800) {
+      if (dx < 0) {
+        goToNextPanel();
+      } else {
+        goToPrevPanel();
+      }
+    }
+  }, [goToNextPanel, goToPrevPanel]);
 
   // Keyboard navigation hotkeys (Alt + Left/Right arrow) for desktop accessibility
   useEffect(() => {
@@ -237,12 +377,19 @@ export function useConsoleSwipe({
     goToPrevPanel,
     swipeDirection,
     isSwiping,
+    isDragging,
+    dragDx,
+    prevPanelName,
+    nextPanelName,
     swipeToast,
     swipeHandlers: {
       onTouchStart: handleTouchStart,
       onTouchMove: handleTouchMove,
       onTouchEnd: handleTouchEnd,
       onTouchCancel: handleTouchCancel,
+      onMouseDown: handleMouseDown,
+      onMouseMove: handleMouseMove,
+      onMouseUp: handleMouseUp,
     },
   };
 }

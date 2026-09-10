@@ -65,6 +65,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { ConsolePanelNav, ConsolePanelId } from './components/ConsolePanelNav';
 import { useConsoleSwipe } from './hooks/useConsoleSwipe';
+import { SwipeIndicatorOverlay } from './components/SwipeIndicatorOverlay';
 
 export default function App() {
   // Initialize global theme and visual engine on startup
@@ -251,6 +252,10 @@ export default function App() {
     goToPrevPanel: handlePrevConsolePanel,
     swipeDirection,
     swipeToast,
+    isDragging,
+    dragDx,
+    prevPanelName,
+    nextPanelName,
     swipeHandlers,
   } = useConsoleSwipe({
     initialPanel: 'lcd',
@@ -813,6 +818,15 @@ export default function App() {
           {...swipeHandlers}
           className="flex-1 flex flex-col overflow-y-auto overflow-x-hidden min-w-0 custom-scrollbar h-full scroll-smooth overscroll-y-contain relative"
         >
+          {/* Semi-Transparent Screen-Edge Swipe Indicator Overlay (Briefly fades in during workstation drags) */}
+          <SwipeIndicatorOverlay
+            isVisible={isDragging}
+            dragDx={dragDx}
+            activePanel={activeConsolePanel}
+            prevPanelName={prevPanelName}
+            nextPanelName={nextPanelName}
+          />
+
           {/* Touch Swipe Feedback Toast */}
           <AnimatePresence>
             {swipeToast && (
