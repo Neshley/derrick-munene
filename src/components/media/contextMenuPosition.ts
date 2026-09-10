@@ -152,3 +152,66 @@ export function calculateSubmenuPosition({
     maxHeight,
   };
 }
+
+export interface TriggerSubmenuPositionInput {
+  triggerRect: {
+    left: number;
+    right: number;
+    top: number;
+    bottom: number;
+    height?: number;
+  };
+  submenuWidth: number;
+  submenuHeight: number;
+  viewport: ViewportRect;
+  padding?: number;
+}
+
+/**
+ * Calculates exact viewport-anchored submenu coordinates directly from the trigger element's bounding box.
+ */
+export function calculateSubmenuPositionFromTrigger({
+  triggerRect,
+  submenuWidth,
+  submenuHeight,
+  viewport,
+  padding = 8,
+}: TriggerSubmenuPositionInput): SubmenuPositionResult {
+  const { width: vw, height: vh } = viewport;
+  const safePadding = Math.max(4, padding);
+
+  let openLeft = false;
+  // Default to opening to the right of the trigger button with a 4px bridge
+  let x = triggerRect.right + 4;
+
+  // If opening to the right causes viewport overflow, flip to the left side
+  if (x + submenuWidth + safePadding > vw) {
+    x = triggerRect.left - submenuWidth - 4;
+    openLeft = true;
+    // If opening left also overflows the left screen edge, clamp strictly within viewport
+    if (x < safePadding) {
+      x = Math.max(safePadding, vw - submenuWidth - safePadding);
+    }
+  }
+
+  // Align top with the trigger button
+  let y = triggerRect.top - 4;
+
+  // If bottom overflows viewport, shift upward
+  if (y + submenuHeight + safePadding > vh) {
+    y = Math.max(safePadding, vh - submenuHeight - safePadding);
+  }
+  // If shifted too high, clamp to top padding
+  if (y < safePadding) {
+    y = safePadding;
+  }
+
+  const maxHeight = Math.max(160, vh - (safePadding * 2));
+
+  return {
+    x: Math.round(x),
+    y: Math.round(y),
+    openLeft,
+    maxHeight,
+  };
+}
