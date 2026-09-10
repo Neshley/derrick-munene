@@ -668,6 +668,7 @@ export const InteractiveKeyboard: React.FC<InteractiveKeyboardProps> = ({
           ========================================================================= */}
       <div 
         ref={scrollContainerRef}
+        data-no-swipe="true"
         className="relative w-full overflow-x-auto pb-1 select-none custom-scrollbar touch-none overscroll-x-contain"
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}

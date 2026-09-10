@@ -56,8 +56,15 @@ import {
   AlertCircle, 
   UploadCloud, 
   X,
-  FileCode
+  FileCode,
+  Play,
+  Square,
+  Activity,
+  Radio
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import { ConsolePanelNav, ConsolePanelId } from './components/ConsolePanelNav';
+import { useConsoleSwipe } from './hooks/useConsoleSwipe';
 
 export default function App() {
   // Initialize global theme and visual engine on startup
@@ -234,6 +241,26 @@ export default function App() {
   const [styleNotification, setStyleNotification] = useState<{ name: string; fills: string[]; mains: string[] } | null>(null);
   const [isStyleLoading, setIsStyleLoading] = useState<boolean>(false);
   const [styleLoadingProgress, setStyleLoadingProgress] = useState<number>(0);
+
+  // Workstation scroll container ref & touch-friendly swipe navigation between main console sections
+  const workstationScrollRef = useRef<HTMLDivElement>(null);
+  const {
+    activePanel: activeConsolePanel,
+    setActivePanel: setActiveConsolePanel,
+    goToNextPanel: handleNextConsolePanel,
+    goToPrevPanel: handlePrevConsolePanel,
+    swipeDirection,
+    swipeToast,
+    swipeHandlers,
+  } = useConsoleSwipe({
+    initialPanel: 'lcd',
+    onPanelChange: () => {
+      // Smoothly scroll the workstation container to top when changing panels
+      if (workstationScrollRef.current) {
+        workstationScrollRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    },
+  });
 
   // Keep MidiManager live performance configuration synchronized
   useEffect(() => {
@@ -781,239 +808,557 @@ export default function App() {
         />
 
         {/* Main Console Workstation Surface (Independently Scrollable with momentum & safe-area padding) */}
-        <div className="flex-1 flex flex-col overflow-y-auto overflow-x-hidden min-w-0 custom-scrollbar h-full scroll-smooth overscroll-y-contain">
+        <div 
+          ref={workstationScrollRef}
+          {...swipeHandlers}
+          className="flex-1 flex flex-col overflow-y-auto overflow-x-hidden min-w-0 custom-scrollbar h-full scroll-smooth overscroll-y-contain relative"
+        >
+          {/* Touch Swipe Feedback Toast */}
+          <AnimatePresence>
+            {swipeToast && (
+              <motion.div
+                initial={{ opacity: 0, y: -20, scale: 0.9 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -20, scale: 0.9 }}
+                transition={{ duration: 0.15 }}
+                className="fixed top-16 left-1/2 -translate-x-1/2 z-50 px-3.5 py-1.5 rounded-full bg-zinc-900/95 border border-amber-500/60 shadow-2xl text-amber-300 font-mono text-xs font-bold flex items-center gap-2 backdrop-blur-md pointer-events-none"
+              >
+                <span>{swipeToast.message}</span>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           <main className="max-w-7xl w-full mx-auto p-2 sm:p-3 md:p-4 pb-16 sm:pb-8 flex flex-col gap-3 sm:gap-3.5 flex-1">
             
-            {/* LCD Screen Display */}
-            <MainLcdDisplay
-              style={currentStyle}
-              tempo={tempo}
-              onTempoChange={(bpm) => stylePlayer.setTempo(bpm)}
-              onTapTempo={() => stylePlayer.tapTempo()}
-              currentSection={currentSection}
-              currentChord={currentChord}
-              measure={measure}
-              beat={beat}
-              isPlaying={isPlaying}
-              r1Voice={r1Voice}
-              r2Voice={r2Voice}
-              lVoice={lVoice}
-              r2Enabled={r2Enabled}
-              lEnabled={lEnabled}
-              splitPoint={splitPoint}
-              acmpEnabled={acmpEnabled}
-              chordMode={chordMode}
-              onOpenStyleBrowser={() => setIsStyleModalOpen(true)}
-              onOpenVoiceSelect={handleOpenVoiceSelect}
-              syncStart={syncStart}
-              onToggleSyncStart={handleToggleSyncStart}
-              isStyleLoading={isStyleLoading}
-              styleLoadingProgress={styleLoadingProgress}
-              metronomeEnabled={metronomeEnabled}
-              onToggleMetronome={handleToggleMetronome}
+            {/* Top Touch-Friendly Console Navigation Bar with Swiping & Pills */}
+            <ConsolePanelNav
+              activePanel={activeConsolePanel}
+              onSelectPanel={setActiveConsolePanel}
+              onPrevPanel={handlePrevConsolePanel}
+              onNextPanel={handleNextConsolePanel}
+              isPerformanceMode={viewMode === 'performance'}
             />
 
-            {/* Style & Fill Capability Notification Banner */}
-            {styleNotification && (
-              <div className="bg-gradient-to-r from-purple-950/90 via-zinc-900/90 to-amber-950/90 border border-purple-500/40 rounded-xl p-2.5 px-4 text-xs flex items-center justify-between gap-3 shadow-lg shadow-purple-950/40 animate-fade-in">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="font-bold text-amber-300">Style Loaded:</span>
-                  <span className="text-zinc-200 font-semibold">{styleNotification.name}</span>
-                  <span className="text-zinc-500">•</span>
-                  <span className="text-purple-300 font-bold">
-                    {styleNotification.fills.length > 0
-                      ? `Available Fills: [ ${styleNotification.fills.join(', ')} ]`
-                      : 'No Fill Patterns in Beat'}
+            {/* Compact Live Status Strip for focused Arranger, Keys, or Mixer views */}
+            {activeConsolePanel !== 'all' && activeConsolePanel !== 'lcd' && (
+              <div className="bg-zinc-950/80 border border-zinc-800/80 rounded-xl px-3 py-2 flex items-center justify-between gap-2 text-xs font-mono flex-wrap shrink-0 shadow-md">
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => stylePlayer.togglePlay()}
+                    className={`px-2.5 py-1 rounded-md text-[11px] font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                      isPlaying 
+                        ? 'bg-emerald-500 text-zinc-950 shadow-[0_0_10px_rgba(16,185,129,0.5)]' 
+                        : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
+                    }`}
+                  >
+                    {isPlaying ? <Square className="w-3 h-3 fill-current" /> : <Play className="w-3 h-3 fill-current" />}
+                    <span>{isPlaying ? 'STOP' : 'START'}</span>
+                  </button>
+
+                  <span className="font-bold text-amber-300 truncate max-w-[120px] sm:max-w-[180px]">
+                    {currentStyle.name}
+                  </span>
+                  <span className="text-zinc-600 hidden sm:inline">•</span>
+                  <span className="text-cyan-400 font-bold hidden sm:inline">
+                    {tempo} BPM
                   </span>
                 </div>
-                <button
-                  onClick={() => setStyleNotification(null)}
-                  className="text-zinc-400 hover:text-zinc-200 text-[10px] font-mono px-2 py-0.5 rounded bg-zinc-800"
-                >
-                  DISMISS
-                </button>
+
+                <div className="flex items-center gap-2">
+                  <div className="px-2 py-0.5 rounded bg-zinc-900 border border-zinc-800 text-zinc-300 text-[11px]">
+                    BAR: <span className="font-bold text-cyan-300">{measure}.{beat}</span>
+                  </div>
+                  <div className="px-2.5 py-0.5 rounded bg-cyan-950/80 border border-cyan-800 text-cyan-300 text-[11px] font-bold">
+                    {currentChord.displayName}
+                  </div>
+                </div>
               </div>
             )}
 
-            {/* Hero Chord Display (Prompt Section 9) */}
-            <ChordHeroDisplay
-              currentChord={currentChord}
-              acmpEnabled={acmpEnabled}
-              chordMode={chordMode}
-              currentKey={currentChord.root || 'C'}
-            />
+            {/* In 'all' view: Show all sections stacked together */}
+            {activeConsolePanel === 'all' ? (
+              <div className="flex flex-col gap-3 sm:gap-3.5 flex-1">
+                {/* 1. LCD Section */}
+                <section id="panel-lcd" className="flex flex-col gap-3 sm:gap-3.5">
+                  <MainLcdDisplay
+                    style={currentStyle}
+                    tempo={tempo}
+                    onTempoChange={(bpm) => stylePlayer.setTempo(bpm)}
+                    onTapTempo={() => stylePlayer.tapTempo()}
+                    currentSection={currentSection}
+                    currentChord={currentChord}
+                    measure={measure}
+                    beat={beat}
+                    isPlaying={isPlaying}
+                    r1Voice={r1Voice}
+                    r2Voice={r2Voice}
+                    lVoice={lVoice}
+                    r2Enabled={r2Enabled}
+                    lEnabled={lEnabled}
+                    splitPoint={splitPoint}
+                    acmpEnabled={acmpEnabled}
+                    chordMode={chordMode}
+                    onOpenStyleBrowser={() => setIsStyleModalOpen(true)}
+                    onOpenVoiceSelect={handleOpenVoiceSelect}
+                    syncStart={syncStart}
+                    onToggleSyncStart={handleToggleSyncStart}
+                    isStyleLoading={isStyleLoading}
+                    styleLoadingProgress={styleLoadingProgress}
+                    metronomeEnabled={metronomeEnabled}
+                    onToggleMetronome={handleToggleMetronome}
+                  />
 
-            {/* Section Matrix & Arranger Controls */}
-            <ArrangerControls
-              isPlaying={isPlaying}
-              onTogglePlay={() => stylePlayer.togglePlay()}
-              metronomeEnabled={metronomeEnabled}
-              onToggleMetronome={handleToggleMetronome}
-              currentSection={currentSection}
-              onSelectSection={(sec) => stylePlayer.triggerSection(sec)}
-              onTriggerBreak={() => stylePlayer.triggerBreak()}
-              syncStart={syncStart}
-              onToggleSyncStart={handleToggleSyncStart}
-              syncStop={syncStop}
-              onToggleSyncStop={handleToggleSyncStop}
-              autoFill={autoFill}
-              onToggleAutoFill={handleToggleAutoFill}
-              acmpEnabled={acmpEnabled}
-              onToggleAcmp={handleToggleAcmp}
-              chordMode={chordMode}
-              onToggleChordMode={handleToggleChordMode}
-              activeOtsIndex={activeOtsIndex}
-              onSelectOts={(idx) => applyOtsPreset(currentStyle, idx)}
-              style={currentStyle}
-              fillIntensityThreshold={fillIntensityThreshold}
-              onChangeFillIntensityThreshold={handleChangeFillIntensityThreshold}
-              dynamicFillMode={dynamicFillMode}
-              onToggleDynamicFillMode={handleToggleDynamicFillMode}
-              onTriggerDynamicFill={handleTriggerDynamicFill}
-              currentTrackVolumeIntensity={stylePlayer.getTrackVolumeIntensity()}
-            />
+                  {styleNotification && (
+                    <div className="bg-gradient-to-r from-purple-950/90 via-zinc-900/90 to-amber-950/90 border border-purple-500/40 rounded-xl p-2.5 px-4 text-xs flex items-center justify-between gap-3 shadow-lg shadow-purple-950/40 animate-fade-in">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-bold text-amber-300">Style Loaded:</span>
+                        <span className="text-zinc-200 font-semibold">{styleNotification.name}</span>
+                        <span className="text-zinc-500">•</span>
+                        <span className="text-purple-300 font-bold">
+                          {styleNotification.fills.length > 0
+                            ? `Available Fills: [ ${styleNotification.fills.join(', ')} ]`
+                            : 'No Fill Patterns in Beat'}
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => setStyleNotification(null)}
+                        className="text-zinc-400 hover:text-zinc-200 text-[10px] font-mono px-2 py-0.5 rounded bg-zinc-800"
+                      >
+                        DISMISS
+                      </button>
+                    </div>
+                  )}
 
-            {/* In PERFORMANCE MODE: Clean, uncluttered layout for live stage playing */}
-            {viewMode === 'performance' ? (
-              <>
-                {/* Dedicated Hardware Voice Section */}
-                <VoiceSection
-                  r1Voice={r1Voice}
-                  r2Voice={r2Voice}
-                  lVoice={lVoice}
-                  r1Volume={r1Volume}
-                  r2Volume={r2Volume}
-                  lVolume={lVolume}
-                  r2Enabled={r2Enabled}
-                  lEnabled={lEnabled}
-                  onToggleR2={() => setR2Enabled(prev => !prev)}
-                  onToggleL={() => setLEnabled(prev => !prev)}
-                  onVoiceVolumeChange={handleLiveVoiceVolumeChange}
-                  onOpenVoiceSelect={handleOpenVoiceSelect}
-                  activeOtsIndex={activeOtsIndex}
-                  onSelectOts={(idx) => applyOtsPreset(currentStyle, idx)}
-                />
+                  <ChordHeroDisplay
+                    currentChord={currentChord}
+                    acmpEnabled={acmpEnabled}
+                    chordMode={chordMode}
+                    currentKey={currentChord.root || 'C'}
+                  />
+                </section>
 
-                {/* Interactive Piano Keyboard with Split Zones */}
-                <InteractiveKeyboard
-                  splitPoint={splitPoint}
-                  onSplitPointChange={(newSplit) => setSplitPoint(newSplit)}
-                  r1Voice={r1Voice}
-                  r2Voice={r2Voice}
-                  lVoice={lVoice}
-                  r2Enabled={r2Enabled}
-                  lEnabled={lEnabled}
-                  acmpEnabled={acmpEnabled}
-                  chordMode={chordMode}
-                  onChordDetected={(chord) => stylePlayer.setChord(chord)}
-                  activeNotes={activeMidiNotes}
-                  onNoteOn={handleLiveNoteOn}
-                  onNoteOff={handleLiveNoteOff}
-                  syncStart={syncStart}
-                  onToggleSyncStart={handleToggleSyncStart}
-                />
-              </>
+                {/* 2. Arranger Section */}
+                <section id="panel-arranger">
+                  <ArrangerControls
+                    isPlaying={isPlaying}
+                    onTogglePlay={() => stylePlayer.togglePlay()}
+                    metronomeEnabled={metronomeEnabled}
+                    onToggleMetronome={handleToggleMetronome}
+                    currentSection={currentSection}
+                    onSelectSection={(sec) => stylePlayer.triggerSection(sec)}
+                    onTriggerBreak={() => stylePlayer.triggerBreak()}
+                    syncStart={syncStart}
+                    onToggleSyncStart={handleToggleSyncStart}
+                    syncStop={syncStop}
+                    onToggleSyncStop={handleToggleSyncStop}
+                    autoFill={autoFill}
+                    onToggleAutoFill={handleToggleAutoFill}
+                    acmpEnabled={acmpEnabled}
+                    onToggleAcmp={handleToggleAcmp}
+                    chordMode={chordMode}
+                    onToggleChordMode={handleToggleChordMode}
+                    activeOtsIndex={activeOtsIndex}
+                    onSelectOts={(idx) => applyOtsPreset(currentStyle, idx)}
+                    style={currentStyle}
+                    fillIntensityThreshold={fillIntensityThreshold}
+                    onChangeFillIntensityThreshold={handleChangeFillIntensityThreshold}
+                    dynamicFillMode={dynamicFillMode}
+                    onToggleDynamicFillMode={handleToggleDynamicFillMode}
+                    onTriggerDynamicFill={handleTriggerDynamicFill}
+                    currentTrackVolumeIntensity={stylePlayer.getTrackVolumeIntensity()}
+                  />
+                </section>
+
+                {/* 3. Keys & Voices Section */}
+                <section id="panel-keys" className="flex flex-col gap-3 sm:gap-3.5">
+                  {viewMode === 'performance' ? (
+                    <>
+                      <VoiceSection
+                        r1Voice={r1Voice}
+                        r2Voice={r2Voice}
+                        lVoice={lVoice}
+                        r1Volume={r1Volume}
+                        r2Volume={r2Volume}
+                        lVolume={lVolume}
+                        r2Enabled={r2Enabled}
+                        lEnabled={lEnabled}
+                        onToggleR2={() => setR2Enabled(prev => !prev)}
+                        onToggleL={() => setLEnabled(prev => !prev)}
+                        onVoiceVolumeChange={handleLiveVoiceVolumeChange}
+                        onOpenVoiceSelect={handleOpenVoiceSelect}
+                        activeOtsIndex={activeOtsIndex}
+                        onSelectOts={(idx) => applyOtsPreset(currentStyle, idx)}
+                      />
+                      <InteractiveKeyboard
+                        splitPoint={splitPoint}
+                        onSplitPointChange={(newSplit) => setSplitPoint(newSplit)}
+                        r1Voice={r1Voice}
+                        r2Voice={r2Voice}
+                        lVoice={lVoice}
+                        r2Enabled={r2Enabled}
+                        lEnabled={lEnabled}
+                        acmpEnabled={acmpEnabled}
+                        chordMode={chordMode}
+                        onChordDetected={(chord) => stylePlayer.setChord(chord)}
+                        activeNotes={activeMidiNotes}
+                        onNoteOn={handleLiveNoteOn}
+                        onNoteOff={handleLiveNoteOff}
+                        syncStart={syncStart}
+                        onToggleSyncStart={handleToggleSyncStart}
+                      />
+                    </>
+                  ) : (
+                    <>
+                      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5">
+                        <div className="lg:col-span-7">
+                          <VoiceSection
+                            r1Voice={r1Voice}
+                            r2Voice={r2Voice}
+                            lVoice={lVoice}
+                            r1Volume={r1Volume}
+                            r2Volume={r2Volume}
+                            lVolume={lVolume}
+                            r2Enabled={r2Enabled}
+                            lEnabled={lEnabled}
+                            onToggleR2={() => setR2Enabled(prev => !prev)}
+                            onToggleL={() => setLEnabled(prev => !prev)}
+                            onVoiceVolumeChange={handleLiveVoiceVolumeChange}
+                            onOpenVoiceSelect={handleOpenVoiceSelect}
+                            activeOtsIndex={activeOtsIndex}
+                            onSelectOts={(idx) => applyOtsPreset(currentStyle, idx)}
+                          />
+                        </div>
+                        <div className="lg:col-span-5">
+                          <AiMusicDirectorPanel
+                            currentChord={currentChord}
+                            currentTempo={tempo}
+                            currentSection={currentSection}
+                            currentStyle={currentStyle}
+                            onApplyProgression={handleApplyProgression}
+                            onApplySection={(sec) => stylePlayer.triggerSection(sec)}
+                            onOpenAiStudioModal={() => setIsAiStudioModalOpen(true)}
+                            onOpenStyleCreator={() => {
+                              setStyleToEditInCreator(undefined);
+                              setIsStyleCreatorModalOpen(true);
+                            }}
+                            onOpenWorshipSongbook={() => setIsSongbookModalOpen(true)}
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3">
+                        <div className="lg:col-span-6">
+                          <RegistrationMemory
+                            currentStyleId={currentStyle.id}
+                            currentTempo={tempo}
+                            currentSection={currentSection}
+                            r1Voice={r1Voice}
+                            r2Voice={r2Voice}
+                            lVoice={lVoice}
+                            r2Enabled={r2Enabled}
+                            lEnabled={lEnabled}
+                            splitPoint={splitPoint}
+                            acmpEnabled={acmpEnabled}
+                            onRecallPreset={handleRecallPreset}
+                          />
+                        </div>
+                        <div className="lg:col-span-6">
+                          <MultiPadsSection />
+                        </div>
+                      </div>
+
+                      <InteractiveKeyboard
+                        splitPoint={splitPoint}
+                        onSplitPointChange={(newSplit) => setSplitPoint(newSplit)}
+                        r1Voice={r1Voice}
+                        r2Voice={r2Voice}
+                        lVoice={lVoice}
+                        r2Enabled={r2Enabled}
+                        lEnabled={lEnabled}
+                        acmpEnabled={acmpEnabled}
+                        chordMode={chordMode}
+                        onChordDetected={(chord) => stylePlayer.setChord(chord)}
+                        activeNotes={activeMidiNotes}
+                        onNoteOn={handleLiveNoteOn}
+                        onNoteOff={handleLiveNoteOff}
+                        syncStart={syncStart}
+                        onToggleSyncStart={handleToggleSyncStart}
+                      />
+                    </>
+                  )}
+                </section>
+
+                {/* 4. Mixer Section */}
+                <section id="panel-mixer">
+                  <MixerSection
+                    trackSettings={trackSettings}
+                    onTrackSettingChange={handleTrackSettingChange}
+                    r1Voice={r1Voice}
+                    r2Voice={r2Voice}
+                    lVoice={lVoice}
+                    r1Volume={r1Volume}
+                    r2Volume={r2Volume}
+                    lVolume={lVolume}
+                    masterVolume={masterVolume}
+                    onMasterVolumeChange={(vol) => {
+                      setMasterVolume(vol);
+                      audioEngine.setMasterVolume(vol);
+                    }}
+                    onLiveVoiceVolumeChange={handleLiveVoiceVolumeChange}
+                  />
+                </section>
+              </div>
             ) : (
-              /* In STUDIO / EDIT MODE: Expose AI Music Director, Voices, MultiPads, Registration & Digital Mixer */
-              <>
-                {/* 2-Column Workstation Center Console: Hardware Voices + AI Music Director */}
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5">
-                  <div className="lg:col-span-7">
-                    <VoiceSection
-                      r1Voice={r1Voice}
-                      r2Voice={r2Voice}
-                      lVoice={lVoice}
-                      r1Volume={r1Volume}
-                      r2Volume={r2Volume}
-                      lVolume={lVolume}
-                      r2Enabled={r2Enabled}
-                      lEnabled={lEnabled}
-                      onToggleR2={() => setR2Enabled(prev => !prev)}
-                      onToggleL={() => setLEnabled(prev => !prev)}
-                      onVoiceVolumeChange={handleLiveVoiceVolumeChange}
-                      onOpenVoiceSelect={handleOpenVoiceSelect}
-                      activeOtsIndex={activeOtsIndex}
-                      onSelectOts={(idx) => applyOtsPreset(currentStyle, idx)}
-                    />
-                  </div>
+              /* Single Focused Panel Mode (with fluid touch swipe animation) */
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={activeConsolePanel}
+                  initial={{ opacity: 0, x: swipeDirection > 0 ? 36 : -36 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: swipeDirection > 0 ? -36 : 36 }}
+                  transition={{ duration: 0.18, ease: 'easeOut' }}
+                  className="flex flex-col gap-3 sm:gap-3.5 flex-1"
+                >
+                  {/* Panel: LCD & Chords */}
+                  {activeConsolePanel === 'lcd' && (
+                    <div id="panel-lcd" className="flex flex-col gap-3 sm:gap-3.5">
+                      <MainLcdDisplay
+                        style={currentStyle}
+                        tempo={tempo}
+                        onTempoChange={(bpm) => stylePlayer.setTempo(bpm)}
+                        onTapTempo={() => stylePlayer.tapTempo()}
+                        currentSection={currentSection}
+                        currentChord={currentChord}
+                        measure={measure}
+                        beat={beat}
+                        isPlaying={isPlaying}
+                        r1Voice={r1Voice}
+                        r2Voice={r2Voice}
+                        lVoice={lVoice}
+                        r2Enabled={r2Enabled}
+                        lEnabled={lEnabled}
+                        splitPoint={splitPoint}
+                        acmpEnabled={acmpEnabled}
+                        chordMode={chordMode}
+                        onOpenStyleBrowser={() => setIsStyleModalOpen(true)}
+                        onOpenVoiceSelect={handleOpenVoiceSelect}
+                        syncStart={syncStart}
+                        onToggleSyncStart={handleToggleSyncStart}
+                        isStyleLoading={isStyleLoading}
+                        styleLoadingProgress={styleLoadingProgress}
+                        metronomeEnabled={metronomeEnabled}
+                        onToggleMetronome={handleToggleMetronome}
+                      />
 
-                  <div className="lg:col-span-5">
-                    <AiMusicDirectorPanel
-                      currentChord={currentChord}
-                      currentTempo={tempo}
-                      currentSection={currentSection}
-                      currentStyle={currentStyle}
-                      onApplyProgression={handleApplyProgression}
-                      onApplySection={(sec) => stylePlayer.triggerSection(sec)}
-                      onOpenAiStudioModal={() => setIsAiStudioModalOpen(true)}
-                      onOpenStyleCreator={() => {
-                        setStyleToEditInCreator(undefined);
-                        setIsStyleCreatorModalOpen(true);
-                      }}
-                      onOpenWorshipSongbook={() => setIsSongbookModalOpen(true)}
-                    />
-                  </div>
-                </div>
+                      {styleNotification && (
+                        <div className="bg-gradient-to-r from-purple-950/90 via-zinc-900/90 to-amber-950/90 border border-purple-500/40 rounded-xl p-2.5 px-4 text-xs flex items-center justify-between gap-3 shadow-lg shadow-purple-950/40 animate-fade-in">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-bold text-amber-300">Style Loaded:</span>
+                            <span className="text-zinc-200 font-semibold">{styleNotification.name}</span>
+                            <span className="text-zinc-500">•</span>
+                            <span className="text-purple-300 font-bold">
+                              {styleNotification.fills.length > 0
+                                ? `Available Fills: [ ${styleNotification.fills.join(', ')} ]`
+                                : 'No Fill Patterns in Beat'}
+                            </span>
+                          </div>
+                          <button
+                            onClick={() => setStyleNotification(null)}
+                            className="text-zinc-400 hover:text-zinc-200 text-[10px] font-mono px-2 py-0.5 rounded bg-zinc-800"
+                          >
+                            DISMISS
+                          </button>
+                        </div>
+                      )}
 
-                {/* Mid-tier Module: Registration Memory & Multi-Pads */}
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-3">
-                  <div className="lg:col-span-6">
-                    <RegistrationMemory
-                      currentStyleId={currentStyle.id}
-                      currentTempo={tempo}
-                      currentSection={currentSection}
-                      r1Voice={r1Voice}
-                      r2Voice={r2Voice}
-                      lVoice={lVoice}
-                      r2Enabled={r2Enabled}
-                      lEnabled={lEnabled}
-                      splitPoint={splitPoint}
-                      acmpEnabled={acmpEnabled}
-                      onRecallPreset={handleRecallPreset}
-                    />
-                  </div>
-                  <div className="lg:col-span-6">
-                    <MultiPadsSection />
-                  </div>
-                </div>
+                      <ChordHeroDisplay
+                        currentChord={currentChord}
+                        acmpEnabled={acmpEnabled}
+                        chordMode={chordMode}
+                        currentKey={currentChord.root || 'C'}
+                      />
+                    </div>
+                  )}
 
-                {/* Interactive Piano Keyboard with Split Zones */}
-                <InteractiveKeyboard
-                  splitPoint={splitPoint}
-                  onSplitPointChange={(newSplit) => setSplitPoint(newSplit)}
-                  r1Voice={r1Voice}
-                  r2Voice={r2Voice}
-                  lVoice={lVoice}
-                  r2Enabled={r2Enabled}
-                  lEnabled={lEnabled}
-                  acmpEnabled={acmpEnabled}
-                  chordMode={chordMode}
-                  onChordDetected={(chord) => stylePlayer.setChord(chord)}
-                  activeNotes={activeMidiNotes}
-                  onNoteOn={handleLiveNoteOn}
-                  onNoteOff={handleLiveNoteOff}
-                  syncStart={syncStart}
-                  onToggleSyncStart={handleToggleSyncStart}
-                />
+                  {/* Panel: Arranger Controls */}
+                  {activeConsolePanel === 'arranger' && (
+                    <div id="panel-arranger">
+                      <ArrangerControls
+                        isPlaying={isPlaying}
+                        onTogglePlay={() => stylePlayer.togglePlay()}
+                        metronomeEnabled={metronomeEnabled}
+                        onToggleMetronome={handleToggleMetronome}
+                        currentSection={currentSection}
+                        onSelectSection={(sec) => stylePlayer.triggerSection(sec)}
+                        onTriggerBreak={() => stylePlayer.triggerBreak()}
+                        syncStart={syncStart}
+                        onToggleSyncStart={handleToggleSyncStart}
+                        syncStop={syncStop}
+                        onToggleSyncStop={handleToggleSyncStop}
+                        autoFill={autoFill}
+                        onToggleAutoFill={handleToggleAutoFill}
+                        acmpEnabled={acmpEnabled}
+                        onToggleAcmp={handleToggleAcmp}
+                        chordMode={chordMode}
+                        onToggleChordMode={handleToggleChordMode}
+                        activeOtsIndex={activeOtsIndex}
+                        onSelectOts={(idx) => applyOtsPreset(currentStyle, idx)}
+                        style={currentStyle}
+                        fillIntensityThreshold={fillIntensityThreshold}
+                        onChangeFillIntensityThreshold={handleChangeFillIntensityThreshold}
+                        dynamicFillMode={dynamicFillMode}
+                        onToggleDynamicFillMode={handleToggleDynamicFillMode}
+                        onTriggerDynamicFill={handleTriggerDynamicFill}
+                        currentTrackVolumeIntensity={stylePlayer.getTrackVolumeIntensity()}
+                      />
+                    </div>
+                  )}
 
-                {/* Multi-Track Mixer Console */}
-                <MixerSection
-                  trackSettings={trackSettings}
-                  onTrackSettingChange={handleTrackSettingChange}
-                  r1Voice={r1Voice}
-                  r2Voice={r2Voice}
-                  lVoice={lVoice}
-                  r1Volume={r1Volume}
-                  r2Volume={r2Volume}
-                  lVolume={lVolume}
-                  masterVolume={masterVolume}
-                  onMasterVolumeChange={(vol) => {
-                    setMasterVolume(vol);
-                    audioEngine.setMasterVolume(vol);
-                  }}
-                  onLiveVoiceVolumeChange={handleLiveVoiceVolumeChange}
-                />
-              </>
+                  {/* Panel: Voices & Keys */}
+                  {activeConsolePanel === 'keys' && (
+                    <div id="panel-keys" className="flex flex-col gap-3 sm:gap-3.5">
+                      {viewMode === 'performance' ? (
+                        <>
+                          <VoiceSection
+                            r1Voice={r1Voice}
+                            r2Voice={r2Voice}
+                            lVoice={lVoice}
+                            r1Volume={r1Volume}
+                            r2Volume={r2Volume}
+                            lVolume={lVolume}
+                            r2Enabled={r2Enabled}
+                            lEnabled={lEnabled}
+                            onToggleR2={() => setR2Enabled(prev => !prev)}
+                            onToggleL={() => setLEnabled(prev => !prev)}
+                            onVoiceVolumeChange={handleLiveVoiceVolumeChange}
+                            onOpenVoiceSelect={handleOpenVoiceSelect}
+                            activeOtsIndex={activeOtsIndex}
+                            onSelectOts={(idx) => applyOtsPreset(currentStyle, idx)}
+                          />
+                          <InteractiveKeyboard
+                            splitPoint={splitPoint}
+                            onSplitPointChange={(newSplit) => setSplitPoint(newSplit)}
+                            r1Voice={r1Voice}
+                            r2Voice={r2Voice}
+                            lVoice={lVoice}
+                            r2Enabled={r2Enabled}
+                            lEnabled={lEnabled}
+                            acmpEnabled={acmpEnabled}
+                            chordMode={chordMode}
+                            onChordDetected={(chord) => stylePlayer.setChord(chord)}
+                            activeNotes={activeMidiNotes}
+                            onNoteOn={handleLiveNoteOn}
+                            onNoteOff={handleLiveNoteOff}
+                            syncStart={syncStart}
+                            onToggleSyncStart={handleToggleSyncStart}
+                          />
+                        </>
+                      ) : (
+                        <>
+                          <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5">
+                            <div className="lg:col-span-7">
+                              <VoiceSection
+                                r1Voice={r1Voice}
+                                r2Voice={r2Voice}
+                                lVoice={lVoice}
+                                r1Volume={r1Volume}
+                                r2Volume={r2Volume}
+                                lVolume={lVolume}
+                                r2Enabled={r2Enabled}
+                                lEnabled={lEnabled}
+                                onToggleR2={() => setR2Enabled(prev => !prev)}
+                                onToggleL={() => setLEnabled(prev => !prev)}
+                                onVoiceVolumeChange={handleLiveVoiceVolumeChange}
+                                onOpenVoiceSelect={handleOpenVoiceSelect}
+                                activeOtsIndex={activeOtsIndex}
+                                onSelectOts={(idx) => applyOtsPreset(currentStyle, idx)}
+                              />
+                            </div>
+                            <div className="lg:col-span-5">
+                              <AiMusicDirectorPanel
+                                currentChord={currentChord}
+                                currentTempo={tempo}
+                                currentSection={currentSection}
+                                currentStyle={currentStyle}
+                                onApplyProgression={handleApplyProgression}
+                                onApplySection={(sec) => stylePlayer.triggerSection(sec)}
+                                onOpenAiStudioModal={() => setIsAiStudioModalOpen(true)}
+                                onOpenStyleCreator={() => {
+                                  setStyleToEditInCreator(undefined);
+                                  setIsStyleCreatorModalOpen(true);
+                                }}
+                                onOpenWorshipSongbook={() => setIsSongbookModalOpen(true)}
+                              />
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-1 lg:grid-cols-12 gap-3">
+                            <div className="lg:col-span-6">
+                              <RegistrationMemory
+                                currentStyleId={currentStyle.id}
+                                currentTempo={tempo}
+                                currentSection={currentSection}
+                                r1Voice={r1Voice}
+                                r2Voice={r2Voice}
+                                lVoice={lVoice}
+                                r2Enabled={r2Enabled}
+                                lEnabled={lEnabled}
+                                splitPoint={splitPoint}
+                                acmpEnabled={acmpEnabled}
+                                onRecallPreset={handleRecallPreset}
+                              />
+                            </div>
+                            <div className="lg:col-span-6">
+                              <MultiPadsSection />
+                            </div>
+                          </div>
+
+                          <InteractiveKeyboard
+                            splitPoint={splitPoint}
+                            onSplitPointChange={(newSplit) => setSplitPoint(newSplit)}
+                            r1Voice={r1Voice}
+                            r2Voice={r2Voice}
+                            lVoice={lVoice}
+                            r2Enabled={r2Enabled}
+                            lEnabled={lEnabled}
+                            acmpEnabled={acmpEnabled}
+                            chordMode={chordMode}
+                            onChordDetected={(chord) => stylePlayer.setChord(chord)}
+                            activeNotes={activeMidiNotes}
+                            onNoteOn={handleLiveNoteOn}
+                            onNoteOff={handleLiveNoteOff}
+                            syncStart={syncStart}
+                            onToggleSyncStart={handleToggleSyncStart}
+                          />
+                        </>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Panel: Digital Mixer Console */}
+                  {activeConsolePanel === 'mixer' && (
+                    <div id="panel-mixer">
+                      <MixerSection
+                        trackSettings={trackSettings}
+                        onTrackSettingChange={handleTrackSettingChange}
+                        r1Voice={r1Voice}
+                        r2Voice={r2Voice}
+                        lVoice={lVoice}
+                        r1Volume={r1Volume}
+                        r2Volume={r2Volume}
+                        lVolume={lVolume}
+                        masterVolume={masterVolume}
+                        onMasterVolumeChange={(vol) => {
+                          setMasterVolume(vol);
+                          audioEngine.setMasterVolume(vol);
+                        }}
+                        onLiveVoiceVolumeChange={handleLiveVoiceVolumeChange}
+                      />
+                    </div>
+                  )}
+                </motion.div>
+              </AnimatePresence>
             )}
 
           </main>
@@ -1265,7 +1610,7 @@ export default function App() {
         <div
           role="status"
           aria-live="polite"
-          className={`fixed bottom-6 right-6 z-50 max-w-md px-4 py-3 rounded-2xl border shadow-2xl flex items-center gap-3 animate-in slide-in-from-bottom-5 duration-200 ${
+          className={`fixed bottom-4 right-4 left-4 sm:left-auto sm:right-6 sm:bottom-6 z-50 sm:max-w-md px-3.5 sm:px-4 py-2.5 sm:py-3 rounded-xl sm:rounded-2xl border shadow-2xl flex items-center gap-2.5 sm:gap-3 animate-in slide-in-from-bottom-5 duration-200 ${
             fileNotice.type === 'workstation'
               ? 'bg-zinc-950/95 border-amber-500/60 text-amber-200 shadow-amber-950/50'
               : fileNotice.type === 'media'
@@ -1274,7 +1619,7 @@ export default function App() {
           }`}
         >
           <div
-            className={`p-2 rounded-xl shrink-0 ${
+            className={`p-1.5 sm:p-2 rounded-lg sm:rounded-xl shrink-0 ${
               fileNotice.type === 'workstation'
                 ? 'bg-amber-500/20 text-amber-400'
                 : fileNotice.type === 'media'
@@ -1283,27 +1628,27 @@ export default function App() {
             }`}
           >
             {fileNotice.type === 'workstation' ? (
-              <Piano className="w-5 h-5" />
+              <Piano className="w-4 h-4 sm:w-5 sm:h-5" />
             ) : fileNotice.type === 'media' ? (
-              <Disc className="w-5 h-5" />
+              <Disc className="w-4 h-4 sm:w-5 sm:h-5" />
             ) : (
-              <AlertCircle className="w-5 h-5" />
+              <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5" />
             )}
           </div>
           <div className="flex-1 min-w-0">
-            <div className="text-[11px] font-mono uppercase tracking-wider font-bold opacity-75">
+            <div className="text-[10px] sm:text-[11px] font-mono uppercase tracking-wider font-bold opacity-75">
               {fileNotice.type === 'workstation'
                 ? 'Workstation Mode'
                 : fileNotice.type === 'media'
                 ? 'Media Player Mode'
                 : 'File Open Notice'}
             </div>
-            <div className="text-xs font-medium line-clamp-2">{fileNotice.message}</div>
+            <div className="text-[11px] sm:text-xs font-medium line-clamp-2">{fileNotice.message}</div>
           </div>
           <button
             type="button"
             onClick={() => setFileNotice(null)}
-            className="p-1.5 rounded-lg hover:bg-zinc-800/80 text-zinc-400 hover:text-zinc-200 cursor-pointer"
+            className="p-1 sm:p-1.5 rounded-lg hover:bg-zinc-800/80 text-zinc-400 hover:text-zinc-200 cursor-pointer shrink-0"
             aria-label="Dismiss notice"
           >
             <X className="w-4 h-4" />

@@ -401,170 +401,180 @@ export const AiStudioModal: React.FC<AiStudioModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-2 sm:p-4 animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-1.5 sm:p-4 animate-in fade-in duration-200">
       <div
         id="ai-studio-modal"
-        className="relative w-full max-w-6xl max-h-[92vh] flex flex-col rounded-2xl bg-zinc-950 border-2 border-zinc-700 shadow-2xl shadow-black text-zinc-100 overflow-hidden"
+        className="relative w-full max-w-6xl h-[95dvh] sm:h-[90vh] sm:max-h-[92vh] flex flex-col rounded-xl sm:rounded-2xl bg-zinc-950 border border-zinc-700 sm:border-2 shadow-2xl shadow-black text-zinc-100 overflow-hidden"
       >
         {/* Header Bar */}
-        <div className="flex items-center justify-between px-4 sm:px-6 py-3.5 bg-gradient-to-r from-zinc-950 via-zinc-900 to-zinc-950 border-b border-zinc-800 shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-gradient-to-br from-amber-500/20 to-cyan-500/20 border border-amber-500/40 text-amber-300 shadow-xs">
-              <Sparkles className="w-6 h-6 text-amber-400 animate-pulse" />
+        <div className="flex items-center justify-between px-3 sm:px-6 py-2.5 sm:py-3.5 bg-gradient-to-r from-zinc-950 via-zinc-900 to-zinc-950 border-b border-zinc-800 shrink-0 gap-2">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+            <div className="p-1.5 sm:p-2.5 rounded-lg sm:rounded-xl bg-gradient-to-br from-amber-500/20 to-cyan-500/20 border border-amber-500/40 text-amber-300 shadow-xs shrink-0">
+              <Sparkles className="w-4 h-4 sm:w-6 sm:h-6 text-amber-400 animate-pulse" />
             </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-base sm:text-lg font-bold font-mono uppercase tracking-wider text-zinc-100 flex items-center gap-2">
-                  <span>AI CO-PRODUCER STUDIO</span>
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <h2 className="text-xs sm:text-base md:text-lg font-bold font-mono uppercase tracking-wider text-zinc-100 flex items-center gap-1.5 sm:gap-2 truncate">
+                  <span className="truncate">AI CO-PRODUCER STUDIO</span>
                 </h2>
-                <span className="flex items-center gap-1 text-[11px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-950/80 text-emerald-300 border border-emerald-500/40">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-                  GEMINI 3.7 FLASH
+                <span className="hidden xs:inline-flex items-center gap-1 text-[10px] sm:text-[11px] font-mono font-bold px-1.5 sm:px-2 py-0.5 rounded-full bg-emerald-950/80 text-emerald-300 border border-emerald-500/40 shrink-0">
+                  <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  GEMINI FLASH
                 </span>
               </div>
-              <p className="text-xs text-zinc-400 font-sans">
+              <p className="hidden md:block text-xs text-zinc-400 font-sans truncate">
                 Next-generation intelligent style arranger, harmonic reharmonizer, voice sound designer &amp; mastering studio
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             <button
               id="btn-ai-studio-api-key"
               onClick={() => setIsApiKeyModalOpen(true)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-mono font-bold flex items-center gap-1.5 transition-all border cursor-pointer ${
+              className={`px-2 sm:px-3 py-1.5 rounded-lg sm:rounded-xl text-xs font-mono font-bold flex items-center gap-1.5 transition-all border cursor-pointer shrink-0 ${
                 isServerAiConnected
                   ? 'bg-emerald-950/80 hover:bg-emerald-900/90 text-emerald-300 border-emerald-500/50 shadow-xs'
                   : 'bg-amber-950/60 hover:bg-amber-900/80 text-amber-300 border-amber-500/40'
               }`}
               title="View Server AI Connection Status"
             >
-              <Key className="w-3.5 h-3.5 text-amber-400" />
-              <span>{isServerAiConnected ? 'AI Server Online' : 'Local Algorithmic Mode'}</span>
-              <span className="text-[10px] px-1 py-0.2 bg-black/40 rounded text-zinc-300 font-normal">Server</span>
-              {isServerAiConnected && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />}
+              <Key className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+              <span className="hidden sm:inline">{isServerAiConnected ? 'AI Server Online' : 'Local Algorithmic Mode'}</span>
+              <span className="sm:hidden">{isServerAiConnected ? 'Online' : 'Local'}</span>
+              <span className="hidden sm:inline text-[10px] px-1 py-0.2 bg-black/40 rounded text-zinc-300 font-normal">Server</span>
+              {isServerAiConnected && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />}
             </button>
 
             <button
               onClick={onClose}
-              className="p-2 rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-400 hover:text-zinc-100 transition-colors cursor-pointer"
+              className="p-1.5 sm:p-2 rounded-lg sm:rounded-xl bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-zinc-400 hover:text-zinc-100 transition-colors cursor-pointer shrink-0"
               title="Close AI Studio"
+              aria-label="Close AI Studio"
             >
-              <X className="w-5 h-5" />
+              <X className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
           </div>
         </div>
 
         {/* Tab Switcher Rail */}
-        <div className="flex items-center gap-1.5 px-4 sm:px-6 py-2.5 bg-zinc-900/90 border-b border-zinc-800/80 overflow-x-auto custom-scrollbar shrink-0">
+        <div className="flex items-center gap-1.5 px-2.5 sm:px-6 py-2 bg-zinc-900/90 border-b border-zinc-800/80 overflow-x-auto scrollbar-none shrink-0 overscroll-x-contain">
           <button
             onClick={() => setActiveTab('style')}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition-all shrink-0 cursor-pointer ${
+            className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg sm:rounded-xl text-xs font-mono font-bold transition-all shrink-0 cursor-pointer whitespace-nowrap ${
               activeTab === 'style'
                 ? 'bg-amber-500 text-zinc-950 border border-amber-400 shadow-xs'
                 : 'bg-zinc-950 text-zinc-400 hover:text-zinc-200 border border-zinc-800 hover:bg-zinc-850'
             }`}
           >
-            <Disc className="w-3.5 h-3.5" />
+            <Disc className="w-3.5 h-3.5 shrink-0" />
             <span>🎼 Style Generator</span>
           </button>
 
           <button
             onClick={() => setActiveTab('chords')}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition-all shrink-0 cursor-pointer ${
+            className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg sm:rounded-xl text-xs font-mono font-bold transition-all shrink-0 cursor-pointer whitespace-nowrap ${
               activeTab === 'chords'
                 ? 'bg-cyan-500 text-zinc-950 border border-cyan-400 shadow-xs'
                 : 'bg-zinc-950 text-zinc-400 hover:text-zinc-200 border border-zinc-800 hover:bg-zinc-850'
             }`}
           >
-            <Layers className="w-3.5 h-3.5" />
+            <Layers className="w-3.5 h-3.5 shrink-0" />
             <span>🎹 Chord Reharmonizer</span>
           </button>
 
           <button
             onClick={() => setActiveTab('songbook')}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition-all shrink-0 cursor-pointer ${
+            className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg sm:rounded-xl text-xs font-mono font-bold transition-all shrink-0 cursor-pointer whitespace-nowrap ${
               activeTab === 'songbook'
                 ? 'bg-emerald-500 text-zinc-950 border border-emerald-400 shadow-xs'
                 : 'bg-zinc-950 text-zinc-400 hover:text-zinc-200 border border-zinc-800 hover:bg-zinc-850'
             }`}
           >
-            <BookOpen className="w-3.5 h-3.5" />
+            <BookOpen className="w-3.5 h-3.5 shrink-0" />
             <span>📖 Songbook Master</span>
           </button>
 
           <button
             onClick={() => setActiveTab('voice')}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition-all shrink-0 cursor-pointer ${
+            className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg sm:rounded-xl text-xs font-mono font-bold transition-all shrink-0 cursor-pointer whitespace-nowrap ${
               activeTab === 'voice'
                 ? 'bg-indigo-500 text-zinc-950 border border-indigo-400 shadow-xs'
                 : 'bg-zinc-950 text-zinc-400 hover:text-zinc-200 border border-zinc-800 hover:bg-zinc-850'
             }`}
           >
-            <Wand2 className="w-3.5 h-3.5" />
+            <Wand2 className="w-3.5 h-3.5 shrink-0" />
             <span>🎛️ Voice Sound Designer</span>
           </button>
 
           <button
             onClick={() => setActiveTab('mix')}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition-all shrink-0 cursor-pointer ${
+            className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg sm:rounded-xl text-xs font-mono font-bold transition-all shrink-0 cursor-pointer whitespace-nowrap ${
               activeTab === 'mix'
                 ? 'bg-purple-500 text-zinc-950 border border-purple-400 shadow-xs'
                 : 'bg-zinc-950 text-zinc-400 hover:text-zinc-200 border border-zinc-800 hover:bg-zinc-850'
             }`}
           >
-            <Sliders className="w-3.5 h-3.5" />
+            <Sliders className="w-3.5 h-3.5 shrink-0" />
             <span>🎚️ Auto-Mix &amp; Master</span>
           </button>
 
           <button
             onClick={() => setActiveTab('multipads')}
-            className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-mono font-bold transition-all shrink-0 cursor-pointer ${
+            className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg sm:rounded-xl text-xs font-mono font-bold transition-all shrink-0 cursor-pointer whitespace-nowrap ${
               activeTab === 'multipads'
                 ? 'bg-rose-500 text-zinc-950 border border-rose-400 shadow-xs'
                 : 'bg-zinc-950 text-zinc-400 hover:text-zinc-200 border border-zinc-800 hover:bg-zinc-850'
             }`}
           >
-            <Music className="w-3.5 h-3.5" />
+            <Music className="w-3.5 h-3.5 shrink-0" />
             <span>🥁 Multi-Pad Studio</span>
           </button>
         </div>
 
         {/* Modal Scrollable Body */}
-        <div className="flex-1 overflow-y-auto custom-scrollbar p-4 sm:p-6 bg-zinc-950">
+        <div className="flex-1 overflow-y-auto custom-scrollbar p-3 sm:p-6 bg-zinc-950 flex flex-col gap-4">
+          {/* Active Loading Status Banner */}
+          {isLoading && (
+            <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center gap-2.5 text-amber-300 text-xs font-mono animate-pulse">
+              <RefreshCw className="w-4 h-4 animate-spin shrink-0" />
+              <span className="font-semibold">{statusMessage || 'Consulting AI Intelligence Engine...'}</span>
+            </div>
+          )}
+
           {/* TAB 1: STYLE GENERATOR */}
           {activeTab === 'style' && (
             <div className="flex flex-col gap-5">
-              <div className="p-4 rounded-xl bg-zinc-900/90 border border-zinc-800 flex flex-col gap-3">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-bold font-mono text-amber-400 uppercase tracking-wider flex items-center gap-1.5">
-                    <Disc className="w-4 h-4" />
-                    Describe Arranger Accompaniment Style
+              <div className="p-3.5 sm:p-4 rounded-xl bg-zinc-900/90 border border-zinc-800 flex flex-col gap-3">
+                <div className="flex items-center justify-between gap-2">
+                  <label className="text-xs font-bold font-mono text-amber-400 uppercase tracking-wider flex items-center gap-1.5 truncate">
+                    <Disc className="w-4 h-4 shrink-0" />
+                    <span>Describe Accompaniment Style</span>
                   </label>
-                  <span className="text-[11px] text-zinc-400">Prompt-to-Style ARRANGIA AI</span>
+                  <span className="text-[10px] sm:text-[11px] text-zinc-400 shrink-0">Prompt-to-Style</span>
                 </div>
 
-                <div className="flex gap-2">
+                <div className="flex flex-col sm:flex-row gap-2">
                   <input
                     type="text"
                     value={stylePrompt}
                     onChange={(e) => setStylePrompt(e.target.value)}
-                    placeholder="e.g. Energetic African Gospel praise with syncopated brass stabs, slap bass & highlife guitar..."
-                    className="flex-1 px-3.5 py-2.5 rounded-xl bg-zinc-950 border border-zinc-700 focus:border-amber-400 text-sm text-zinc-100 placeholder-zinc-500 outline-hidden font-sans"
+                    placeholder="e.g. Energetic African Gospel praise with syncopated brass stabs, slap bass..."
+                    className="flex-1 px-3 py-2 sm:px-3.5 sm:py-2.5 rounded-xl bg-zinc-950 border border-zinc-700 focus:border-amber-400 text-xs sm:text-sm text-zinc-100 placeholder-zinc-500 outline-hidden font-sans"
                   />
                   <button
                     onClick={handleGenerateStyle}
                     disabled={isLoading}
-                    className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-zinc-950 font-mono font-bold text-xs sm:text-sm flex items-center gap-2 transition-all shadow-md shadow-amber-500/20 disabled:opacity-50 cursor-pointer shrink-0"
+                    className="w-full sm:w-auto px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-zinc-950 font-mono font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all shadow-md shadow-amber-500/20 disabled:opacity-50 cursor-pointer shrink-0"
                   >
                     {isLoading ? (
                       <>
-                        <RefreshCw className="w-4 h-4 animate-spin" />
+                        <RefreshCw className="w-4 h-4 animate-spin shrink-0" />
                         <span>Generating...</span>
                       </>
                     ) : (
                       <>
-                        <Sparkles className="w-4 h-4 fill-current" />
+                        <Sparkles className="w-4 h-4 fill-current shrink-0" />
                         <span>Generate Style</span>
                       </>
                     )}
@@ -573,20 +583,20 @@ export const AiStudioModal: React.FC<AiStudioModalProps> = ({
 
                 {/* Quick Style Chips */}
                 <div className="flex flex-wrap items-center gap-1.5 pt-1">
-                  <span className="text-[10px] font-mono uppercase text-zinc-500">Presets:</span>
+                  <span className="text-[10px] font-mono uppercase text-zinc-500 w-full sm:w-auto">Presets:</span>
                   {[
                     'African Gospel Praise Highlife',
-                    'Deep Prayer Pad Ambient Ballad',
+                    'Deep Prayer Pad Ballad',
                     '80s Synthwave Pop Groove',
                     'Smooth Jazz Bossa Nova',
-                    'Latin Salsa Montuno & Horns',
-                    'Modern Contemporary Worship',
+                    'Latin Salsa Montuno',
+                    'Contemporary Worship',
                   ].map((chip) => (
                     <button
                       key={chip}
                       type="button"
                       onClick={() => setStylePrompt(chip)}
-                      className="text-[11px] font-mono px-2 py-0.5 rounded-lg bg-zinc-950 hover:bg-zinc-800 text-zinc-400 hover:text-amber-300 border border-zinc-800 transition-colors cursor-pointer"
+                      className="text-[10px] sm:text-[11px] font-mono px-2 py-0.5 rounded-lg bg-zinc-950 hover:bg-zinc-800 text-zinc-400 hover:text-amber-300 border border-zinc-800 transition-colors cursor-pointer"
                     >
                       {chip}
                     </button>
@@ -625,11 +635,11 @@ export const AiStudioModal: React.FC<AiStudioModalProps> = ({
 
               {/* Style Results Card */}
               {generatedStyle && (
-                <div className="p-4 sm:p-5 rounded-2xl bg-zinc-900/95 border-2 border-amber-500/40 flex flex-col gap-4 shadow-xl">
-                  <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-zinc-800">
+                <div className="p-3.5 sm:p-5 rounded-xl sm:rounded-2xl bg-zinc-900/95 border-2 border-amber-500/40 flex flex-col gap-4 shadow-xl">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-zinc-800">
                     <div>
                       <div className="flex items-center gap-2">
-                        <span className="text-lg font-bold font-mono text-amber-400">
+                        <span className="text-base sm:text-lg font-bold font-mono text-amber-400">
                           🎼 {generatedStyle.name}
                         </span>
                         <span className="px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 text-[10px] font-mono font-bold">
@@ -639,13 +649,13 @@ export const AiStudioModal: React.FC<AiStudioModalProps> = ({
                       <p className="text-xs text-zinc-300 mt-0.5">{generatedStyle.description}</p>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="w-full sm:w-auto">
                       <button
                         onClick={applyStyleToWorkstation}
-                        className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-zinc-950 font-mono font-bold text-xs flex items-center gap-1.5 transition-all shadow-md shadow-amber-500/30 cursor-pointer active:scale-95"
+                        className="w-full sm:w-auto px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-zinc-950 font-mono font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-md shadow-amber-500/30 cursor-pointer active:scale-95"
                       >
-                        <Zap className="w-4 h-4 fill-current" />
-                        <span>Load Style into Arrangia Deck</span>
+                        <Zap className="w-4 h-4 fill-current shrink-0" />
+                        <span>Load Style into Deck</span>
                       </button>
                     </div>
                   </div>
@@ -656,7 +666,7 @@ export const AiStudioModal: React.FC<AiStudioModalProps> = ({
                       <span className="text-[11px] font-mono font-bold text-amber-300 uppercase">
                         🎹 One-Touch Setting (OTS) Voice Registrations
                       </span>
-                      <div className="grid grid-cols-2 gap-2 text-xs font-mono">
+                      <div className="grid grid-cols-1 xs:grid-cols-2 gap-2 text-xs font-mono">
                         <div className="p-2 bg-zinc-900 rounded-lg border border-zinc-800">
                           <span className="text-[10px] text-zinc-500">OTS 1:</span>
                           <p className="text-zinc-200 font-bold truncate">R1: {generatedStyle.otsVoices?.ots1?.r1 || 'Piano'}</p>
@@ -689,17 +699,17 @@ export const AiStudioModal: React.FC<AiStudioModalProps> = ({
                             className="px-2.5 py-1 rounded-lg bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-cyan-300 text-xs font-mono font-bold flex items-center gap-1 cursor-pointer"
                             title="Click to audition chord voicing"
                           >
-                            <Play className="w-2.5 h-2.5 fill-current" />
+                            <Play className="w-2.5 h-2.5 fill-current shrink-0" />
                             <span>{ch}</span>
                           </button>
                         ))}
                       </div>
-                      <div className="grid grid-cols-5 gap-1 text-[10px] font-mono text-zinc-400 pt-1">
-                        <div>Drums: <span className="text-zinc-200 font-bold">{generatedStyle.mixRecommendation?.drums || 85}%</span></div>
-                        <div>Bass: <span className="text-zinc-200 font-bold">{generatedStyle.mixRecommendation?.bass || 88}%</span></div>
-                        <div>Chords: <span className="text-zinc-200 font-bold">{generatedStyle.mixRecommendation?.chords || 78}%</span></div>
-                        <div>Pad: <span className="text-zinc-200 font-bold">{generatedStyle.mixRecommendation?.pad || 70}%</span></div>
-                        <div>Riff: <span className="text-zinc-200 font-bold">{generatedStyle.mixRecommendation?.phrase || 80}%</span></div>
+                      <div className="grid grid-cols-2 xs:grid-cols-3 sm:grid-cols-5 gap-1.5 text-[10px] font-mono text-zinc-400 pt-1">
+                        <div className="p-1 rounded bg-zinc-900 border border-zinc-800/80 text-center">Drums: <span className="text-zinc-200 font-bold">{generatedStyle.mixRecommendation?.drums || 85}%</span></div>
+                        <div className="p-1 rounded bg-zinc-900 border border-zinc-800/80 text-center">Bass: <span className="text-zinc-200 font-bold">{generatedStyle.mixRecommendation?.bass || 88}%</span></div>
+                        <div className="p-1 rounded bg-zinc-900 border border-zinc-800/80 text-center">Chords: <span className="text-zinc-200 font-bold">{generatedStyle.mixRecommendation?.chords || 78}%</span></div>
+                        <div className="p-1 rounded bg-zinc-900 border border-zinc-800/80 text-center">Pad: <span className="text-zinc-200 font-bold">{generatedStyle.mixRecommendation?.pad || 70}%</span></div>
+                        <div className="p-1 rounded bg-zinc-900 border border-zinc-800/80 text-center col-span-2 xs:col-span-1">Riff: <span className="text-zinc-200 font-bold">{generatedStyle.mixRecommendation?.phrase || 80}%</span></div>
                       </div>
                     </div>
                   </div>
@@ -711,16 +721,16 @@ export const AiStudioModal: React.FC<AiStudioModalProps> = ({
           {/* TAB 2: CHORD REHARMONIZER & PROGRESSION BUILDER */}
           {activeTab === 'chords' && (
             <div className="flex flex-col gap-5">
-              <div className="p-4 rounded-xl bg-zinc-900/90 border border-zinc-800 flex flex-col gap-3">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-bold font-mono text-cyan-400 uppercase tracking-wider flex items-center gap-1.5">
-                    <Layers className="w-4 h-4" />
-                    AI Harmonic Reharmonizer &amp; Progression Engine
+              <div className="p-3.5 sm:p-4 rounded-xl bg-zinc-900/90 border border-zinc-800 flex flex-col gap-3">
+                <div className="flex items-center justify-between gap-2">
+                  <label className="text-xs font-bold font-mono text-cyan-400 uppercase tracking-wider flex items-center gap-1.5 truncate">
+                    <Layers className="w-4 h-4 shrink-0" />
+                    <span>AI Progression Engine</span>
                   </label>
-                  <span className="text-[11px] text-zinc-400">Gospel, Jazz, Neo-Soul &amp; Worship Chords</span>
+                  <span className="text-[10px] sm:text-[11px] text-zinc-400 shrink-0">Harmonic Reharmonizer</span>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-3">
                   <div className="flex flex-col gap-1">
                     <span className="text-[11px] font-mono text-zinc-400">Root Key</span>
                     <select
@@ -770,16 +780,16 @@ export const AiStudioModal: React.FC<AiStudioModalProps> = ({
                   <button
                     onClick={handleGenerateChords}
                     disabled={isLoading}
-                    className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-cyan-600 hover:from-cyan-400 hover:to-cyan-500 text-zinc-950 font-mono font-bold text-xs sm:text-sm flex items-center gap-2 transition-all shadow-md shadow-cyan-500/20 disabled:opacity-50 cursor-pointer"
+                    className="w-full sm:w-auto px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl bg-gradient-to-r from-cyan-500 to-cyan-600 hover:from-cyan-400 hover:to-cyan-500 text-zinc-950 font-mono font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all shadow-md shadow-cyan-500/20 disabled:opacity-50 cursor-pointer"
                   >
                     {isLoading ? (
                       <>
-                        <RefreshCw className="w-4 h-4 animate-spin" />
+                        <RefreshCw className="w-4 h-4 animate-spin shrink-0" />
                         <span>Harmonizing...</span>
                       </>
                     ) : (
                       <>
-                        <Sparkles className="w-4 h-4 fill-current" />
+                        <Sparkles className="w-4 h-4 fill-current shrink-0" />
                         <span>Reharmonize Progression</span>
                       </>
                     )}
@@ -789,8 +799,8 @@ export const AiStudioModal: React.FC<AiStudioModalProps> = ({
 
               {/* Chord Progression Results Display */}
               {generatedProgression && (
-                <div className="p-4 sm:p-5 rounded-2xl bg-zinc-900/95 border-2 border-cyan-500/40 flex flex-col gap-4 shadow-xl">
-                  <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-zinc-800">
+                <div className="p-3.5 sm:p-5 rounded-xl sm:rounded-2xl bg-zinc-900/95 border-2 border-cyan-500/40 flex flex-col gap-4 shadow-xl">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-zinc-800">
                     <div>
                       <div className="flex items-center gap-2">
                         <span className="text-base font-bold font-mono text-cyan-400">
@@ -800,10 +810,10 @@ export const AiStudioModal: React.FC<AiStudioModalProps> = ({
                       <p className="text-xs text-zinc-300 mt-0.5">{generatedProgression.explanation}</p>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-col xs:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
                       <button
                         onClick={handlePlayProgression}
-                        className={`px-3 py-1.5 rounded-xl font-mono font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer ${
+                        className={`w-full xs:w-auto justify-center px-3 py-1.5 rounded-xl font-mono font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer ${
                           isPlayingProgression
                             ? 'bg-rose-600 text-white animate-pulse'
                             : 'bg-zinc-800 hover:bg-zinc-700 text-cyan-300 border border-cyan-500/40'
@@ -811,12 +821,12 @@ export const AiStudioModal: React.FC<AiStudioModalProps> = ({
                       >
                         {isPlayingProgression ? (
                           <>
-                            <Square className="w-3.5 h-3.5 fill-current" />
+                            <Square className="w-3.5 h-3.5 fill-current shrink-0" />
                             <span>Stop Audition</span>
                           </>
                         ) : (
                           <>
-                            <Play className="w-3.5 h-3.5 fill-current" />
+                            <Play className="w-3.5 h-3.5 fill-current shrink-0" />
                             <span>Audition Progression</span>
                           </>
                         )}
@@ -824,23 +834,23 @@ export const AiStudioModal: React.FC<AiStudioModalProps> = ({
 
                       <button
                         onClick={applyChordsToWorkstation}
-                        className="px-4 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-zinc-950 font-mono font-bold text-xs flex items-center gap-1.5 transition-all shadow-md shadow-cyan-500/30 cursor-pointer active:scale-95"
+                        className="w-full xs:w-auto justify-center px-4 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-zinc-950 font-mono font-bold text-xs flex items-center gap-1.5 transition-all shadow-md shadow-cyan-500/30 cursor-pointer active:scale-95"
                       >
-                        <Zap className="w-4 h-4 fill-current" />
+                        <Zap className="w-4 h-4 fill-current shrink-0" />
                         <span>Send to Chord Sequencer</span>
                       </button>
                     </div>
                   </div>
 
                   {/* Chord Cards Timeline */}
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2.5">
+                  <div className="grid grid-cols-2 xs:grid-cols-3 md:grid-cols-6 gap-2">
                     {generatedProgression.progression?.map((item: any, idx: number) => {
                       const isCurrent = activePlayingIndex === idx;
                       return (
                         <div
                           key={idx}
                           onClick={() => auditionChord(item.chord)}
-                          className={`p-3 rounded-xl border flex flex-col items-center justify-between text-center transition-all cursor-pointer ${
+                          className={`p-2.5 sm:p-3 rounded-xl border flex flex-col items-center justify-between text-center transition-all cursor-pointer ${
                             isCurrent
                               ? 'bg-cyan-500 text-zinc-950 border-cyan-300 shadow-lg shadow-cyan-500/40 scale-105'
                               : 'bg-zinc-950 hover:bg-zinc-900 border-zinc-800 text-zinc-200'
@@ -861,7 +871,7 @@ export const AiStudioModal: React.FC<AiStudioModalProps> = ({
                   </div>
 
                   {generatedProgression.bassMovement && (
-                    <div className="p-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-xs font-mono text-zinc-400 flex items-center gap-2">
+                    <div className="p-2.5 rounded-xl bg-zinc-950 border border-zinc-800 text-xs font-mono text-zinc-400 flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
                       <span className="text-cyan-400 font-bold shrink-0">Bass Contour:</span>
                       <span className="truncate">{generatedProgression.bassMovement}</span>
                     </div>
@@ -874,13 +884,13 @@ export const AiStudioModal: React.FC<AiStudioModalProps> = ({
           {/* TAB 3: SONGBOOK MASTER & LIVE CHART */}
           {activeTab === 'songbook' && (
             <div className="flex flex-col gap-5">
-              <div className="p-4 rounded-xl bg-zinc-900/90 border border-zinc-800 flex flex-col gap-3">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-bold font-mono text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
-                    <BookOpen className="w-4 h-4" />
-                    AI Songbook Chart &amp; Arranger Setup Master
+              <div className="p-3.5 sm:p-4 rounded-xl bg-zinc-900/90 border border-zinc-800 flex flex-col gap-3">
+                <div className="flex items-center justify-between gap-2">
+                  <label className="text-xs font-bold font-mono text-emerald-400 uppercase tracking-wider flex items-center gap-1.5 truncate">
+                    <BookOpen className="w-4 h-4 shrink-0" />
+                    <span>AI Songbook Chart Master</span>
                   </label>
-                  <span className="text-[11px] text-zinc-400">Generate any song with chords, lyrics &amp; style registration</span>
+                  <span className="text-[10px] sm:text-[11px] text-zinc-400 shrink-0">Chords &amp; Registration</span>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-4 gap-2.5">
@@ -926,16 +936,16 @@ export const AiStudioModal: React.FC<AiStudioModalProps> = ({
                   <button
                     onClick={handleGenerateSong}
                     disabled={isLoading}
-                    className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-zinc-950 font-mono font-bold text-xs sm:text-sm flex items-center gap-2 transition-all shadow-md shadow-emerald-500/20 disabled:opacity-50 cursor-pointer"
+                    className="w-full sm:w-auto px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-400 hover:to-emerald-500 text-zinc-950 font-mono font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all shadow-md shadow-emerald-500/20 disabled:opacity-50 cursor-pointer"
                   >
                     {isLoading ? (
                       <>
-                        <RefreshCw className="w-4 h-4 animate-spin" />
+                        <RefreshCw className="w-4 h-4 animate-spin shrink-0" />
                         <span>Generating Chart...</span>
                       </>
                     ) : (
                       <>
-                        <Sparkles className="w-4 h-4 fill-current" />
+                        <Sparkles className="w-4 h-4 fill-current shrink-0" />
                         <span>Create Live Song Chart</span>
                       </>
                     )}
@@ -945,11 +955,11 @@ export const AiStudioModal: React.FC<AiStudioModalProps> = ({
 
               {/* Songbook Chart Results */}
               {generatedSong && (
-                <div className="p-4 sm:p-5 rounded-2xl bg-zinc-900/95 border-2 border-emerald-500/40 flex flex-col gap-4 shadow-xl">
-                  <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-zinc-800">
+                <div className="p-3.5 sm:p-5 rounded-xl sm:rounded-2xl bg-zinc-900/95 border-2 border-emerald-500/40 flex flex-col gap-4 shadow-xl">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-zinc-800">
                     <div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-lg font-bold font-mono text-emerald-400">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-base sm:text-lg font-bold font-mono text-emerald-400">
                           📖 {generatedSong.title}
                         </span>
                         <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[10px] font-mono font-bold">
@@ -959,48 +969,48 @@ export const AiStudioModal: React.FC<AiStudioModalProps> = ({
                       <p className="text-xs text-zinc-400 mt-0.5">{generatedSong.artist || 'Worship Arrangement'}</p>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="w-full sm:w-auto">
                       <button
                         onClick={applySongToWorkstation}
-                        className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-mono font-bold text-xs flex items-center gap-1.5 transition-all shadow-md shadow-emerald-500/30 cursor-pointer active:scale-95"
+                        className="w-full sm:w-auto px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-mono font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-md shadow-emerald-500/30 cursor-pointer active:scale-95"
                       >
-                        <Zap className="w-4 h-4 fill-current" />
+                        <Zap className="w-4 h-4 fill-current shrink-0" />
                         <span>Load Song to Live Deck</span>
                       </button>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4">
                     {/* Left: Lyrics & Chords View */}
-                    <div className="lg:col-span-2 p-3.5 rounded-xl bg-zinc-950 border border-zinc-800 flex flex-col gap-2 max-h-72 overflow-y-auto custom-scrollbar">
+                    <div className="lg:col-span-2 p-3 sm:p-3.5 rounded-xl bg-zinc-950 border border-zinc-800 flex flex-col gap-2 max-h-64 sm:max-h-72 overflow-y-auto custom-scrollbar">
                       <span className="text-[11px] font-mono font-bold text-emerald-300 uppercase">
                         Lead Sheet &amp; Chord Chart
                       </span>
-                      <pre className="text-xs font-mono text-zinc-200 whitespace-pre-wrap leading-relaxed">
+                      <pre className="text-[11px] sm:text-xs font-mono text-zinc-200 whitespace-pre-wrap break-words leading-relaxed">
                         {generatedSong.lyricsChords || 'No lyrics available.'}
                       </pre>
                     </div>
 
                     {/* Right: Arranger Registration Recommendations */}
-                    <div className="p-3.5 rounded-xl bg-zinc-950 border border-zinc-800 flex flex-col gap-2.5 text-xs font-mono">
+                    <div className="p-3 sm:p-3.5 rounded-xl bg-zinc-950 border border-zinc-800 flex flex-col gap-2 text-xs font-mono">
                       <span className="text-[11px] font-mono font-bold text-amber-300 uppercase">
-                        🎛️ Recommended Workstation Registration
+                        🎛️ Arranger Registration
                       </span>
                       <div className="p-2 bg-zinc-900 rounded-lg border border-zinc-800 flex justify-between items-center">
                         <span className="text-zinc-400">Right 1:</span>
-                        <span className="font-bold text-emerald-300">{generatedSong.r1Voice || 'Piano'}</span>
+                        <span className="font-bold text-emerald-300 truncate ml-2">{generatedSong.r1Voice || 'Piano'}</span>
                       </div>
                       <div className="p-2 bg-zinc-900 rounded-lg border border-zinc-800 flex justify-between items-center">
                         <span className="text-zinc-400">Right 2 Layer:</span>
-                        <span className="font-bold text-emerald-300">{generatedSong.r2Voice || 'Warm Strings'}</span>
+                        <span className="font-bold text-emerald-300 truncate ml-2">{generatedSong.r2Voice || 'Warm Strings'}</span>
                       </div>
                       <div className="p-2 bg-zinc-900 rounded-lg border border-zinc-800 flex justify-between items-center">
                         <span className="text-zinc-400">Left Lower:</span>
-                        <span className="font-bold text-amber-300">{generatedSong.lVoice || 'Synth Pad'}</span>
+                        <span className="font-bold text-amber-300 truncate ml-2">{generatedSong.lVoice || 'Synth Pad'}</span>
                       </div>
                       <div className="p-2 bg-zinc-900 rounded-lg border border-zinc-800 flex justify-between items-center">
-                        <span className="text-zinc-400">Main Progression:</span>
-                        <span className="font-bold text-cyan-300">{generatedSong.chordProgression || 'G | D | A | Bm'}</span>
+                        <span className="text-zinc-400">Main Chords:</span>
+                        <span className="font-bold text-cyan-300 truncate ml-2">{generatedSong.chordProgression || 'G | D | A | Bm'}</span>
                       </div>
                       {generatedSong.notes && (
                         <p className="text-[10px] text-zinc-400 italic pt-1 border-t border-zinc-800">
@@ -1017,57 +1027,57 @@ export const AiStudioModal: React.FC<AiStudioModalProps> = ({
           {/* TAB 4: VOICE SOUND DESIGNER */}
           {activeTab === 'voice' && (
             <div className="flex flex-col gap-5">
-              <div className="p-4 rounded-xl bg-zinc-900/90 border border-zinc-800 flex flex-col gap-3">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-bold font-mono text-indigo-400 uppercase tracking-wider flex items-center gap-1.5">
-                    <Wand2 className="w-4 h-4" />
-                    AI Text-to-Voice Parameter Synthesizer
+              <div className="p-3.5 sm:p-4 rounded-xl bg-zinc-900/90 border border-zinc-800 flex flex-col gap-3">
+                <div className="flex items-center justify-between gap-2">
+                  <label className="text-xs font-bold font-mono text-indigo-400 uppercase tracking-wider flex items-center gap-1.5 truncate">
+                    <Wand2 className="w-4 h-4 shrink-0" />
+                    <span>AI Voice Parameter Synthesizer</span>
                   </label>
-                  <span className="text-[11px] text-zinc-400">Analog, FM, Silk Pad &amp; Solo Lead Presets</span>
+                  <span className="text-[10px] sm:text-[11px] text-zinc-400 shrink-0">Analog, FM &amp; Leads</span>
                 </div>
 
-                <div className="flex gap-2">
+                <div className="flex flex-col sm:flex-row gap-2">
                   <input
                     type="text"
                     value={voicePrompt}
                     onChange={(e) => setVoicePrompt(e.target.value)}
                     placeholder="e.g. 80s Warm Lush Silk Pad with slow attack, wide chorus & cathedral reverb..."
-                    className="flex-1 px-3.5 py-2.5 rounded-xl bg-zinc-950 border border-zinc-700 focus:border-indigo-400 text-sm text-zinc-100 placeholder-zinc-500 outline-hidden font-sans"
+                    className="flex-1 px-3 py-2 sm:px-3.5 sm:py-2.5 rounded-xl bg-zinc-950 border border-zinc-700 focus:border-indigo-400 text-xs sm:text-sm text-zinc-100 placeholder-zinc-500 outline-hidden font-sans"
                   />
                   <button
                     onClick={handleGenerateVoice}
                     disabled={isLoading}
-                    className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-400 hover:to-indigo-500 text-zinc-950 font-mono font-bold text-xs sm:text-sm flex items-center gap-2 transition-all shadow-md shadow-indigo-500/20 disabled:opacity-50 cursor-pointer shrink-0"
+                    className="w-full sm:w-auto px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-indigo-600 hover:from-indigo-400 hover:to-indigo-500 text-zinc-950 font-mono font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all shadow-md shadow-indigo-500/20 disabled:opacity-50 cursor-pointer shrink-0"
                   >
                     {isLoading ? (
                       <>
-                        <RefreshCw className="w-4 h-4 animate-spin" />
+                        <RefreshCw className="w-4 h-4 animate-spin shrink-0" />
                         <span>Synthesizing...</span>
                       </>
                     ) : (
                       <>
-                        <Sparkles className="w-4 h-4 fill-current" />
+                        <Sparkles className="w-4 h-4 fill-current shrink-0" />
                         <span>Synthesize Voice</span>
                       </>
                     )}
                   </button>
                 </div>
 
-                <div className="flex items-center gap-3 pt-1">
-                  <span className="text-[11px] font-mono text-zinc-400">Target Workstation Part:</span>
-                  <div className="flex gap-1.5 text-xs font-mono">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-2 pt-1">
+                  <span className="text-[11px] font-mono text-zinc-400 shrink-0">Target Workstation Part:</span>
+                  <div className="grid grid-cols-3 sm:flex gap-1.5 text-xs font-mono w-full sm:w-auto">
                     {(['r1', 'r2', 'left'] as const).map((part) => (
                       <button
                         key={part}
                         type="button"
                         onClick={() => setVoiceTargetPart(part)}
-                        className={`px-3 py-1 rounded-lg border transition-all cursor-pointer font-bold ${
+                        className={`px-2.5 sm:px-3 py-1.5 rounded-lg border transition-all cursor-pointer font-bold text-center truncate ${
                           voiceTargetPart === part
                             ? 'bg-indigo-500 text-zinc-950 border-indigo-400 shadow-xs'
                             : 'bg-zinc-950 text-zinc-400 border-zinc-800 hover:bg-zinc-800'
                         }`}
                       >
-                        {part === 'r1' ? 'Right 1 (Lead)' : part === 'r2' ? 'Right 2 (Layer)' : 'Left (Lower)'}
+                        {part === 'r1' ? 'R1 (Lead)' : part === 'r2' ? 'R2 (Layer)' : 'Left (Lower)'}
                       </button>
                     ))}
                   </div>
@@ -1076,11 +1086,11 @@ export const AiStudioModal: React.FC<AiStudioModalProps> = ({
 
               {/* Synthesized Voice Card */}
               {generatedVoice && (
-                <div className="p-4 sm:p-5 rounded-2xl bg-zinc-900/95 border-2 border-indigo-500/40 flex flex-col gap-4 shadow-xl">
-                  <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-zinc-800">
+                <div className="p-3.5 sm:p-5 rounded-xl sm:rounded-2xl bg-zinc-900/95 border-2 border-indigo-500/40 flex flex-col gap-4 shadow-xl">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-zinc-800">
                     <div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-lg font-bold font-mono text-indigo-400">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-base sm:text-lg font-bold font-mono text-indigo-400">
                           🎛️ {generatedVoice.name}
                         </span>
                         <span className="px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 text-[10px] font-mono font-bold">
@@ -1090,50 +1100,50 @@ export const AiStudioModal: React.FC<AiStudioModalProps> = ({
                       <p className="text-xs text-zinc-300 mt-0.5">{generatedVoice.description}</p>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-col xs:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
                       <button
                         onClick={() => handleAuditionVoice(generatedVoice.synthType)}
-                        className="px-3 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-indigo-300 border border-indigo-500/40 font-mono font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer"
+                        className="w-full xs:w-auto justify-center px-3 py-1.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-indigo-300 border border-indigo-500/40 font-mono font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer"
                       >
-                        <Play className="w-3.5 h-3.5 fill-current" />
+                        <Play className="w-3.5 h-3.5 fill-current shrink-0" />
                         <span>Audition Scale</span>
                       </button>
 
                       <button
                         onClick={applyVoiceToWorkstation}
-                        className="px-4 py-2 rounded-xl bg-indigo-500 hover:bg-indigo-400 text-zinc-950 font-mono font-bold text-xs flex items-center gap-1.5 transition-all shadow-md shadow-indigo-500/30 cursor-pointer active:scale-95"
+                        className="w-full xs:w-auto justify-center px-4 py-2 rounded-xl bg-indigo-500 hover:bg-indigo-400 text-zinc-950 font-mono font-bold text-xs flex items-center gap-1.5 transition-all shadow-md shadow-indigo-500/30 cursor-pointer active:scale-95"
                       >
-                        <Zap className="w-4 h-4 fill-current" />
+                        <Zap className="w-4 h-4 fill-current shrink-0" />
                         <span>Apply to {voiceTargetPart.toUpperCase()}</span>
                       </button>
                     </div>
                   </div>
 
                   {/* Synth Parameters Visual Grid */}
-                  <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-2.5 text-xs font-mono">
-                    <div className="p-2.5 bg-zinc-950 rounded-xl border border-zinc-800 flex flex-col items-center">
+                  <div className="grid grid-cols-2 xs:grid-cols-3 sm:grid-cols-6 gap-2 text-xs font-mono">
+                    <div className="p-2 sm:p-2.5 bg-zinc-950 rounded-xl border border-zinc-800 flex flex-col items-center">
                       <span className="text-[10px] text-zinc-500">Attack</span>
-                      <span className="text-sm font-bold text-indigo-300">{generatedVoice.presetParams?.attack || 0.2}s</span>
+                      <span className="text-xs sm:text-sm font-bold text-indigo-300">{generatedVoice.presetParams?.attack || 0.2}s</span>
                     </div>
-                    <div className="p-2.5 bg-zinc-950 rounded-xl border border-zinc-800 flex flex-col items-center">
+                    <div className="p-2 sm:p-2.5 bg-zinc-950 rounded-xl border border-zinc-800 flex flex-col items-center">
                       <span className="text-[10px] text-zinc-500">Decay</span>
-                      <span className="text-sm font-bold text-indigo-300">{generatedVoice.presetParams?.decay || 0.4}s</span>
+                      <span className="text-xs sm:text-sm font-bold text-indigo-300">{generatedVoice.presetParams?.decay || 0.4}s</span>
                     </div>
-                    <div className="p-2.5 bg-zinc-950 rounded-xl border border-zinc-800 flex flex-col items-center">
+                    <div className="p-2 sm:p-2.5 bg-zinc-950 rounded-xl border border-zinc-800 flex flex-col items-center">
                       <span className="text-[10px] text-zinc-500">Sustain</span>
-                      <span className="text-sm font-bold text-indigo-300">{Math.round((generatedVoice.presetParams?.sustain || 0.8) * 100)}%</span>
+                      <span className="text-xs sm:text-sm font-bold text-indigo-300">{Math.round((generatedVoice.presetParams?.sustain || 0.8) * 100)}%</span>
                     </div>
-                    <div className="p-2.5 bg-zinc-950 rounded-xl border border-zinc-800 flex flex-col items-center">
+                    <div className="p-2 sm:p-2.5 bg-zinc-950 rounded-xl border border-zinc-800 flex flex-col items-center">
                       <span className="text-[10px] text-zinc-500">Release</span>
-                      <span className="text-sm font-bold text-indigo-300">{generatedVoice.presetParams?.release || 1.2}s</span>
+                      <span className="text-xs sm:text-sm font-bold text-indigo-300">{generatedVoice.presetParams?.release || 1.2}s</span>
                     </div>
-                    <div className="p-2.5 bg-zinc-950 rounded-xl border border-zinc-800 flex flex-col items-center">
+                    <div className="p-2 sm:p-2.5 bg-zinc-950 rounded-xl border border-zinc-800 flex flex-col items-center">
                       <span className="text-[10px] text-zinc-500">Cutoff</span>
-                      <span className="text-sm font-bold text-indigo-300">{generatedVoice.presetParams?.cutoff || 2400}Hz</span>
+                      <span className="text-xs sm:text-sm font-bold text-indigo-300">{generatedVoice.presetParams?.cutoff || 2400}Hz</span>
                     </div>
-                    <div className="p-2.5 bg-zinc-950 rounded-xl border border-zinc-800 flex flex-col items-center">
+                    <div className="p-2 sm:p-2.5 bg-zinc-950 rounded-xl border border-zinc-800 flex flex-col items-center">
                       <span className="text-[10px] text-zinc-500">Chorus / Rev</span>
-                      <span className="text-sm font-bold text-purple-300">{generatedVoice.presetParams?.chorus || 40}% / {generatedVoice.presetParams?.reverb || 50}%</span>
+                      <span className="text-xs sm:text-sm font-bold text-purple-300 truncate">{generatedVoice.presetParams?.chorus || 40}% / {generatedVoice.presetParams?.reverb || 50}%</span>
                     </div>
                   </div>
                 </div>
@@ -1144,16 +1154,16 @@ export const AiStudioModal: React.FC<AiStudioModalProps> = ({
           {/* TAB 5: AUTO-MIX & MASTER */}
           {activeTab === 'mix' && (
             <div className="flex flex-col gap-5">
-              <div className="p-4 rounded-xl bg-zinc-900/90 border border-zinc-800 flex flex-col gap-3">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-bold font-mono text-purple-400 uppercase tracking-wider flex items-center gap-1.5">
-                    <Sliders className="w-4 h-4" />
-                    AI Intelligent Auto-Mix &amp; Master Bus Engineer
+              <div className="p-3.5 sm:p-4 rounded-xl bg-zinc-900/90 border border-zinc-800 flex flex-col gap-3">
+                <div className="flex items-center justify-between gap-2">
+                  <label className="text-xs font-bold font-mono text-purple-400 uppercase tracking-wider flex items-center gap-1.5 truncate">
+                    <Sliders className="w-4 h-4 shrink-0" />
+                    <span>AI Intelligent Auto-Mix &amp; Master</span>
                   </label>
-                  <span className="text-[11px] text-zinc-400">Balances 8 Arranger Tracks &amp; Frequency Curves</span>
+                  <span className="text-[10px] sm:text-[11px] text-zinc-400 shrink-0">8-Track Auto Balancer</span>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3">
                   <div className="flex flex-col gap-1">
                     <span className="text-[11px] font-mono text-zinc-400">Acoustic Venue &amp; Master Target</span>
                     <select
@@ -1176,16 +1186,16 @@ export const AiStudioModal: React.FC<AiStudioModalProps> = ({
                     <button
                       onClick={handleGenerateMix}
                       disabled={isLoading}
-                      className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-400 hover:to-purple-500 text-zinc-950 font-mono font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all shadow-md shadow-purple-500/20 disabled:opacity-50 cursor-pointer"
+                      className="w-full sm:w-auto px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-400 hover:to-purple-500 text-zinc-950 font-mono font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all shadow-md shadow-purple-500/20 disabled:opacity-50 cursor-pointer"
                     >
                       {isLoading ? (
                         <>
-                          <RefreshCw className="w-4 h-4 animate-spin" />
+                          <RefreshCw className="w-4 h-4 animate-spin shrink-0" />
                           <span>Balancing Mix...</span>
                         </>
                       ) : (
                         <>
-                          <Sparkles className="w-4 h-4 fill-current" />
+                          <Sparkles className="w-4 h-4 fill-current shrink-0" />
                           <span>Calculate Auto-Mix</span>
                         </>
                       )}
@@ -1196,8 +1206,8 @@ export const AiStudioModal: React.FC<AiStudioModalProps> = ({
 
               {/* Mix Results Display */}
               {generatedMix && (
-                <div className="p-4 sm:p-5 rounded-2xl bg-zinc-900/95 border-2 border-purple-500/40 flex flex-col gap-4 shadow-xl">
-                  <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-zinc-800">
+                <div className="p-3.5 sm:p-5 rounded-xl sm:rounded-2xl bg-zinc-900/95 border-2 border-purple-500/40 flex flex-col gap-4 shadow-xl">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-zinc-800">
                     <div>
                       <div className="flex items-center gap-2">
                         <span className="text-base font-bold font-mono text-purple-400">
@@ -1207,17 +1217,19 @@ export const AiStudioModal: React.FC<AiStudioModalProps> = ({
                       <p className="text-xs text-zinc-300 mt-0.5">{generatedMix.advice}</p>
                     </div>
 
-                    <button
-                      onClick={applyMixToWorkstation}
-                      className="px-4 py-2 rounded-xl bg-purple-500 hover:bg-purple-400 text-zinc-950 font-mono font-bold text-xs flex items-center gap-1.5 transition-all shadow-md shadow-purple-500/30 cursor-pointer active:scale-95"
-                    >
-                      <Zap className="w-4 h-4 fill-current" />
-                      <span>Apply Mix to Workstation</span>
-                    </button>
+                    <div className="w-full sm:w-auto">
+                      <button
+                        onClick={applyMixToWorkstation}
+                        className="w-full sm:w-auto px-4 py-2 rounded-xl bg-purple-500 hover:bg-purple-400 text-zinc-950 font-mono font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-md shadow-purple-500/30 cursor-pointer active:scale-95"
+                      >
+                        <Zap className="w-4 h-4 fill-current shrink-0" />
+                        <span>Apply Mix to Workstation</span>
+                      </button>
+                    </div>
                   </div>
 
                   {/* 8 Track Sliders Visual Display */}
-                  <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-8 gap-2 text-xs font-mono">
+                  <div className="grid grid-cols-2 xs:grid-cols-4 md:grid-cols-8 gap-2 text-xs font-mono">
                     {[
                       { key: 'rhythm1', label: 'Drums' },
                       { key: 'rhythm2', label: 'Perc' },
@@ -1230,9 +1242,9 @@ export const AiStudioModal: React.FC<AiStudioModalProps> = ({
                     ].map(({ key, label }) => {
                       const trackData = generatedMix.tracks?.[key] || { volume: 80, reverb: 30 };
                       return (
-                        <div key={key} className="p-2.5 bg-zinc-950 rounded-xl border border-zinc-800 flex flex-col items-center gap-1">
-                          <span className="text-[10px] text-zinc-500 truncate">{label}</span>
-                          <div className="w-full bg-zinc-800 h-16 rounded-lg relative overflow-hidden flex flex-col justify-end p-1">
+                        <div key={key} className="p-2 sm:p-2.5 bg-zinc-950 rounded-xl border border-zinc-800 flex flex-col items-center gap-1">
+                          <span className="text-[10px] text-zinc-500 truncate w-full text-center">{label}</span>
+                          <div className="w-full bg-zinc-800 h-14 sm:h-16 rounded-lg relative overflow-hidden flex flex-col justify-end p-1">
                             <div
                               className="bg-purple-500 w-full rounded"
                               style={{ height: `${trackData.volume || 75}%` }}
@@ -1252,16 +1264,16 @@ export const AiStudioModal: React.FC<AiStudioModalProps> = ({
           {/* TAB 6: MULTI-PAD STUDIO */}
           {activeTab === 'multipads' && (
             <div className="flex flex-col gap-5">
-              <div className="p-4 rounded-xl bg-zinc-900/90 border border-zinc-800 flex flex-col gap-3">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-bold font-mono text-rose-400 uppercase tracking-wider flex items-center gap-1.5">
-                    <Music className="w-4 h-4" />
-                    AI Multi-Pad Riff &amp; Loop Generator
+              <div className="p-3.5 sm:p-4 rounded-xl bg-zinc-900/90 border border-zinc-800 flex flex-col gap-3">
+                <div className="flex items-center justify-between gap-2">
+                  <label className="text-xs font-bold font-mono text-rose-400 uppercase tracking-wider flex items-center gap-1.5 truncate">
+                    <Music className="w-4 h-4 shrink-0" />
+                    <span>AI Multi-Pad Riff Generator</span>
                   </label>
-                  <span className="text-[11px] text-zinc-400">4-Pad Live Performance Phrases</span>
+                  <span className="text-[10px] sm:text-[11px] text-zinc-400 shrink-0">4-Pad Live Phrases</span>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 sm:gap-3">
                   <div className="sm:col-span-2 flex flex-col gap-1">
                     <span className="text-[11px] font-mono text-zinc-400">Multi-Pad Bank Theme</span>
                     <input
@@ -1291,16 +1303,16 @@ export const AiStudioModal: React.FC<AiStudioModalProps> = ({
                   <button
                     onClick={handleGenerateMultiPads}
                     disabled={isLoading}
-                    className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-rose-500 to-rose-600 hover:from-rose-400 hover:to-rose-500 text-zinc-950 font-mono font-bold text-xs sm:text-sm flex items-center gap-2 transition-all shadow-md shadow-rose-500/20 disabled:opacity-50 cursor-pointer"
+                    className="w-full sm:w-auto px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl bg-gradient-to-r from-rose-500 to-rose-600 hover:from-rose-400 hover:to-rose-500 text-zinc-950 font-mono font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all shadow-md shadow-rose-500/20 disabled:opacity-50 cursor-pointer"
                   >
                     {isLoading ? (
                       <>
-                        <RefreshCw className="w-4 h-4 animate-spin" />
+                        <RefreshCw className="w-4 h-4 animate-spin shrink-0" />
                         <span>Generating Pads...</span>
                       </>
                     ) : (
                       <>
-                        <Sparkles className="w-4 h-4 fill-current" />
+                        <Sparkles className="w-4 h-4 fill-current shrink-0" />
                         <span>Generate Multi-Pad Bank</span>
                       </>
                     )}
@@ -1310,28 +1322,30 @@ export const AiStudioModal: React.FC<AiStudioModalProps> = ({
 
               {/* Multi-Pads Result Display */}
               {generatedMultiPads && (
-                <div className="p-4 sm:p-5 rounded-2xl bg-zinc-900/95 border-2 border-rose-500/40 flex flex-col gap-4 shadow-xl">
-                  <div className="flex flex-wrap items-center justify-between gap-3 pb-3 border-b border-zinc-800">
+                <div className="p-3.5 sm:p-5 rounded-xl sm:rounded-2xl bg-zinc-900/95 border-2 border-rose-500/40 flex flex-col gap-4 shadow-xl">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-zinc-800">
                     <div>
                       <span className="text-base font-bold font-mono text-rose-400">
                         🥁 Bank: {generatedMultiPads.bankName}
                       </span>
                     </div>
 
-                    <button
-                      onClick={applyMultiPadsToWorkstation}
-                      className="px-4 py-2 rounded-xl bg-rose-500 hover:bg-rose-400 text-zinc-950 font-mono font-bold text-xs flex items-center gap-1.5 transition-all shadow-md shadow-rose-500/30 cursor-pointer active:scale-95"
-                    >
-                      <Zap className="w-4 h-4 fill-current" />
-                      <span>Load into Multi-Pads Bank</span>
-                    </button>
+                    <div className="w-full sm:w-auto">
+                      <button
+                        onClick={applyMultiPadsToWorkstation}
+                        className="w-full sm:w-auto px-4 py-2 rounded-xl bg-rose-500 hover:bg-rose-400 text-zinc-950 font-mono font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-md shadow-rose-500/30 cursor-pointer active:scale-95"
+                      >
+                        <Zap className="w-4 h-4 fill-current shrink-0" />
+                        <span>Load into Multi-Pads Bank</span>
+                      </button>
+                    </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-3">
                     {generatedMultiPads.pads?.map((pad: MultiPadData, idx: number) => (
                       <div
                         key={idx}
-                        className="p-3.5 bg-zinc-950 rounded-xl border border-zinc-800 flex flex-col justify-between gap-2"
+                        className="p-3 sm:p-3.5 bg-zinc-950 rounded-xl border border-zinc-800 flex flex-col justify-between gap-2"
                       >
                         <div>
                           <span className="text-[10px] font-mono text-zinc-500">PAD {idx + 1}</span>
@@ -1345,7 +1359,7 @@ export const AiStudioModal: React.FC<AiStudioModalProps> = ({
                           onClick={() => handleAuditionMultiPad(pad)}
                           className="w-full py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-rose-300 text-xs font-mono font-bold flex items-center justify-center gap-1 border border-zinc-700 cursor-pointer"
                         >
-                          <Play className="w-3 h-3 fill-current" />
+                          <Play className="w-3 h-3 fill-current shrink-0" />
                           <span>Test Phrase</span>
                         </button>
                       </div>
@@ -1359,27 +1373,27 @@ export const AiStudioModal: React.FC<AiStudioModalProps> = ({
 
         {/* Applied Action Toast Banner */}
         {appliedToast && (
-          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 px-4 py-2.5 rounded-xl bg-emerald-950/95 border-2 border-emerald-500 text-emerald-200 text-xs font-mono font-bold shadow-2xl flex items-center gap-2 animate-in fade-in slide-in-from-bottom-2 duration-150 z-50">
+          <div className="absolute bottom-3 sm:bottom-4 left-1/2 -translate-x-1/2 max-w-[92%] px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-xl bg-emerald-950/95 border-2 border-emerald-500 text-emerald-200 text-[11px] sm:text-xs font-mono font-bold shadow-2xl flex items-center justify-center gap-2 animate-in fade-in slide-in-from-bottom-2 duration-150 z-50 text-center">
             <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
             <span>{appliedToast}</span>
           </div>
         )}
 
         {/* Modal Footer */}
-        <div className="px-4 sm:px-6 py-3 bg-zinc-950 border-t border-zinc-800/80 flex items-center justify-between text-xs font-mono text-zinc-400 shrink-0">
-          <div className="flex items-center gap-3">
-            <span>Engine: Google GenAI SDK (Gemini Intelligence)</span>
+        <div className="px-3 sm:px-6 py-2.5 sm:py-3 bg-zinc-950 border-t border-zinc-800/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs font-mono text-zinc-400 shrink-0">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3 text-[11px] sm:text-xs">
+            <span className="hidden xs:inline">Engine: Google GenAI (Gemini)</span>
             <button
               onClick={() => setIsApiKeyModalOpen(true)}
               className="text-amber-400 hover:text-amber-300 underline font-mono text-[11px] flex items-center gap-1 cursor-pointer"
             >
-              <Key className="w-3 h-3" />
-              <span>{isServerAiConnected ? 'Server-Protected AI Active' : 'Check AI Server Connection'}</span>
+              <Key className="w-3 h-3 shrink-0" />
+              <span>{isServerAiConnected ? 'Server AI Protected' : 'Check AI Status'}</span>
             </button>
           </div>
           <button
             onClick={onClose}
-            className="px-4 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border border-zinc-700 font-bold transition-colors cursor-pointer"
+            className="w-full sm:w-auto px-4 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 text-zinc-300 border border-zinc-700 font-bold transition-colors cursor-pointer text-center"
           >
             Done
           </button>
