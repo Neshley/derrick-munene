@@ -392,12 +392,20 @@ src/
 │   ├── EffectsRackModal.tsx       # Master DSP rack controls
 │   ├── VocalWorkstationModal.tsx  # Live microphone processor
 │   ├── StyleCreatorModal.tsx      # In-app style sequencer and pattern editor
-│   ├── SettingsPage.tsx           # Master settings dialog with tabs
+│   ├── SettingsPage.tsx           # Master settings dialog with tabs (includes direct Developer Guide link)
+│   ├── UserGuideModal.tsx         # Comprehensive multi-tab guide with visual architecture chapters & document exports
 │   └── media/
 │       ├── MediaPlayerView.tsx    # Media playback dashboard
 │       ├── AudioVisualizerCanvas.tsx # 60 FPS spectrum analyzer
 │       └── LyricsViewer.tsx       # Synchronized LRC lyrics viewer
 ```
+
+### 13.1 Developer Guide Access Points
+To ensure developers and curious users can inspect the architecture directly within the running application:
+1. **Header Tools Popover**: Click the "Tools" grid icon in the top header, then select the **Developer Guide** card.
+2. **Left Sidebar Quick Launcher**: Under the "Worship & User Guide" card, click the **Architecture & Developer Guide** button.
+3. **Settings Dialog**: Open Settings (⚙️), navigate to the **About** tab, and click the indigo **Developer Guide** button.
+4. **User Guide Modal**: Open the User Guide and select the **Developer & Architecture** tab to browse Chapters 31–38, complete with diagrams and exportable formatting.
 
 ---
 

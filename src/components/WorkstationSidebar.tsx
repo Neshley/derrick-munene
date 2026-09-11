@@ -42,7 +42,8 @@ import {
   FileText,
   FileDown,
   Coffee,
-  Heart
+  Heart,
+  Code
 } from 'lucide-react';
 
 interface WorkstationSidebarProps {
@@ -57,6 +58,7 @@ interface WorkstationSidebarProps {
   onOpenChordSequencer: () => void;
   onOpenMidiHelp: () => void;
   onOpenUserGuide?: () => void;
+  onOpenDeveloperGuide?: () => void;
   onOpenCreatorMessage?: () => void;
   r1Voice: string;
   r2Voice: string;
@@ -103,6 +105,7 @@ export const WorkstationSidebar: React.FC<WorkstationSidebarProps> = ({
   onOpenChordSequencer,
   onOpenMidiHelp,
   onOpenUserGuide,
+  onOpenDeveloperGuide,
   onOpenCreatorMessage,
   onOpenPrayerAtmosphere,
   onOpenEffectsRack,
@@ -1059,6 +1062,16 @@ export const WorkstationSidebar: React.FC<WorkstationSidebarProps> = ({
                         <BookOpen className="w-3.5 h-3.5" />
                         <span>Open &amp; Download (PDF / Word)</span>
                       </button>
+                      {onOpenDeveloperGuide && (
+                        <button
+                          id="btn-sidebar-open-developer-guide"
+                          onClick={onOpenDeveloperGuide}
+                          className="w-full py-1.5 px-2.5 rounded-lg bg-indigo-950/70 hover:bg-indigo-900/80 text-indigo-200 hover:text-white border border-indigo-700/50 font-semibold text-xs flex items-center justify-center gap-1.5 transition-all shadow-xs active:scale-95 cursor-pointer"
+                        >
+                          <Code className="w-3.5 h-3.5 text-indigo-400" />
+                          <span>Architecture &amp; Developer Guide</span>
+                        </button>
+                      )}
                     </div>
                   )}
 

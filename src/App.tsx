@@ -734,6 +734,10 @@ export default function App() {
           setIsStyleCreatorModalOpen(true);
         }}
         onOpenUserGuide={() => setIsUserGuideModalOpen(true)}
+        onOpenDeveloperGuide={() => {
+          setUserGuideCategory('Developer & Architecture');
+          setIsUserGuideModalOpen(true);
+        }}
         onOpenCreatorMessage={() => setIsCreatorModalOpen(true)}
         onOpenPrayerAtmosphere={() => setIsPrayerModalOpen(true)}
         onOpenEffectsRack={() => setIsEffectsModalOpen(true)}
@@ -780,6 +784,10 @@ export default function App() {
             onOpenChordSequencer={() => setIsChordSeqModalOpen(true)}
             onOpenMidiHelp={() => setIsMidiHelpModalOpen(true)}
             onOpenUserGuide={() => setIsUserGuideModalOpen(true)}
+            onOpenDeveloperGuide={() => {
+              setUserGuideCategory('Developer & Architecture');
+              setIsUserGuideModalOpen(true);
+            }}
             onOpenCreatorMessage={() => setIsCreatorModalOpen(true)}
             onOpenPrayerAtmosphere={() => setIsPrayerModalOpen(true)}
             onOpenEffectsRack={() => setIsEffectsModalOpen(true)}

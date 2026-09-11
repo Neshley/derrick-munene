@@ -143,6 +143,19 @@ export const UserGuideModal: React.FC<UserGuideModalProps> = ({
     setExpandedIds(new Set());
   };
 
+  const handleTabSelect = (tab: TabSelection) => {
+    setSelectedTab(tab);
+    setSearchTerm('');
+    if (tab === 'Developer & Architecture') {
+      setExpandedIds(new Set(['dev-architecture-overview', 'dev-console-layout', 'dev-audio-dsp-pipeline']));
+    } else {
+      const firstSecs = WORSHIP_GUIDE_SECTIONS.filter(s => tab === 'All Topics' || s.category === tab);
+      if (firstSecs.length > 0) {
+        setExpandedIds(new Set(firstSecs.slice(0, 2).map(s => s.id)));
+      }
+    }
+  };
+
   const handleDownloadDocx = async () => {
     try {
       setDownloadingDocx(true);
@@ -294,7 +307,7 @@ export const UserGuideModal: React.FC<UserGuideModalProps> = ({
             {/* Getting Started Tab */}
             <button
               id="tab-getting-started"
-              onClick={() => { setSelectedTab('Getting Started'); setSearchTerm(''); }}
+              onClick={() => handleTabSelect('Getting Started')}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-2 cursor-pointer transition-all ${
                 selectedTab === 'Getting Started'
                   ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-sm'
@@ -311,7 +324,7 @@ export const UserGuideModal: React.FC<UserGuideModalProps> = ({
             {/* Arranger Basics Tab */}
             <button
               id="tab-arranger-basics"
-              onClick={() => { setSelectedTab('Arranger Basics'); setSearchTerm(''); }}
+              onClick={() => handleTabSelect('Arranger Basics')}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-2 cursor-pointer transition-all ${
                 selectedTab === 'Arranger Basics'
                   ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-sm'
@@ -328,7 +341,7 @@ export const UserGuideModal: React.FC<UserGuideModalProps> = ({
             {/* MIDI Configuration Tab */}
             <button
               id="tab-midi-config"
-              onClick={() => { setSelectedTab('MIDI Configuration'); setSearchTerm(''); }}
+              onClick={() => handleTabSelect('MIDI Configuration')}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-2 cursor-pointer transition-all ${
                 selectedTab === 'MIDI Configuration'
                   ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40 shadow-sm'
@@ -345,7 +358,7 @@ export const UserGuideModal: React.FC<UserGuideModalProps> = ({
             {/* Advanced Studio Features Tab */}
             <button
               id="tab-studio-features"
-              onClick={() => { setSelectedTab('Advanced Studio Features'); setSearchTerm(''); }}
+              onClick={() => handleTabSelect('Advanced Studio Features')}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-2 cursor-pointer transition-all ${
                 selectedTab === 'Advanced Studio Features'
                   ? 'bg-purple-500/20 text-purple-300 border border-purple-500/40 shadow-sm'
@@ -362,7 +375,7 @@ export const UserGuideModal: React.FC<UserGuideModalProps> = ({
             {/* Developer & Architecture Tab */}
             <button
               id="tab-developer-guide"
-              onClick={() => { setSelectedTab('Developer & Architecture'); setSearchTerm(''); }}
+              onClick={() => handleTabSelect('Developer & Architecture')}
               className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-2 cursor-pointer transition-all ${
                 selectedTab === 'Developer & Architecture'
                   ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 shadow-sm'
@@ -379,7 +392,7 @@ export const UserGuideModal: React.FC<UserGuideModalProps> = ({
             {/* All Topics Tab */}
             <button
               id="tab-all-topics"
-              onClick={() => { setSelectedTab('All Topics'); setSearchTerm(''); }}
+              onClick={() => handleTabSelect('All Topics')}
               className={`px-2.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-all ${
                 selectedTab === 'All Topics'
                   ? 'bg-zinc-800 text-zinc-100 border border-zinc-700 shadow-sm'

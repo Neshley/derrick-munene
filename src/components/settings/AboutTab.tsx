@@ -46,24 +46,27 @@ export const AboutTab: React.FC<AboutTabProps> = ({
           </div>
           <div className="flex items-center gap-2 flex-wrap">
             <button
+              id="btn-about-worship-guide"
               onClick={onOpenUserGuide}
-              className="flex items-center gap-1.5 px-3 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 hover:text-white rounded-xl text-xs font-semibold border border-zinc-700 transition"
+              className="flex items-center gap-1.5 px-3 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 hover:text-white rounded-xl text-xs font-semibold border border-zinc-700 transition cursor-pointer"
             >
               <BookOpen className="w-3.5 h-3.5 text-amber-400" />
               Worship Guide
             </button>
             {onOpenDeveloperGuide && (
               <button
+                id="btn-about-developer-guide"
                 onClick={onOpenDeveloperGuide}
-                className="flex items-center gap-1.5 px-3 py-2 bg-indigo-950/70 hover:bg-indigo-900/80 text-indigo-200 hover:text-white rounded-xl text-xs font-semibold border border-indigo-700/50 transition"
+                className="flex items-center gap-1.5 px-3 py-2 bg-indigo-950/70 hover:bg-indigo-900/80 text-indigo-200 hover:text-white rounded-xl text-xs font-semibold border border-indigo-700/50 transition cursor-pointer"
               >
                 <Code className="w-3.5 h-3.5 text-indigo-400" />
                 Developer Guide
               </button>
             )}
             <button
+              id="btn-about-creator-message"
               onClick={onOpenCreatorMessage}
-              className="flex items-center gap-1.5 px-3 py-2 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-black rounded-xl text-xs font-bold transition shadow-md shadow-amber-900/20"
+              className="flex items-center gap-1.5 px-3 py-2 bg-gradient-to-r from-amber-600 to-amber-500 hover:from-amber-500 hover:to-amber-400 text-black rounded-xl text-xs font-bold transition shadow-md shadow-amber-900/20 cursor-pointer"
             >
               <Coffee className="w-3.5 h-3.5" />
               Creator & Support

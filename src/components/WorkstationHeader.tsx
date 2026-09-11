@@ -29,7 +29,8 @@ import {
   Piano,
   Disc,
   Film,
-  FolderOpen
+  FolderOpen,
+  Code
 } from 'lucide-react';
 import { subscribePwaStatus, PwaStatus } from '../pwaRegister';
 import { HardwareMidiDropdown } from './HardwareMidiDropdown';
@@ -45,6 +46,7 @@ interface WorkstationHeaderProps {
   isSidebarCollapsed?: boolean;
   onOpenStyleCreator?: () => void;
   onOpenUserGuide?: () => void;
+  onOpenDeveloperGuide?: () => void;
   onOpenCreatorMessage?: () => void;
   onOpenPrayerAtmosphere?: () => void;
   onOpenEffectsRack?: () => void;
@@ -80,6 +82,7 @@ export const WorkstationHeader: React.FC<WorkstationHeaderProps> = ({
   isSidebarCollapsed,
   onOpenStyleCreator,
   onOpenUserGuide,
+  onOpenDeveloperGuide,
   onOpenCreatorMessage,
   onOpenPrayerAtmosphere,
   onOpenEffectsRack,
@@ -936,6 +939,26 @@ export const WorkstationHeader: React.FC<WorkstationHeaderProps> = ({
                       </div>
                       <p className="text-[11px] text-zinc-400">
                         Full manual with worship stages, tips, and printable PDF or Word file.
+                      </p>
+                    </button>
+                  )}
+
+                  {/* Architecture & Developer Guide */}
+                  {onOpenDeveloperGuide && (
+                    <button
+                      id="btn-tools-developer-guide"
+                      type="button"
+                      onClick={() => handleOpenTool(onOpenDeveloperGuide)}
+                      className="p-3 rounded-xl bg-indigo-950/40 hover:bg-indigo-900/60 border border-indigo-700/40 hover:border-indigo-500/60 text-left transition-all group cursor-pointer flex flex-col gap-1.5"
+                    >
+                      <div className="p-2 w-fit rounded-lg bg-indigo-900/60 text-indigo-400 group-hover:scale-105 transition-transform">
+                        <Code className="w-4 h-4" />
+                      </div>
+                      <div className="font-bold text-sm text-zinc-100 group-hover:text-indigo-300 transition-colors">
+                        Developer Guide
+                      </div>
+                      <p className="text-[11px] text-zinc-400">
+                        Architecture diagrams, Web Audio DSP, Yamaha .STY engine, and recipes.
                       </p>
                     </button>
                   )}
