@@ -15,6 +15,8 @@ interface RegistrationMemoryProps {
   splitPoint: number;
   acmpEnabled: boolean;
   onRecallPreset: (preset: RegistrationMemoryPreset) => void;
+  activePresetSlot?: number | null;
+  onActiveSlotChange?: (slot: number | null) => void;
 }
 
 export const RegistrationMemory: React.FC<RegistrationMemoryProps> = ({
@@ -29,8 +31,17 @@ export const RegistrationMemory: React.FC<RegistrationMemoryProps> = ({
   splitPoint,
   acmpEnabled,
   onRecallPreset,
+  activePresetSlot,
+  onActiveSlotChange,
 }) => {
-  const [activeSlot, setActiveSlot] = useState<number | null>(null);
+  const [internalActiveSlot, setInternalActiveSlot] = useState<number | null>(null);
+  const activeSlot = activePresetSlot !== undefined ? activePresetSlot : internalActiveSlot;
+
+  const setActiveSlot = (slot: number | null) => {
+    setInternalActiveSlot(slot);
+    onActiveSlotChange?.(slot);
+  };
+
   const [isArmingStore, setIsArmingStore] = useState(false);
   const [isFreezeActive, setIsFreezeActive] = useState(false);
   
@@ -222,6 +233,17 @@ export const RegistrationMemory: React.FC<RegistrationMemoryProps> = ({
             </span>
           </div>
 
+          {/* Active Status LED Orientation Badge */}
+          {activeSlot && (
+            <div 
+              id="reg-active-slot-indicator"
+              className="hidden sm:flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-cyan-950/70 border border-cyan-500/40 text-[10px] text-cyan-300 font-semibold"
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-cyan-300 shadow-[0_0_6px_#22d3ee] animate-pulse" />
+              <span className="font-mono">SLOT {activeSlot} ACTIVE</span>
+            </div>
+          )}
+
           {/* Feedback pill */}
           <AnimatePresence mode="wait">
             {feedbackMessage && (
@@ -310,43 +332,84 @@ export const RegistrationMemory: React.FC<RegistrationMemoryProps> = ({
                       transition: { duration: 0.35, ease: 'easeOut' },
                     }
                   : isSelected
-                  ? { scale: 1.05 }
+                  ? { scale: 1.04 }
                   : { scale: 1 }
               }
-              whileHover={{ scale: isSelected ? 1.07 : 1.03 }}
+              whileHover={{ scale: isSelected ? 1.06 : 1.03 }}
               whileTap={{ scale: 0.95 }}
-              className={`relative py-2.5 rounded-xl text-xs font-mono font-bold flex flex-col items-center justify-center border shadow-xs select-none cursor-pointer transition-colors duration-200 overflow-hidden ${
+              className={`relative py-2 px-1 rounded-xl text-xs font-mono font-bold flex flex-col items-center justify-between min-h-[58px] border shadow-xs select-none cursor-pointer transition-all duration-200 overflow-hidden ${
                 isSelected
-                  ? 'bg-gradient-to-b from-cyan-400 to-cyan-500 text-zinc-950 border-cyan-300 shadow-md shadow-cyan-500/40'
+                  ? 'bg-gradient-to-b from-cyan-950/90 via-zinc-900 to-zinc-950 text-white border-cyan-400 shadow-md shadow-cyan-950/70 ring-1 ring-cyan-400/80'
                   : isPopulated
-                  ? 'bg-zinc-950 hover:bg-zinc-800/90 text-cyan-300 border-zinc-800 hover:border-zinc-700'
-                  : 'bg-zinc-950/40 text-zinc-600 border-zinc-850 hover:border-zinc-700 hover:text-zinc-500'
+                  ? 'bg-zinc-950 hover:bg-zinc-900 text-zinc-300 border-zinc-800 hover:border-zinc-700'
+                  : 'bg-zinc-950/40 text-zinc-600 border-zinc-850 hover:border-zinc-800 hover:text-zinc-500'
               } ${
                 isJustLoaded
-                  ? 'ring-2 ring-cyan-300 ring-offset-2 ring-offset-zinc-900 shadow-[0_0_22px_rgba(6,182,212,0.85)]'
+                  ? 'ring-2 ring-cyan-300 ring-offset-2 ring-offset-zinc-900 shadow-[0_0_24px_rgba(6,182,212,0.95)]'
                   : isJustSaved
                   ? 'ring-2 ring-emerald-400 ring-offset-2 ring-offset-zinc-900 shadow-[0_0_18px_rgba(16,185,129,0.7)]'
                   : ''
               }`}
               title={
                 presets[num]
-                  ? `Slot ${num}: ${presets[num].name} • Tempo: ${presets[num].tempo} BPM • Click to recall`
+                  ? `Slot ${num}: ${presets[num].name} • Tempo: ${presets[num].tempo} BPM • ${isSelected ? 'Currently ACTIVE' : 'Click to recall'}`
                   : `Slot ${num} (Empty) • Click MEMORY then slot ${num} to store current setup`
               }
             >
+              {/* Hardware-Style Status LED Indicator */}
+              <div 
+                className="relative z-10 flex items-center justify-center w-full"
+                title={isSelected ? `Status LED: Active (Slot ${num} in use)` : isPopulated ? `Status LED: Stored / Standby (Slot ${num})` : `Status LED: Unassigned`}
+              >
+                <div 
+                  className={`h-2 px-1 rounded-full flex items-center justify-center transition-all duration-300 ${
+                    isSelected
+                      ? 'bg-black/90 border border-cyan-400/60 shadow-inner'
+                      : isPopulated
+                      ? 'bg-black/70 border border-zinc-800'
+                      : 'bg-black/40 border border-zinc-850'
+                  }`}
+                >
+                  {/* Glowing LED Diode */}
+                  <span
+                    id={`reg-led-${num}`}
+                    data-active={isSelected ? 'true' : 'false'}
+                    className={`relative inline-block rounded-full transition-all duration-300 ${
+                      isSelected
+                        ? 'w-3.5 h-1.5 bg-cyan-300 shadow-[0_0_8px_#22d3ee,0_0_14px_#06b6d4,0_0_20px_rgba(6,182,212,0.9)] ring-1 ring-white/90'
+                        : isPopulated
+                        ? 'w-2 h-1 bg-amber-500/40 border border-amber-600/30'
+                        : 'w-1.5 h-0.5 bg-zinc-800/40'
+                    }`}
+                  >
+                    {/* Active Radiant Core & Ambient Bloom */}
+                    {isSelected && (
+                      <>
+                        <span className="absolute inset-x-0.5 inset-y-0 bg-white rounded-full opacity-90 pointer-events-none" />
+                        <span className="absolute -inset-1 rounded-full bg-cyan-400/40 blur-[2px] animate-pulse pointer-events-none" />
+                      </>
+                    )}
+                  </span>
+                </div>
+              </div>
+
               {/* Slot Number */}
-              <span className="relative z-10 flex items-center justify-center">
+              <span className={`relative z-10 flex items-center justify-center text-xs sm:text-sm font-mono font-bold leading-tight transition-colors ${
+                isSelected ? 'text-white font-extrabold' : isPopulated ? 'text-zinc-200' : 'text-zinc-600'
+              }`}>
                 {num}
               </span>
 
-              {/* Dot indicator if slot contains a saved preset */}
-              {isPopulated && (
-                <span
-                  className={`w-1 h-1 rounded-full mt-0.5 transition-colors relative z-10 ${
-                    isSelected ? 'bg-zinc-950' : 'bg-cyan-400/80'
-                  }`}
-                />
-              )}
+              {/* Micro Status Tag */}
+              <span className={`relative z-10 text-[7px] sm:text-[8px] font-mono tracking-tighter uppercase font-bold leading-none transition-colors ${
+                isSelected
+                  ? 'text-cyan-300'
+                  : isPopulated
+                  ? 'text-zinc-500'
+                  : 'text-zinc-700'
+              }`}>
+                {isSelected ? 'ACTIVE' : isPopulated ? 'SAVED' : '—'}
+              </span>
 
               {/* Expanding Radiant Highlight Aura on Load */}
               <AnimatePresence>
@@ -402,13 +465,14 @@ export const RegistrationMemory: React.FC<RegistrationMemoryProps> = ({
           key={activePreset.id}
           initial={{ opacity: 0, y: 3 }}
           animate={{ opacity: 1, y: 0 }}
-          className="flex items-center justify-between px-2.5 py-1.5 rounded-xl bg-zinc-950/80 border border-zinc-800/80 text-[11px]"
+          className="flex items-center justify-between px-2.5 py-1.5 rounded-xl bg-zinc-950/90 border border-cyan-500/30 text-[11px]"
         >
           <div className="flex items-center gap-1.5 truncate">
-            <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-cyan-500/20 text-cyan-300 font-mono text-[10px] font-bold">
-              {activePreset.id}
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-cyan-500/20 text-cyan-300 font-mono text-[10px] font-bold border border-cyan-500/30">
+              <span className="w-1.5 h-1.5 rounded-full bg-cyan-300 shadow-[0_0_6px_#22d3ee] animate-pulse" />
+              REG {activePreset.id}
             </span>
-            <span className="font-semibold text-zinc-200 truncate">
+            <span className="font-semibold text-zinc-100 truncate">
               {activePreset.name}
             </span>
           </div>

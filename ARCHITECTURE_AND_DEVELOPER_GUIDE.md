@@ -407,6 +407,16 @@ To ensure developers and curious users can inspect the architecture directly wit
 3. **Settings Dialog**: Open Settings (⚙️), navigate to the **About** tab, and click the indigo **Developer Guide** button.
 4. **User Guide Modal**: Open the User Guide and select the **Developer & Architecture** tab to browse Chapters 31–38, complete with diagrams and exportable formatting.
 
+### 13.2 Registration Memory & Live Performance Status LEDs (`RegistrationMemory.tsx`)
+In live stage, church sanctuary, and studio environments, keyboardists need instant confirmation of which snapshot preset is loaded.
+- **Physical LED Simulation**: Each of the 8 preset buttons (`#btn-reg-slot-1` through `#btn-reg-slot-8`) embeds a hardware-style recessed bezel housing a miniature status LED diode (`#reg-led-1` through `#reg-led-8`):
+  - **Active State (`data-active="true"`)**: The diode ignites into high-luminance cyan (`#22d3ee` / `#06b6d4`) with a bright white center micro-core and ambient bloom glow (`shadow-[0_0_8px_#22d3ee,0_0_14px_#06b6d4,0_0_20px_rgba(6,182,212,0.9)]`). The button frame illuminates with cyan borders and an `ACTIVE` status tag.
+  - **Stored / Standby State**: Presets stored in memory display a muted amber/cyan diode indicating stored data waiting for instant recall.
+  - **Empty / Unassigned State**: Unallocated memory slots display a dim dark diode with an empty indicator line (`—`).
+- **Active Orientation Badge**: The Registration Memory header displays an active orientation pill (`SLOT X ACTIVE`) with a pulsating cyan diode alongside the preset information ribbon.
+- **Snapshot Persistence**: Saves entire workstation state to browser `localStorage` (`arranger_reg_memory`), capturing R1, R2, Left voices, split point, style variation, section, tempo, and accompaniment status.
+- **Freeze Mode**: Preserves active accompaniment style and tempo while recalling sound combinations during live performance.
+
 ---
 
 ## 14. Developer Recipes: How to Modify & Extend Everything

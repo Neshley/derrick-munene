@@ -7,7 +7,7 @@
 [![Web Audio API](https://img.shields.io/badge/Web_Audio_API-Native_DSP-orange.svg)](https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API)
 [![Web MIDI API](https://img.shields.io/badge/Web_MIDI-Plug_&_Play-green.svg)](https://developer.mozilla.org/en-US/docs/Web/API/Web_MIDI_API)
 [![Gemini AI](https://img.shields.io/badge/Google_Gemini-Server--Side_Proxy-8e75ff.svg)](https://ai.google.dev/)
-[![Tests](https://img.shields.io/badge/Tests-64%20Passed-brightgreen.svg)](https://vitest.dev/)
+[![Tests](https://img.shields.io/badge/Tests-101%20Passed-brightgreen.svg)](https://vitest.dev/)
 
 **DM ARRANGIA** is a full-featured, zero-latency arranger workstation and live performance engine engineered for keyboards, worship bands, music directors, and producers. Inspired by flagship hardware arranger keyboards (such as the Yamaha Genos, Tyros, and PSR-SX series), DM ARRANGIA brings multi-track accompaniment styles, algorithmic Web Audio synthesis, real-time chord detection, hardware Web MIDI connectivity, vocal processing, media playback, and AI-assisted arranging directly to the web.
 
@@ -17,6 +17,11 @@
 
 ### 🎹 Arranger & Accompaniment Engine
 - **Yamaha `.STY` / SFF Format Compatibility**: Integrated binary parser and real-time playback engine for Yamaha style accompaniment files.
+- **Registration Memory System with Live Performance Status LEDs**:
+  - 8 instant-recall registration preset slots storing complete workstation snapshots (R1/R2/Left voice assignments, tempo, style, section variation, split point, and accompaniment status).
+  - Hardware-style status LEDs on each preset button that glow with radiant luminescence and bright active core when a preset is currently active, providing unmistakable visual orientation in dark stage and worship sanctuary environments.
+  - Standby LED indicators for saved presets versus unassigned slots.
+  - Dedicated `MEMORY` arm store toggle and `FREEZE` mode to retain the active style groove while switching lead voices seamlessly.
 - **8 Parallel Accompaniment Tracks**: Rhythm 1, Rhythm 2, Bass, Chord 1, Chord 2, Pad, Phrase 1, and Phrase 2.
 - **Full Arranger Section Switching**:
   - 3 Intros (Intro I, II, III)

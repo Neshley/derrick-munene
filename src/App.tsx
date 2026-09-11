@@ -244,6 +244,7 @@ export default function App() {
   const [styleNotification, setStyleNotification] = useState<{ name: string; fills: string[]; mains: string[] } | null>(null);
   const [isStyleLoading, setIsStyleLoading] = useState<boolean>(false);
   const [styleLoadingProgress, setStyleLoadingProgress] = useState<number>(0);
+  const [activeRegistrationSlot, setActiveRegistrationSlot] = useState<number | null>(null);
 
   // Workstation scroll container ref & touch-friendly swipe navigation between main console sections
   const workstationScrollRef = useRef<HTMLDivElement>(null);
@@ -443,6 +444,7 @@ export default function App() {
 
   // Registration Memory Recall
   const handleRecallPreset = (preset: RegistrationMemoryPreset) => {
+    setActiveRegistrationSlot(preset.id);
     if (preset.r1Voice) setR1Voice(preset.r1Voice);
     if (preset.r2Voice) setR2Voice(preset.r2Voice);
     if (preset.lVoice) setLVoice(preset.lVoice);
@@ -1085,6 +1087,8 @@ export default function App() {
                             splitPoint={splitPoint}
                             acmpEnabled={acmpEnabled}
                             onRecallPreset={handleRecallPreset}
+                            activePresetSlot={activeRegistrationSlot}
+                            onActiveSlotChange={setActiveRegistrationSlot}
                           />
                         </div>
                         <div className="lg:col-span-6">
@@ -1331,6 +1335,8 @@ export default function App() {
                                 splitPoint={splitPoint}
                                 acmpEnabled={acmpEnabled}
                                 onRecallPreset={handleRecallPreset}
+                                activePresetSlot={activeRegistrationSlot}
+                                onActiveSlotChange={setActiveRegistrationSlot}
                               />
                             </div>
                             <div className="lg:col-span-6">
