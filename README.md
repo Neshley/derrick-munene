@@ -7,13 +7,24 @@
 [![Web Audio API](https://img.shields.io/badge/Web_Audio_API-Native_DSP-orange.svg)](https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API)
 [![Web MIDI API](https://img.shields.io/badge/Web_MIDI-Plug_&_Play-green.svg)](https://developer.mozilla.org/en-US/docs/Web/API/Web_MIDI_API)
 [![Gemini AI](https://img.shields.io/badge/Google_Gemini-Server--Side_Proxy-8e75ff.svg)](https://ai.google.dev/)
-[![Tests](https://img.shields.io/badge/Tests-123%20Passed-brightgreen.svg)](https://vitest.dev/)
+[![Tests](https://img.shields.io/badge/Tests-140%20Passed-brightgreen.svg)](https://vitest.dev/)
+[![Platform](https://img.shields.io/badge/Platform-Web%20%7C%20PWA%20%7C%20Electron%20Desktop-blue.svg)](https://electronjs.org/)
 
-**DM ARRANGIA** is a full-featured, zero-latency arranger workstation and live performance engine engineered for keyboards, worship bands, music directors, and producers. Inspired by flagship hardware arranger keyboards (such as the Yamaha Genos, Tyros, and PSR-SX series), DM ARRANGIA brings multi-track accompaniment styles, algorithmic Web Audio synthesis, real-time chord detection, hardware Web MIDI connectivity, vocal processing, media playback, and AI-assisted arranging directly to the web.
+**DM ARRANGIA** is a full-featured, zero-latency arranger workstation and live performance engine engineered for keyboards, worship bands, music directors, and producers. Inspired by flagship hardware arranger keyboards (such as the Yamaha Genos, Tyros, and PSR-SX series), DM ARRANGIA brings multi-track accompaniment styles, algorithmic Web Audio synthesis, real-time chord detection, hardware Web MIDI connectivity, vocal processing, media playback, and AI-assisted arranging directly to both the modern web/PWA and native desktop (Windows, macOS, Linux).
 
 ---
 
 ## 🌟 Key Features & Capabilities
+
+### 💻 Dual-Platform Architecture: Web/PWA & Electron Desktop
+- **Universal Single-Codebase Architecture**: Runs seamlessly as an installable Progressive Web App (PWA) in the browser, or as a native desktop application powered by Electron.
+- **Capability-Based Filesystem Security**:
+  - The renderer never accesses raw filesystem paths. All directories and files are held in main-process memory and exposed via opaque capability tokens (`dir_*`, `file_*`).
+  - Strict relative path validation with directory traversal defense (`..` and `%2e%2e` rejection), null-byte prevention, and symlink escape verification.
+  - Path redaction in all error messages to eliminate host system leakage.
+- **IPC Sender Authorization**: Strict validation ensuring IPC messages originate solely from the primary application frame and expected origins.
+- **External URL Defense**: All external URL requests are audited and restricted strictly to safe `https:` and `http:` protocols.
+- **Production Desktop Packaging**: Configured with `electron-builder` with support for Windows NSIS/portable x64, macOS DMG/Zip (arm64 + x64), and Linux AppImage/deb, plus native file associations for `.sty`, `.prs`, `.sst`, `.vce`, and `.mid`.
 
 ### 🛡️ Enterprise File Existence & Import Safety System
 - **Comprehensive Pre-Import Existence & Integrity Check**: Every file import workflow across DM ARRANGIA (OS drag-and-drop, modals, and file selectors) validates that incoming files actually exist, contain non-zero binary bytes, and are readable before dispatching to decoders.
@@ -320,7 +331,7 @@ npm test
 npx vitest
 ```
 
-### Production Build & Launch
+### Production Web Build & Launch
 Compile the frontend client and bundle the backend server:
 ```bash
 # Compile client and server
@@ -328,6 +339,25 @@ npm run build
 
 # Start production server
 npm start
+```
+
+### Desktop Packaging & Distribution
+DM ARRANGIA can be built and packaged as a native desktop application using `electron-builder`:
+```bash
+# Launch Electron in development mode
+npm run desktop:dev
+
+# Package into directory for local verification
+npm run desktop:dist
+
+# Target Windows (NSIS installer & portable exe)
+npm run desktop:dist:win
+
+# Target macOS (DMG & Zip with arm64/x64 universal binaries)
+npm run desktop:dist:mac
+
+# Target Linux (AppImage & Debian deb package)
+npm run desktop:dist:linux
 ```
 
 ---
@@ -352,28 +382,45 @@ npm start
 
 ## 🧪 Verified Test Suite
 
-DM ARRANGIA includes **64 unit and integration tests** verifying critical audio, chord, MIDI, and security pipelines:
+DM ARRANGIA includes **140 unit and integration tests across 21 test suites** verifying critical audio, chord, MIDI, platform architecture, and desktop security pipelines:
 
 ```text
-✓ tests/aiValidationPipeline.test.ts  (36 tests)
-✓ tests/songbookStorage.test.ts       (4 tests)
-✓ tests/audioEngine.test.ts           (4 tests)
-✓ tests/midiParser.test.ts            (6 tests)
-✓ tests/chordEngine.test.ts           (6 tests)
-✓ tests/apiSecurity.test.ts           (4 tests)
-✓ tests/stylePlayer.test.ts           (4 tests)
+✓ tests/desktopSecurity.test.ts          (17 tests)
+✓ tests/platformDualArchitecture.test.ts (5 tests)
+✓ tests/apiSecurity.test.ts              (5 tests)
+✓ tests/aiValidationPipeline.test.ts     (36 tests)
+✓ tests/fileExistenceChecker.test.ts     (6 tests)
+✓ tests/voiceImport.test.ts              (7 tests)
+✓ tests/voiceEditor.test.ts              (6 tests)
+✓ tests/chordEngine.test.ts              (7 tests)
+✓ tests/stylePlayer.test.ts              (5 tests)
+✓ tests/styleTransitions.test.ts         (5 tests)
+✓ tests/midiParser.test.ts               (6 tests)
+✓ tests/midiManager.test.ts              (3 tests)
+✓ tests/audioEngine.test.ts              (4 tests)
+✓ tests/backupValidation.test.ts         (4 tests)
+✓ tests/songbookStorage.test.ts          (4 tests)
+✓ tests/registrationMemory.test.ts       (3 tests)
+✓ tests/mediaBlobStorage.test.ts         (5 tests)
+✓ tests/pitchBendDetune.test.ts          (1 test)
+✓ tests/styParserZip.test.ts             (3 tests)
+✓ tests/contextMenuPosition.test.ts      (5 tests)
+✓ tests/perfStudioViewMode.test.ts       (3 tests)
 
-Test Files  7 passed (7)
-     Tests  64 passed (64)
+Test Files  21 passed (21)
+     Tests  140 passed (140)
 ```
 
 ---
 
 ## 🛡️ Security & Privacy
 
-- **Server-Side API Key Isolation**: No API keys or secret tokens are ever bundled, transmitted to, or stored in the browser.
+- **Capability-Based Filesystem Security**: Desktop renderer code never touches raw paths. Opaque tokens and strict path canonicalization prevent directory traversal (`..` and `%2e%2e`), null-byte injection, and symlink attacks.
+- **IPC Sender Authorization**: Strict origin and frame checks verify that all IPC requests come from the authentic application window.
+- **Safe External URL Filtering**: External links are limited to safe HTTP/HTTPS protocols, blocking `javascript:`, `data:`, `file:`, and `blob:` schemes.
+- **Server-Side API Key Isolation**: No API keys or secret tokens are ever bundled, transmitted to, or stored in the browser client.
 - **Strict Payload Validation**: All server endpoints validate payloads using Zod schemas to protect against injection attacks and malformed data.
-- **Local Storage Isolation**: Custom songs, setlists, recordings, and registrations are stored directly in your local browser storage (`localStorage` / `IndexedDB`) and never uploaded to third-party servers without your explicit action.
+- **Local Storage Isolation**: Custom songs, setlists, recordings, and registrations are stored directly in your local browser storage (`localStorage` / `IndexedDB`) or native workstation files and never uploaded to third-party servers without your explicit action.
 - **Public Domain Compliance**: All built-in songs and hymns are strictly in the public domain.
 
 ---

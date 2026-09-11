@@ -72,16 +72,30 @@ export async function showTrackInFolder(
   const desktop = isDesktop();
 
   // 1. Desktop native filesystem reveal via Electron shell IPC
-  if (desktop && window.desktopBridge?.app?.showItemInFolder && track.folderPath) {
-    try {
-      await window.desktopBridge.app.showItemInFolder(track.folderPath);
-      return {
-        success: true,
-        message: `Revealed "${track.title}" in file manager`,
-        method: 'desktop',
-      };
-    } catch (err) {
-      console.warn('Desktop showItemInFolder failed:', err);
+  if (desktop && track.folderPath) {
+    const appBridge = window.desktopBridge?.app;
+    if (appBridge?.showItemInDirectory && track.folderId) {
+      try {
+        await appBridge.showItemInDirectory(track.folderId, track.folderPath);
+        return {
+          success: true,
+          message: `Revealed "${track.title}" in file manager`,
+          method: 'desktop',
+        };
+      } catch (err) {
+        console.warn('Desktop showItemInDirectory failed:', err);
+      }
+    } else if (appBridge?.showItemInFolder) {
+      try {
+        await appBridge.showItemInFolder(track.folderId || '', track.folderPath);
+        return {
+          success: true,
+          message: `Revealed "${track.title}" in file manager`,
+          method: 'desktop',
+        };
+      } catch (err) {
+        console.warn('Desktop showItemInFolder failed:', err);
+      }
     }
   }
 

@@ -1,14 +1,34 @@
 /**
  * DM ARRANGIA Desktop Application Main Process
  * Cross-platform desktop runtime for Windows 10/11 x64, macOS, and Linux.
- * Enforces context isolation and secure scoped IPC channels.
+ * Enforces context isolation, capability-based filesystem security,
+ * strict IPC sender validation, and safe external URL filtering.
  */
 
 const { app, BrowserWindow, ipcMain, dialog, shell, Menu } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const crypto = require('crypto');
+const {
+  MAX_FILE_SIZE,
+  MAX_DIRECTORY_ENTRIES,
+  MAX_SCAN_DEPTH,
+  createSafeError,
+  isSafeExternalUrl,
+  validateRelativePath,
+  validateDirectoryToken,
+  validateFileToken,
+  validateIpcSender,
+} = require('./security/pathValidator.cjs');
 
 let mainWindow = null;
+
+// Capability token stores (held strictly in-memory in the main process)
+const directoryStore = new Map();
+const fileStore = new Map();
+
+const isDev = !app.isPackaged && process.env.NODE_ENV !== 'production';
+const devUrl = process.env.VITE_DEV_SERVER_URL || 'http://localhost:3000';
 
 // Persistent window state file in user data
 function getWindowStatePath() {
@@ -71,21 +91,18 @@ function createWindow() {
 
   // Window state events
   mainWindow.on('maximize', () => {
-    mainWindow.webContents.send('window:maximize-change', true);
+    mainWindow?.webContents.send('window:maximize-change', true);
   });
   mainWindow.on('unmaximize', () => {
-    mainWindow.webContents.send('window:maximize-change', false);
+    mainWindow?.webContents.send('window:maximize-change', false);
   });
   mainWindow.on('close', () => {
     saveWindowState(mainWindow);
   });
 
   // Load production bundle or local development URL
-  const isDev = !app.isPackaged && process.env.NODE_ENV !== 'production';
   if (isDev) {
-    const devUrl = process.env.VITE_DEV_SERVER_URL || 'http://localhost:3000';
     mainWindow.loadURL(devUrl).catch(() => {
-      // Retry loading once dev server boots
       setTimeout(() => mainWindow?.loadURL(devUrl), 1500);
     });
   } else {
@@ -94,11 +111,34 @@ function createWindow() {
 
   // Prevent navigation to external websites within main window
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
-    shell.openExternal(url);
+    const urlCheck = isSafeExternalUrl(url);
+    if (urlCheck.safe) {
+      shell.openExternal(url);
+    } else {
+      console.warn('[SECURITY] Denied window.open target:', urlCheck.reason, url);
+    }
     return { action: 'deny' };
   });
 
-  // Build clean application menu
+  // Guard against untrusted external navigation inside the main window
+  mainWindow.webContents.on('will-navigate', (event, navigationUrl) => {
+    try {
+      const parsed = new URL(navigationUrl);
+      if (isDev) {
+        const expected = new URL(devUrl);
+        if (parsed.origin !== expected.origin && parsed.origin !== 'http://127.0.0.1:3000') {
+          event.preventDefault();
+        }
+      } else {
+        if (parsed.protocol !== 'file:') {
+          event.preventDefault();
+        }
+      }
+    } catch {
+      event.preventDefault();
+    }
+  });
+
   createApplicationMenu();
 }
 
@@ -127,10 +167,10 @@ function createApplicationMenu() {
       label: 'File',
       submenu: [
         {
-          label: 'Scan Media Folder...',
+          label: 'Select Media Directory...',
           accelerator: 'CmdOrCtrl+O',
           click: () => {
-            mainWindow?.webContents.send('menu:scan-folder');
+            mainWindow?.webContents.send('menu:select-folder');
           },
         },
         {
@@ -174,12 +214,26 @@ function createApplicationMenu() {
   Menu.setApplicationMenu(menu);
 }
 
-// Register IPC Handlers
-ipcMain.handle('window:minimize', () => {
+// -------------------------------------------------------------
+// SECURE IPC HANDLERS (STRICT SENDER & CAPABILITY VALIDATION)
+// -------------------------------------------------------------
+
+function enforceIpcSecurity(event, channelName) {
+  const check = validateIpcSender(event, mainWindow, isDev, devUrl);
+  if (!check.authorized) {
+    console.warn(`[SECURITY] Rejected IPC invocation on "${channelName}":`, check.reason);
+    throw new Error(`Unauthorized IPC sender: ${check.reason}`);
+  }
+}
+
+// Window controls
+ipcMain.handle('window:minimize', (event) => {
+  enforceIpcSecurity(event, 'window:minimize');
   mainWindow?.minimize();
 });
 
-ipcMain.handle('window:maximize', () => {
+ipcMain.handle('window:maximize', (event) => {
+  enforceIpcSecurity(event, 'window:maximize');
   if (!mainWindow) return;
   if (mainWindow.isMaximized()) {
     mainWindow.unmaximize();
@@ -188,91 +242,137 @@ ipcMain.handle('window:maximize', () => {
   }
 });
 
-ipcMain.handle('window:close', () => {
+ipcMain.handle('window:close', (event) => {
+  enforceIpcSecurity(event, 'window:close');
   mainWindow?.close();
 });
 
-ipcMain.handle('window:isMaximized', () => {
+ipcMain.handle('window:isMaximized', (event) => {
+  enforceIpcSecurity(event, 'window:isMaximized');
   return mainWindow ? mainWindow.isMaximized() : false;
 });
 
-ipcMain.handle('window:setFullscreen', (_e, flag) => {
+ipcMain.handle('window:setFullscreen', (event, flag) => {
+  enforceIpcSecurity(event, 'window:setFullscreen');
   mainWindow?.setFullScreen(Boolean(flag));
 });
 
-ipcMain.handle('window:isFullscreen', () => {
+ipcMain.handle('window:isFullscreen', (event) => {
+  enforceIpcSecurity(event, 'window:isFullscreen');
   return mainWindow ? mainWindow.isFullScreen() : false;
 });
 
-// File Dialogs
-ipcMain.handle('dialog:selectFolder', async (_e, options) => {
+// App & Shell operations
+ipcMain.handle('app:getVersion', (event) => {
+  enforceIpcSecurity(event, 'app:getVersion');
+  return app.getVersion();
+});
+
+ipcMain.handle('app:getPlatform', (event) => {
+  enforceIpcSecurity(event, 'app:getPlatform');
+  return process.platform;
+});
+
+ipcMain.handle('app:openExternal', (event, rawUrl) => {
+  enforceIpcSecurity(event, 'app:openExternal');
+  const check = isSafeExternalUrl(rawUrl);
+  if (!check.safe) {
+    console.warn('[SECURITY] Denied app:openExternal:', check.reason, rawUrl);
+    throw new Error(`Insecure URL rejected: ${check.reason}`);
+  }
+  shell.openExternal(check.parsedUrl);
+  return true;
+});
+
+ipcMain.handle('app:showItemInDirectory', (event, directoryToken, relativePath) => {
+  enforceIpcSecurity(event, 'app:showItemInDirectory');
+  const tokenCheck = validateDirectoryToken(directoryToken, directoryStore);
+  if (!tokenCheck.valid) {
+    throw new Error(tokenCheck.message);
+  }
+
+  const pathCheck = validateRelativePath(tokenCheck.directory.rootPath, relativePath);
+  if (!pathCheck.safe) {
+    throw new Error(pathCheck.message);
+  }
+
+  shell.showItemInFolder(pathCheck.resolvedPath);
+  return true;
+});
+
+// -------------------------------------------------------------
+// CAPABILITY-BASED SECURE FILESYSTEM HANDLERS
+// -------------------------------------------------------------
+
+/**
+ * Prompts user to select a directory.
+ * Upon selection, stores the canonical root path with an opaque token.
+ * Renderer receives ONLY { token, name }, never the raw absolute OS path.
+ */
+ipcMain.handle('filesystem:registerDirectory', async (event, options) => {
+  enforceIpcSecurity(event, 'filesystem:registerDirectory');
   if (!mainWindow) return null;
+
   const res = await dialog.showOpenDialog(mainWindow, {
-    title: options?.title || 'Select Folder',
+    title: (typeof options?.title === 'string' && options.title.slice(0, 100)) || 'Select Storage Directory',
     properties: ['openDirectory'],
   });
+
   if (res.canceled || !res.filePaths.length) return null;
-  return res.filePaths[0];
-});
 
-ipcMain.handle('dialog:selectFile', async (_e, options) => {
-  if (!mainWindow) return null;
-  const filters = [];
-  if (options?.extensions?.length) {
-    filters.push({ name: 'Supported Files', extensions: options.extensions });
-  }
-  const res = await dialog.showOpenDialog(mainWindow, {
-    title: options?.title || 'Select File',
-    properties: ['openFile'],
-    filters: filters.length ? filters : undefined,
+  const rawPath = res.filePaths[0];
+  const canonicalRoot = fs.realpathSync(rawPath);
+  const token = `dir_${crypto.randomUUID().replace(/-/g, '')}`;
+
+  directoryStore.set(token, {
+    token,
+    rootPath: canonicalRoot,
+    name: path.basename(canonicalRoot),
+    createdAt: Date.now(),
   });
-  if (res.canceled || !res.filePaths.length) return null;
-  return res.filePaths[0];
+
+  return {
+    token,
+    name: path.basename(canonicalRoot),
+  };
 });
 
-ipcMain.handle('dialog:selectFiles', async (_e, options) => {
-  if (!mainWindow) return [];
-  const filters = [];
-  if (options?.extensions?.length) {
-    filters.push({ name: 'Supported Files', extensions: options.extensions });
+/**
+ * Scans a registered directory using its opaque token.
+ * Traversal is prevented; all returned paths are relative to the directory root.
+ */
+ipcMain.handle('filesystem:listFiles', async (event, directoryToken, options) => {
+  enforceIpcSecurity(event, 'filesystem:listFiles');
+  const tokenCheck = validateDirectoryToken(directoryToken, directoryStore);
+  if (!tokenCheck.valid) {
+    throw new Error(tokenCheck.message);
   }
-  const res = await dialog.showOpenDialog(mainWindow, {
-    title: options?.title || 'Select Files',
-    properties: ['openFile', 'multiSelections'],
-    filters: filters.length ? filters : undefined,
-  });
-  if (res.canceled) return [];
-  return res.filePaths;
-});
 
-ipcMain.handle('dialog:saveFile', async (_e, options) => {
-  if (!mainWindow) return null;
-  const filters = [];
-  if (options?.extensions?.length) {
-    filters.push({ name: 'File', extensions: options.extensions });
+  const rootPath = tokenCheck.directory.rootPath;
+  let targetPath = rootPath;
+
+  if (options?.subDirectory) {
+    const pathCheck = validateRelativePath(rootPath, options.subDirectory);
+    if (!pathCheck.safe) {
+      throw new Error(pathCheck.message);
+    }
+    targetPath = pathCheck.resolvedPath;
   }
-  const res = await dialog.showSaveDialog(mainWindow, {
-    title: options?.title || 'Save File',
-    defaultPath: options?.defaultName || 'untitled',
-    filters: filters.length ? filters : undefined,
-  });
-  if (res.canceled || !res.filePath) return null;
-  return res.filePath;
-});
 
-// Directory Recursive Scanner
-ipcMain.handle('fs:scanDirectory', async (_e, dirPath, options) => {
+  const extensions = Array.isArray(options?.extensions)
+    ? new Set(options.extensions.map((x) => String(x).replace(/^\./, '').toLowerCase()))
+    : null;
+
+  const maxDepth = Math.min(Math.max(Number(options?.maxDepth) || 6, 1), MAX_SCAN_DEPTH);
   const results = [];
-  const extensions = options?.extensions ? new Set(options.extensions.map((x) => x.toLowerCase())) : null;
-  const maxDepth = options?.maxDepth || 6;
 
   function scan(currentPath, currentDepth, relativePrefix) {
-    if (currentDepth > maxDepth) return;
+    if (currentDepth > maxDepth || results.length >= MAX_DIRECTORY_ENTRIES) return;
     try {
       const entries = fs.readdirSync(currentPath, { withFileTypes: true });
       for (const entry of entries) {
-        // Skip hidden and system folders
-        if (entry.name.startsWith('.')) continue;
+        if (results.length >= MAX_DIRECTORY_ENTRIES) break;
+        if (entry.name.startsWith('.') || entry.name.startsWith('$')) continue;
 
         const fullPath = path.join(currentPath, entry.name);
         const relPath = relativePrefix ? `${relativePrefix}/${entry.name}` : entry.name;
@@ -282,53 +382,290 @@ ipcMain.handle('fs:scanDirectory', async (_e, dirPath, options) => {
         } else if (entry.isFile()) {
           const ext = path.extname(entry.name).replace('.', '').toLowerCase();
           if (!extensions || extensions.has(ext)) {
-            const stats = fs.statSync(fullPath);
-            results.push({
-              name: entry.name,
-              path: fullPath,
-              relativePath: relPath,
-              size: stats.size,
-              lastModified: stats.mtimeMs,
-            });
+            try {
+              const stats = fs.statSync(fullPath);
+              results.push({
+                name: entry.name,
+                relativePath: relPath,
+                size: stats.size,
+                lastModified: stats.mtimeMs,
+              });
+            } catch {
+              // Ignore inaccessible file
+            }
           }
         }
       }
     } catch (e) {
-      console.warn(`Error scanning path ${currentPath}:`, e);
+      console.warn(`[FILESYSTEM] Error reading directory:`, e.message);
     }
   }
 
-  scan(dirPath, 1, '');
+  scan(targetPath, 1, options?.subDirectory || '');
   return results;
 });
 
-// File I/O
-ipcMain.handle('fs:readFile', async (_e, filePath) => {
-  return fs.readFileSync(filePath);
+/**
+ * Reads a file using directory token + verified relative path.
+ */
+ipcMain.handle('filesystem:readFile', async (event, directoryToken, relativePath) => {
+  enforceIpcSecurity(event, 'filesystem:readFile');
+  const tokenCheck = validateDirectoryToken(directoryToken, directoryStore);
+  if (!tokenCheck.valid) {
+    throw new Error(tokenCheck.message);
+  }
+
+  const pathCheck = validateRelativePath(tokenCheck.directory.rootPath, relativePath);
+  if (!pathCheck.safe) {
+    throw new Error(pathCheck.message);
+  }
+
+  const resolved = pathCheck.resolvedPath;
+  if (!fs.existsSync(resolved)) {
+    throw new Error(createSafeError('FILE_NOT_FOUND', 'Requested file does not exist.').message);
+  }
+
+  const stats = fs.statSync(resolved);
+  if (!stats.isFile()) {
+    throw new Error(createSafeError('NOT_A_FILE', 'Requested path is not a file.').message);
+  }
+
+  if (stats.size > MAX_FILE_SIZE) {
+    throw new Error(createSafeError('FILE_TOO_LARGE', `File size (${stats.size} bytes) exceeds the 150MB limit.`).message);
+  }
+
+  return fs.readFileSync(resolved);
 });
 
-ipcMain.handle('fs:writeFile', async (_e, filePath, data) => {
-  const buffer = Buffer.isBuffer(data) ? data : Buffer.from(data);
-  fs.writeFileSync(filePath, buffer);
+/**
+ * Writes a file using directory token + verified relative path.
+ */
+ipcMain.handle('filesystem:writeFile', async (event, directoryToken, relativePath, data) => {
+  enforceIpcSecurity(event, 'filesystem:writeFile');
+  const tokenCheck = validateDirectoryToken(directoryToken, directoryStore);
+  if (!tokenCheck.valid) {
+    throw new Error(tokenCheck.message);
+  }
+
+  const pathCheck = validateRelativePath(tokenCheck.directory.rootPath, relativePath);
+  if (!pathCheck.safe) {
+    throw new Error(pathCheck.message);
+  }
+
+  const buffer = Buffer.isBuffer(data)
+    ? data
+    : data instanceof ArrayBuffer
+      ? Buffer.from(data)
+      : typeof data === 'string'
+        ? Buffer.from(data, 'utf8')
+        : Buffer.from(data);
+
+  if (buffer.length > MAX_FILE_SIZE) {
+    throw new Error(createSafeError('FILE_TOO_LARGE', 'Write data exceeds size limit.').message);
+  }
+
+  const resolved = pathCheck.resolvedPath;
+  const parentDir = path.dirname(resolved);
+  if (!fs.existsSync(parentDir)) {
+    fs.mkdirSync(parentDir, { recursive: true });
+  }
+
+  fs.writeFileSync(resolved, buffer);
   return true;
 });
 
-ipcMain.handle('fs:deleteFile', async (_e, filePath) => {
-  if (fs.existsSync(filePath)) {
-    fs.unlinkSync(filePath);
+/**
+ * Deletes a file using directory token + verified relative path.
+ */
+ipcMain.handle('filesystem:deleteFile', async (event, directoryToken, relativePath) => {
+  enforceIpcSecurity(event, 'filesystem:deleteFile');
+  const tokenCheck = validateDirectoryToken(directoryToken, directoryStore);
+  if (!tokenCheck.valid) {
+    throw new Error(tokenCheck.message);
+  }
+
+  const pathCheck = validateRelativePath(tokenCheck.directory.rootPath, relativePath);
+  if (!pathCheck.safe) {
+    throw new Error(pathCheck.message);
+  }
+
+  const resolved = pathCheck.resolvedPath;
+  if (fs.existsSync(resolved)) {
+    fs.unlinkSync(resolved);
   }
   return true;
 });
 
-ipcMain.handle('fs:exists', async (_e, filePath) => {
-  return fs.existsSync(filePath);
+/**
+ * Checks file existence using directory token + verified relative path.
+ */
+ipcMain.handle('filesystem:exists', async (event, directoryToken, relativePath) => {
+  enforceIpcSecurity(event, 'filesystem:exists');
+  const tokenCheck = validateDirectoryToken(directoryToken, directoryStore);
+  if (!tokenCheck.valid) return false;
+
+  const pathCheck = validateRelativePath(tokenCheck.directory.rootPath, relativePath);
+  if (!pathCheck.safe) return false;
+
+  return fs.existsSync(pathCheck.resolvedPath);
 });
 
-// App & Shell
-ipcMain.handle('app:getVersion', () => app.getVersion());
-ipcMain.handle('app:getPlatform', () => process.platform);
-ipcMain.handle('app:openExternal', (_e, url) => shell.openExternal(url));
-ipcMain.handle('app:showItemInFolder', (_e, targetPath) => shell.showItemInFolder(targetPath));
+/**
+ * Single file selection dialog with opaque token creation.
+ */
+ipcMain.handle('filesystem:selectFile', async (event, options) => {
+  enforceIpcSecurity(event, 'filesystem:selectFile');
+  if (!mainWindow) return null;
+
+  const filters = [];
+  if (Array.isArray(options?.extensions) && options.extensions.length) {
+    filters.push({
+      name: options.title || 'Supported Files',
+      extensions: options.extensions.map((e) => String(e).replace(/^\./, '')),
+    });
+  }
+
+  const res = await dialog.showOpenDialog(mainWindow, {
+    title: options?.title || 'Select File',
+    properties: ['openFile'],
+    filters: filters.length ? filters : undefined,
+  });
+
+  if (res.canceled || !res.filePaths.length) return null;
+
+  const canonicalPath = fs.realpathSync(res.filePaths[0]);
+  const stats = fs.statSync(canonicalPath);
+  const token = `file_${crypto.randomUUID().replace(/-/g, '')}`;
+
+  fileStore.set(token, {
+    token,
+    filePath: canonicalPath,
+    name: path.basename(canonicalPath),
+    size: stats.size,
+    lastModified: stats.mtimeMs,
+    createdAt: Date.now(),
+  });
+
+  return {
+    token,
+    name: path.basename(canonicalPath),
+    size: stats.size,
+    lastModified: stats.mtimeMs,
+  };
+});
+
+/**
+ * Multiple files selection dialog with opaque tokens.
+ */
+ipcMain.handle('filesystem:selectFiles', async (event, options) => {
+  enforceIpcSecurity(event, 'filesystem:selectFiles');
+  if (!mainWindow) return [];
+
+  const filters = [];
+  if (Array.isArray(options?.extensions) && options.extensions.length) {
+    filters.push({
+      name: options.title || 'Supported Files',
+      extensions: options.extensions.map((e) => String(e).replace(/^\./, '')),
+    });
+  }
+
+  const res = await dialog.showOpenDialog(mainWindow, {
+    title: options?.title || 'Select Files',
+    properties: ['openFile', 'multiSelections'],
+    filters: filters.length ? filters : undefined,
+  });
+
+  if (res.canceled || !res.filePaths.length) return [];
+
+  const items = [];
+  for (const rawPath of res.filePaths) {
+    try {
+      const canonicalPath = fs.realpathSync(rawPath);
+      const stats = fs.statSync(canonicalPath);
+      const token = `file_${crypto.randomUUID().replace(/-/g, '')}`;
+
+      fileStore.set(token, {
+        token,
+        filePath: canonicalPath,
+        name: path.basename(canonicalPath),
+        size: stats.size,
+        lastModified: stats.mtimeMs,
+        createdAt: Date.now(),
+      });
+
+      items.push({
+        token,
+        name: path.basename(canonicalPath),
+        size: stats.size,
+        lastModified: stats.mtimeMs,
+      });
+    } catch {
+      // Skip inaccessible item
+    }
+  }
+
+  return items;
+});
+
+/**
+ * Reads a single file using its opaque file token.
+ */
+ipcMain.handle('filesystem:readFileByToken', async (event, fileToken) => {
+  enforceIpcSecurity(event, 'filesystem:readFileByToken');
+  const check = validateFileToken(fileToken, fileStore);
+  if (!check.valid) {
+    throw new Error(check.message);
+  }
+
+  const filePath = check.file.filePath;
+  const stats = fs.statSync(filePath);
+  if (stats.size > MAX_FILE_SIZE) {
+    throw new Error(createSafeError('FILE_TOO_LARGE', 'Selected file exceeds maximum allowed size.').message);
+  }
+
+  return fs.readFileSync(filePath);
+});
+
+/**
+ * Prompts user for a save file destination and writes data safely.
+ * Renderer never supplies an arbitrary path.
+ */
+ipcMain.handle('filesystem:saveFile', async (event, options) => {
+  enforceIpcSecurity(event, 'filesystem:saveFile');
+  if (!mainWindow) return false;
+
+  const filters = [];
+  if (Array.isArray(options?.extensions) && options.extensions.length) {
+    filters.push({
+      name: options.title || 'Save File',
+      extensions: options.extensions.map((e) => String(e).replace(/^\./, '')),
+    });
+  }
+
+  const res = await dialog.showSaveDialog(mainWindow, {
+    title: options?.title || 'Save File',
+    defaultPath: (typeof options?.defaultName === 'string' && options.defaultName.slice(0, 100)) || 'untitled',
+    filters: filters.length ? filters : undefined,
+  });
+
+  if (res.canceled || !res.filePath) return false;
+
+  const rawData = options?.data;
+  const buffer = Buffer.isBuffer(rawData)
+    ? rawData
+    : rawData instanceof ArrayBuffer
+      ? Buffer.from(rawData)
+      : typeof rawData === 'string'
+        ? Buffer.from(rawData, 'utf8')
+        : Buffer.from(rawData || []);
+
+  if (buffer.length > MAX_FILE_SIZE) {
+    throw new Error(createSafeError('FILE_TOO_LARGE', 'Data to save exceeds size limit.').message);
+  }
+
+  fs.writeFileSync(res.filePath, buffer);
+  return true;
+});
 
 // App Lifecycle
 app.whenReady().then(() => {

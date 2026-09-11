@@ -51,63 +51,121 @@ export interface PlatformCapabilities {
   recording: boolean;
 }
 
+export interface DirectoryToken {
+  token: string;
+  name: string;
+}
+
+export interface FileToken {
+  token: string;
+  name: string;
+  size: number;
+  lastModified: number;
+}
+
+export interface SafeFileEntry {
+  name: string;
+  relativePath: string;
+  size: number;
+  lastModified: number;
+}
+
+export interface ListFilesOptions {
+  subDirectory?: string;
+  extensions?: string[];
+  maxDepth?: number;
+}
+
+export interface SaveFileRequest {
+  title?: string;
+  defaultName?: string;
+  extensions?: string[];
+  data: Uint8Array | ArrayBuffer | string;
+}
+
+export interface DesktopBridgeWindow {
+  minimize: () => Promise<void>;
+  maximize: () => Promise<void>;
+  close: () => Promise<void>;
+  isMaximized: () => Promise<boolean>;
+  setFullscreen: (fullscreen: boolean) => Promise<void>;
+  isFullscreen: () => Promise<boolean>;
+  onMaximizeChange: (callback: (isMaximized: boolean) => void) => () => void;
+}
+
+export interface DesktopBridgeFilesystem {
+  registerDirectory: (options?: { title?: string }) => Promise<DirectoryToken | null>;
+  listFiles: (directoryToken: string, options?: ListFilesOptions) => Promise<SafeFileEntry[]>;
+  readFile: (directoryToken: string, relativePath: string) => Promise<ArrayBuffer>;
+  writeFile: (directoryToken: string, relativePath: string, data: ArrayBuffer | Uint8Array | string) => Promise<boolean>;
+  deleteFile: (directoryToken: string, relativePath: string) => Promise<boolean>;
+  exists: (directoryToken: string, relativePath: string) => Promise<boolean>;
+
+  // Single / multi-file selection with opaque tokens
+  selectFile: (options?: { title?: string; extensions?: string[] }) => Promise<FileToken | null>;
+  selectFiles: (options?: { title?: string; extensions?: string[] }) => Promise<FileToken[]>;
+  readFileByToken: (fileToken: string) => Promise<ArrayBuffer>;
+  saveFile: (options: SaveFileRequest) => Promise<boolean>;
+
+  // Backward compatibility / convenience helpers with token resolution
+  selectFolder?: (options?: { title?: string }) => Promise<DirectoryToken | null>;
+  scanDirectory?: (directoryToken: string, extensions?: string[], maxDepth?: number) => Promise<SafeFileEntry[]>;
+}
+
+export interface DesktopBridgeApp {
+  getVersion: () => Promise<string>;
+  getPlatform: () => Promise<string>;
+  openExternal: (url: string) => Promise<boolean>;
+  showItemInDirectory: (directoryToken: string, relativePath: string) => Promise<boolean>;
+  showItemInFolder?: (directoryToken: string, relativePath?: string) => Promise<boolean>;
+}
+
+export interface DesktopBridgeMidi {
+  getInputs: () => Promise<Array<{ id: string; name: string; manufacturer?: string }>>;
+  getOutputs: () => Promise<Array<{ id: string; name: string; manufacturer?: string }>>;
+  send: (outputId: string, message: number[] | Uint8Array, timestamp?: number) => void;
+  onMessage: (callback: (deviceId: string, message: number[], timestamp: number) => void) => () => void;
+}
+
 export interface DesktopBridge {
   isDesktop: boolean;
   platform: 'windows' | 'macos' | 'linux' | 'unknown';
   arch?: string;
-  version?: string;
-  
-  // Window controls
+  version: string;
+
+  window: DesktopBridgeWindow;
+  filesystem: DesktopBridgeFilesystem;
+  fs: DesktopBridgeFilesystem; // Standard alias
+  app: DesktopBridgeApp;
+  midi?: DesktopBridgeMidi;
+
+  // Unified top-level aliases for backward compatibility with capability checks
   minimizeWindow?: () => Promise<void>;
   maximizeWindow?: () => Promise<void>;
-  isMaximized?: () => Promise<boolean>;
   closeWindow?: () => Promise<void>;
+  isMaximized?: () => Promise<boolean>;
   setFullscreen?: (fullscreen: boolean) => Promise<void>;
+  isFullscreen?: () => Promise<boolean>;
   onMaximizeChange?: (callback: (isMaximized: boolean) => void) => () => void;
-  window?: {
-    minimize: () => Promise<void>;
-    maximize: () => Promise<void>;
-    close: () => Promise<void>;
-    isMaximized: () => Promise<boolean>;
-    setFullscreen: (fullscreen: boolean) => Promise<void>;
-    isFullscreen?: () => Promise<boolean>;
-    onMaximizeChange?: (callback: (isMaximized: boolean) => void) => () => void;
-  };
-  
-  // Native filesystem dialogs & operations
-  selectFolder?: (options?: { title?: string; defaultPath?: string }) => Promise<{ path: string; name: string } | null>;
-  selectFile?: (options?: { title?: string; defaultPath?: string; filters?: Array<{ name: string; extensions: string[] }> }) => Promise<{ path: string; name: string; size: number } | null>;
-  selectFiles?: (options?: { title?: string; defaultPath?: string; filters?: Array<{ name: string; extensions: string[] }> }) => Promise<Array<{ path: string; name: string; size: number }>>;
-  saveFileDialog?: (options?: { title?: string; defaultPath?: string; filters?: Array<{ name: string; extensions: string[] }> }) => Promise<string | null>;
-  
-  scanDirectory?: (folderPath: string, extensions: string[], maxDepth?: number) => Promise<Array<{
-    name: string;
-    path: string;
-    relativePath: string;
-    size: number;
-    lastModified: number;
-  }>>;
-  
-  readFile?: (filePath: string) => Promise<ArrayBuffer>;
-  readTextFile?: (filePath: string) => Promise<string>;
-  writeFile?: (filePath: string, data: ArrayBuffer | string) => Promise<boolean>;
-  deleteFile?: (filePath: string) => Promise<boolean>;
-  
-  // App & Shell operations
-  app?: {
-    getVersion?: () => Promise<string>;
-    getPlatform?: () => Promise<string>;
-    openExternal?: (url: string) => Promise<void>;
-    showItemInFolder?: (filePath: string) => Promise<void>;
-  };
 
-  // MIDI Bridge (optional native fallback)
-  midi?: {
-    getInputs: () => Promise<Array<{ id: string; name: string; manufacturer: string }>>;
-    getOutputs: () => Promise<Array<{ id: string; name: string; manufacturer: string }>>;
-    send: (outputId: string, message: number[], timestamp?: number) => void;
-    onMessage: (callback: (deviceId: string, message: number[], timestamp: number) => void) => () => void;
-  };
+  // Legacy compat aliases (safely routed or optional)
+  selectFolder?: (options?: { title?: string; defaultPath?: string }) => Promise<any>;
+  selectFile?: (options?: any) => Promise<any>;
+  selectFiles?: (options?: any) => Promise<any>;
+  saveFileDialog?: (options?: any) => Promise<any>;
+  scanDirectory?: (directoryToken: string, extensions?: string[], maxDepth?: number) => Promise<any>;
+  readFile?: (directoryTokenOrPath: string, relativePath?: string) => Promise<ArrayBuffer>;
+  writeFile?: (pathOrToken: string, data: any) => Promise<boolean>;
+  deleteFile?: (pathOrToken: string) => Promise<boolean>;
+}
+
+export interface DesktopCapabilities {
+  isDesktop: boolean;
+  platform: 'windows' | 'macos' | 'linux' | 'unknown';
+  version: string;
+  hasFilesystem: boolean;
+  hasWindowControls: boolean;
+  hasMidiBridge: boolean;
 }
 
 declare global {

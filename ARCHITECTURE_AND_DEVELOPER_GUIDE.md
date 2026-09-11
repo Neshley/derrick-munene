@@ -152,6 +152,23 @@ startServer();
 - **Development**: `tsx` executes `server.ts` directly with TypeScript type-stripping and instant live reload.
 - **Build**: `vite build` creates the client-side SPA in `/dist`, while `esbuild` bundles `server.ts` into a standalone CommonJS file `/dist/server.cjs`.
 
+### 3.3 Dual-Platform Architecture & Secure Desktop Subsystem
+DM ARRANGIA supports two first-class, production-ready deployment targets from the exact same codebase:
+1. **Web / PWA**: Runs in modern web browsers with service worker offline caching, Web App Manifest, IndexedDB storage, and Web Audio/MIDI.
+2. **Electron Desktop**: Native workstation runtime for Windows 10/11 x64, macOS, and Linux, providing window management, native file dialogs, and high-performance offline workstation capabilities.
+
+#### Capability-Based Secure Filesystem Architecture
+To prevent arbitrary filesystem manipulation, path traversal, and sensitive data exfiltration:
+- **Opaque Capability Tokens**: The Electron main process holds directory and file roots in an in-memory capability store. The renderer receives only opaque tokens (`dir_<uuid>`, `file_<uuid>`), never raw absolute operating system paths.
+- **Strict Relative Path Validation**: Every read, write, scan, and delete operation is validated through `validateRelativePath()`:
+  - Canonical root resolution via `fs.realpathSync`.
+  - Rejection of path traversal (`..`), encoded traversal (`%2e%2e`), null bytes (`\0`), and absolute path prefixes.
+  - Symlink escape protection ensuring symlinks cannot escape the approved root.
+  - Path redaction in all security errors (e.g. `[PATH_REDACTED]`).
+- **IPC Sender Authorization**: `validateIpcSender()` verifies every IPC invocation originates from the main application window's primary frame and authorized origin.
+- **External URL Defense**: `isSafeExternalUrl()` strictly limits `app:openExternal` and `window.open` navigation to safe `https:` and `http:` protocols, blocking dangerous schemes (`javascript:`, `data:`, `file:`, `blob:`, etc.).
+- **Unified Bridge Contract**: `DesktopBridge` and `DesktopCapabilities` provide a single, strictly typed interface across preload, capabilities detection, window controls, and file services.
+
 ---
 
 ## 4. Web Audio DSP Synthesis Engine
@@ -651,17 +668,19 @@ The project uses **Vitest** for fast unit and integration testing. Run tests wit
 ```bash
 npm test
 ```
-All 20 test suites (123 unit tests) verify:
-1. `fileExistenceChecker.test.ts`: File existence validation, zero-byte rejection, and duplicate detection across styles, voices, media tracks, songbook entries, and prayer pads.
-2. `audioEngine.test.ts`: AudioContext initialization and voice synthesis graphs.
-3. `chordEngine.test.ts`: Major, minor, extended, and slash chord recognition.
-4. `stylePlayer.test.ts`: Arranger section state transitions and fill scheduling.
-5. `voiceImport.test.ts`: Yamaha VCE decoding, SoundFont 2 sfbk presets, JSON packs, and ZIP extraction.
-6. `midiParser.test.ts`: Byte-level Note On/Off, running status, and velocity decoding.
-7. `apiSecurity.test.ts`: Rate limiting, XSS payload rejection, and timeout handling.
-8. `aiValidationPipeline.test.ts`: Zod output parsing and range clamping.
-9. `mediaBlobStorage.test.ts`: Offline media caching and IndexedDB operations.
-10. `backupValidation.test.ts`: Full workstation backup schema validation and corrupt JSON rejection.
+All 21 test suites (140 unit tests) verify:
+1. `desktopSecurity.test.ts`: Capability-based filesystem security, directory traversal rejection (`..` and `%2e%2e`), absolute path rejection, null-byte prevention, symlink escape defense, token validation, URL filtering, and IPC sender authorization.
+2. `platformDualArchitecture.test.ts`: Seamless dual-runtime operation across Web/PWA and Electron Desktop environments.
+3. `fileExistenceChecker.test.ts`: File existence validation, zero-byte rejection, and duplicate detection across styles, voices, media tracks, songbook entries, and prayer pads.
+4. `audioEngine.test.ts`: AudioContext initialization and voice synthesis graphs.
+5. `chordEngine.test.ts`: Major, minor, extended, and slash chord recognition.
+6. `stylePlayer.test.ts`: Arranger section state transitions and fill scheduling.
+7. `voiceImport.test.ts`: Yamaha VCE decoding, SoundFont 2 sfbk presets, JSON packs, and ZIP extraction.
+8. `midiParser.test.ts`: Byte-level Note On/Off, running status, and velocity decoding.
+9. `apiSecurity.test.ts`: Rate limiting, XSS payload rejection, and timeout handling.
+10. `aiValidationPipeline.test.ts`: Zod output parsing and range clamping.
+11. `mediaBlobStorage.test.ts`: Offline media caching and IndexedDB operations.
+12. `backupValidation.test.ts`: Full workstation backup schema validation and corrupt JSON rejection.
 
 ### 15.2 Linting & TypeScript Verification
 Run type-checking across the entire client and server codebase:
@@ -676,6 +695,28 @@ npm run build
 npm start
 ```
 Binds to `0.0.0.0:3000` with production headers, caching, and gzip compression.
+
+### 15.4 Desktop Application Packaging & Distribution
+DM ARRANGIA uses `electron-builder` configured in `electron-builder.json` to generate signed and installer packages across platforms:
+```bash
+# Run local Electron desktop in development
+npm run desktop:dev
+
+# Build the production web assets
+npm run desktop:build
+
+# Package for local directory inspection
+npm run desktop:dist
+
+# Target Windows 10/11 x64 (NSIS installer & portable exe)
+npm run desktop:dist:win
+
+# Target macOS (DMG & Zip with arm64/x64 universal binaries)
+npm run desktop:dist:mac
+
+# Target Linux (AppImage & Debian deb package)
+npm run desktop:dist:linux
+```
 
 ---
 

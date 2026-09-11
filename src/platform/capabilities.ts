@@ -3,8 +3,22 @@
  * Evaluates real runtime features rather than assuming binary desktop/web capability.
  */
 
-import { PlatformCapabilities } from './types';
-import { isDesktop, isPWA } from './platformDetection';
+import { PlatformCapabilities, DesktopCapabilities } from './types';
+import { isDesktop, isPWA, getDesktopPlatform } from './platformDetection';
+
+export function getDesktopCapabilities(): DesktopCapabilities {
+  const desktop = isDesktop();
+  const bridge = typeof window !== 'undefined' ? window.desktopBridge : undefined;
+
+  return {
+    isDesktop: desktop,
+    platform: getDesktopPlatform(),
+    version: bridge?.version || '2.5.0',
+    hasFilesystem: Boolean(desktop && (bridge?.filesystem || bridge?.fs || bridge?.scanDirectory)),
+    hasWindowControls: Boolean(desktop && (bridge?.window?.minimize || bridge?.minimizeWindow)),
+    hasMidiBridge: Boolean(desktop && bridge?.midi),
+  };
+}
 
 export function getCapabilities(): PlatformCapabilities {
   const desktop = isDesktop();
@@ -12,15 +26,16 @@ export function getCapabilities(): PlatformCapabilities {
   const hasWindow = typeof window !== 'undefined';
   const hasDocument = typeof document !== 'undefined';
   const hasNavigator = typeof navigator !== 'undefined';
+  const bridge = hasWindow ? window.desktopBridge : undefined;
 
-  // Filesystem capabilities
-  const hasDesktopFs = Boolean(desktop && window.desktopBridge?.scanDirectory);
+  // Filesystem capabilities (Unified DesktopBridge and Web File System Access)
+  const hasDesktopFs = Boolean(desktop && (bridge?.filesystem || bridge?.fs || bridge?.scanDirectory));
   const hasBrowserFsAccess = Boolean(hasWindow && 'showDirectoryPicker' in window);
   const hasInputDirectory = Boolean(hasWindow && typeof HTMLInputElement !== 'undefined');
 
   // MIDI capabilities
   const hasWebMidi = Boolean(hasNavigator && 'requestMIDIAccess' in navigator);
-  const hasDesktopMidiBridge = Boolean(desktop && window.desktopBridge?.midi);
+  const hasDesktopMidiBridge = Boolean(desktop && bridge?.midi);
 
   // Audio / Media capabilities
   const hasAudioContext = Boolean(hasWindow && (window.AudioContext || (window as any).webkitAudioContext));
@@ -30,7 +45,7 @@ export function getCapabilities(): PlatformCapabilities {
   // Screen & Window
   const hasWakeLock = Boolean(hasNavigator && 'wakeLock' in navigator);
   const hasFullscreen = Boolean(hasDocument && (document.fullscreenEnabled || (document as any).webkitFullscreenEnabled));
-  const hasWindowControls = Boolean(desktop && window.desktopBridge?.minimizeWindow);
+  const hasWindowControls = Boolean(desktop && (bridge?.window?.minimize || bridge?.minimizeWindow));
 
   // Service worker / PWA install
   const hasServiceWorker = Boolean(hasNavigator && 'serviceWorker' in navigator && !desktop);

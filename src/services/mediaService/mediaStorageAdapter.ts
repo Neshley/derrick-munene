@@ -100,17 +100,33 @@ export class MediaService implements IMediaService {
       return sessionUrl;
     }
 
-    // 2. Desktop native filesystem path resolution
-    if (isDesktop() && track.nativePath && window.desktopBridge?.readFile) {
-      try {
-        const buffer = await window.desktopBridge.readFile(track.nativePath);
-        const mimeType = track.mimeType || (track.isVideo ? 'video/mp4' : 'audio/mpeg');
-        const blob = new Blob([buffer], { type: mimeType });
-        const url = URL.createObjectURL(blob);
-        registerSessionBlobUrl(track.id, url);
-        return url;
-      } catch (err) {
-        console.warn(`Desktop failed to load file from native path "${track.nativePath}":`, err);
+    // 2. Desktop native filesystem resolution (token or composite handle)
+    if (isDesktop()) {
+      const fsBridge = window.desktopBridge?.filesystem || window.desktopBridge?.fs;
+      if (fsBridge) {
+        try {
+          let buffer: ArrayBuffer | null = null;
+          if (track.folderId && track.folderPath) {
+            buffer = await fsBridge.readFile(track.folderId, track.folderPath);
+          } else if (track.nativePath?.startsWith('file_')) {
+            buffer = await fsBridge.readFileByToken(track.nativePath);
+          } else if (track.nativePath?.includes('::')) {
+            const [token, relPath] = track.nativePath.split('::');
+            buffer = await fsBridge.readFile(token, relPath);
+          } else if (window.desktopBridge?.readFile && track.nativePath) {
+            buffer = await window.desktopBridge.readFile(track.nativePath);
+          }
+
+          if (buffer) {
+            const mimeType = track.mimeType || (track.isVideo ? 'video/mp4' : 'audio/mpeg');
+            const blob = new Blob([buffer], { type: mimeType });
+            const url = URL.createObjectURL(blob);
+            registerSessionBlobUrl(track.id, url);
+            return url;
+          }
+        } catch (err) {
+          console.warn(`Desktop failed to load file from native path/token:`, err);
+        }
       }
     }
 

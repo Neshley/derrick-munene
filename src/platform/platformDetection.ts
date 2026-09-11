@@ -31,6 +31,17 @@ export function isWeb(): boolean {
   return !isDesktop();
 }
 
+export function getDesktopPlatform(): 'windows' | 'macos' | 'linux' | 'unknown' {
+  if (typeof window !== 'undefined' && window.desktopBridge?.platform) {
+    return window.desktopBridge.platform;
+  }
+  const os = getOperatingSystem();
+  if (os === 'windows' || os === 'macos' || os === 'linux') {
+    return os;
+  }
+  return 'unknown';
+}
+
 export function getOperatingSystem(): OperatingSystem {
   if (typeof window === 'undefined' || typeof navigator === 'undefined') {
     return 'unknown';

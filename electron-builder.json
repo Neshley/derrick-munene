@@ -1,0 +1,122 @@
+{
+  "$schema": "https://raw.githubusercontent.com/electron-userland/electron-builder/master/packages/app-builder-lib/scheme.json",
+  "appId": "com.dmarrangia.app",
+  "productName": "DM ARRANGIA",
+  "copyright": "Copyright © 2026 DM ARRANGIA. All rights reserved.",
+  "directories": {
+    "output": "dist-electron",
+    "buildResources": "build-resources"
+  },
+  "files": [
+    "desktop/**/*",
+    "dist/**/*",
+    "package.json"
+  ],
+  "extraMetadata": {
+    "main": "desktop/main.cjs"
+  },
+  "fileAssociations": [
+    {
+      "ext": "sty",
+      "name": "Yamaha Style File",
+      "description": "Yamaha Arranger Accompaniment Style",
+      "role": "Editor"
+    },
+    {
+      "ext": "prs",
+      "name": "Yamaha Pro Style File",
+      "description": "Yamaha Arranger Accompaniment Style",
+      "role": "Editor"
+    },
+    {
+      "ext": "sst",
+      "name": "Yamaha Session Style File",
+      "description": "Yamaha Arranger Accompaniment Style",
+      "role": "Editor"
+    },
+    {
+      "ext": "bcs",
+      "name": "Yamaha Basic Style File",
+      "description": "Yamaha Arranger Accompaniment Style",
+      "role": "Editor"
+    },
+    {
+      "ext": "vce",
+      "name": "Yamaha Voice File",
+      "description": "Yamaha Instrument Voice Definition",
+      "role": "Viewer"
+    },
+    {
+      "ext": ["mid", "midi"],
+      "name": "Standard MIDI File",
+      "description": "Standard MIDI Sequence",
+      "role": "Editor"
+    }
+  ],
+  "win": {
+    "target": [
+      {
+        "target": "nsis",
+        "arch": ["x64"]
+      },
+      {
+        "target": "portable",
+        "arch": ["x64"]
+      }
+    ],
+    "icon": "build-resources/icon.png",
+    "artifactName": "${productName}-Setup-${version}-${arch}.${ext}"
+  },
+  "nsis": {
+    "oneClick": false,
+    "allowToChangeInstallationDirectory": true,
+    "createDesktopShortcut": true,
+    "createStartMenuShortcut": true,
+    "shortcutName": "DM ARRANGIA"
+  },
+  "mac": {
+    "target": [
+      {
+        "target": "dmg",
+        "arch": ["arm64", "x64"]
+      },
+      {
+        "target": "zip",
+        "arch": ["arm64", "x64"]
+      }
+    ],
+    "category": "public.app-category.music",
+    "icon": "build-resources/icon.png",
+    "artifactName": "${productName}-${version}-${arch}.${ext}",
+    "identity": null
+  },
+  "dmg": {
+    "contents": [
+      {
+        "x": 130,
+        "y": 220
+      },
+      {
+        "x": 410,
+        "y": 220,
+        "type": "link",
+        "path": "/Applications"
+      }
+    ]
+  },
+  "linux": {
+    "target": [
+      {
+        "target": "AppImage",
+        "arch": ["x64"]
+      },
+      {
+        "target": "deb",
+        "arch": ["x64"]
+      }
+    ],
+    "category": "AudioVideo",
+    "icon": "build-resources/icon.png",
+    "artifactName": "${productName}-${version}-${arch}.${ext}"
+  }
+}
