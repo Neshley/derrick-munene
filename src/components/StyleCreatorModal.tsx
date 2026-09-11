@@ -11,6 +11,7 @@ import {
 import { audioEngine } from '../audio/audioEngine';
 import { StyParser } from '../audio/styParser';
 import { StyleMidiExporter } from '../audio/styleMidiExporter';
+import { validateFileExists, checkStyleExists } from '../utils/fileExistenceChecker';
 import { midiManager } from '../midi/midiManager';
 import { 
   createNewBlankStyle, 
@@ -551,6 +552,14 @@ export const StyleCreatorModal: React.FC<StyleCreatorModalProps> = ({
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // Check if file actually exists and has binary content
+    const validation = validateFileExists(file);
+    if (!validation.exists) {
+      showToast(validation.error || 'Selected file does not exist or is empty.');
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+
     try {
       if (file.name.toLowerCase().endsWith('.json')) {
         const text = await file.text();
@@ -576,7 +585,7 @@ export const StyleCreatorModal: React.FC<StyleCreatorModalProps> = ({
       }
     } catch (err: any) {
       console.error(err);
-      alert(`Could not import file: ${err.message || 'Unknown format'}`);
+      showToast(`Could not import file: ${err.message || 'Unknown format'}`);
     }
 
     if (fileInputRef.current) {

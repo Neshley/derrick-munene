@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { ArrangerStyle } from '../types/arranger';
 import { FACTORY_STYLES } from '../audio/builtInStyles';
 import { StyParser, ZipParseResult } from '../audio/styParser';
+import { validateFileExists, checkStyleExists } from '../utils/fileExistenceChecker';
 import { 
   X, 
   Upload, 
@@ -86,10 +87,17 @@ export const StyleBrowserModal: React.FC<StyleBrowserModalProps> = ({
       return;
     }
 
+    const allKnownStyles = [...FACTORY_STYLES, ...customStyles];
+
     try {
       // If single ZIP file
       if (files.length === 1 && StyParser.isZipFile(files[0])) {
         const file = files[0];
+        const validation = validateFileExists(file);
+        if (!validation.exists) {
+          throw new Error(validation.error || `ZIP file "${file.name}" does not exist or is empty.`);
+        }
+
         setParsingProgress(`Unpacking & extracting styles from "${file.name}"...`);
         const result = await StyParser.parseZipFile(file);
 
@@ -100,9 +108,14 @@ export const StyleBrowserModal: React.FC<StyleBrowserModalProps> = ({
         // If only 1 style found in the zip, import and select it right away
         if (result.styles.length === 1) {
           const singleStyle = result.styles[0];
+          const existsCheck = checkStyleExists(singleStyle.name, allKnownStyles);
           onAddCustomStyle(singleStyle);
           onSelectStyle(singleStyle);
-          setParseSuccessMsg(`Extracted and loaded "${singleStyle.name}" from ${file.name}!`);
+          setParseSuccessMsg(
+            existsCheck.exists
+              ? `Style "${singleStyle.name}" already exists in your library — refreshed preset!`
+              : `Extracted and loaded "${singleStyle.name}" from ${file.name}!`
+          );
           setTimeout(() => {
             onClose();
           }, 1000);
@@ -114,7 +127,12 @@ export const StyleBrowserModal: React.FC<StyleBrowserModalProps> = ({
             errors: result.errors,
             selectedIds: new Set(result.styles.map(s => s.id)),
           });
-          setParseSuccessMsg(`Found ${result.styles.length} styles in "${file.name}". Select styles to import.`);
+          const existingCount = result.styles.filter(s => checkStyleExists(s.name, allKnownStyles).exists).length;
+          setParseSuccessMsg(
+            existingCount > 0
+              ? `Found ${result.styles.length} styles in "${file.name}" (${existingCount} already in library). Select styles to import.`
+              : `Found ${result.styles.length} styles in "${file.name}". Select styles to import.`
+          );
         }
       } else {
         // Multi-file or individual .sty file(s)
@@ -123,6 +141,14 @@ export const StyleBrowserModal: React.FC<StyleBrowserModalProps> = ({
 
         for (let i = 0; i < files.length; i++) {
           const file = files[i];
+
+          // Check if file actually exists and is non-empty
+          const validation = validateFileExists(file);
+          if (!validation.exists) {
+            allErrors.push(validation.error || `${file.name || 'File'}: File does not exist or is empty.`);
+            continue;
+          }
+
           setParsingProgress(`Processing file ${i + 1} of ${files.length}: ${file.name}...`);
 
           try {
@@ -146,7 +172,20 @@ export const StyleBrowserModal: React.FC<StyleBrowserModalProps> = ({
           }
           // Activate the first newly imported style
           onSelectStyle(importedStyles[0]);
-          setParseSuccessMsg(`Successfully imported ${importedStyles.length} style(s) into your library!`);
+
+          const existingCount = importedStyles.filter(s => checkStyleExists(s.name, allKnownStyles).exists).length;
+          const newCount = importedStyles.length - existingCount;
+
+          if (importedStyles.length === 1 && existingCount > 0) {
+            setParseSuccessMsg(`Style "${importedStyles[0].name}" already exists in your library — updated preset!`);
+          } else if (existingCount > 0 && newCount > 0) {
+            setParseSuccessMsg(`Imported ${newCount} new style(s) (${existingCount} already existed and were updated).`);
+          } else if (existingCount > 0 && newCount <= 0) {
+            setParseSuccessMsg(`All ${importedStyles.length} style(s) already exist in your library (refreshed).`);
+          } else {
+            setParseSuccessMsg(`Successfully imported ${importedStyles.length} style(s) into your library!`);
+          }
+
           if (allErrors.length > 0) {
             setParseError(`Imported with warnings: ${allErrors.join('; ')}`);
           }
@@ -217,7 +256,17 @@ export const StyleBrowserModal: React.FC<StyleBrowserModalProps> = ({
     }
 
     onSelectStyle(toImport[0]);
-    setParseSuccessMsg(`Imported ${toImport.length} style(s) from "${zipReviewData.zipName}" into your library!`);
+    const allKnownStyles = [...FACTORY_STYLES, ...customStyles];
+    const existingCount = toImport.filter(s => checkStyleExists(s.name, allKnownStyles).exists).length;
+    const newCount = toImport.length - existingCount;
+
+    if (existingCount > 0 && newCount > 0) {
+      setParseSuccessMsg(`Imported ${newCount} new style(s) from "${zipReviewData.zipName}" (${existingCount} already in library, updated)!`);
+    } else if (existingCount > 0 && newCount === 0) {
+      setParseSuccessMsg(`Refreshed ${existingCount} style(s) from "${zipReviewData.zipName}" (already existed in library)!`);
+    } else {
+      setParseSuccessMsg(`Imported ${toImport.length} style(s) from "${zipReviewData.zipName}" into your library!`);
+    }
     setZipReviewData(null);
   };
 

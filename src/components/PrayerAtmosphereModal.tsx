@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Sparkles, Moon, Volume2, Flame, Heart, Play, Square, Clock, BookOpen, X, RefreshCw, Plus, Upload, Trash2, Check, Music } from 'lucide-react';
 import { audioEngine } from '../audio/audioEngine';
 import { PrayerAtmospherePreset } from '../types/arranger';
+import { validateFileExists, checkPrayerPadExists } from '../utils/fileExistenceChecker';
 
 interface PrayerAtmosphereModalProps {
   isOpen: boolean;
@@ -187,6 +188,14 @@ export const PrayerAtmosphereModal: React.FC<PrayerAtmosphereModalProps> = ({ is
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // Check if file actually exists and contains data
+    const validation = validateFileExists(file);
+    if (!validation.exists) {
+      showToast(validation.error || 'Selected file does not exist or is empty.');
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      return;
+    }
+
     // If it's a JSON file (custom pad bundle or preset)
     if (file.name.endsWith('.json')) {
       const reader = new FileReader();
@@ -203,11 +212,18 @@ export const PrayerAtmosphereModal: React.FC<PrayerAtmosphereModalProps> = ({ is
             isCustom: true,
           }));
 
+          const existingCount = validPads.filter((p) => checkPrayerPadExists(p.name, presets).exists).length;
+
           const updated = [...presets, ...validPads];
           setPresets(updated);
           const customOnly = updated.filter((p) => p.isCustom);
           localStorage.setItem('yamaha_custom_prayer_pads', JSON.stringify(customOnly));
-          showToast(`Imported ${validPads.length} pad preset(s) from device`);
+
+          if (existingCount > 0) {
+            showToast(`Imported ${validPads.length} pad preset(s) (${existingCount} already existed and were updated)`);
+          } else {
+            showToast(`Imported ${validPads.length} pad preset(s) from device`);
+          }
         } catch {
           showToast('Could not parse JSON preset file.');
         }
@@ -216,6 +232,8 @@ export const PrayerAtmosphereModal: React.FC<PrayerAtmosphereModalProps> = ({ is
     } else {
       // If user uploaded an audio file (e.g. .mp3, .wav, .m4a) from their device
       const fileNameClean = file.name.replace(/\.[^/.]+$/, '');
+      const padExists = checkPrayerPadExists(fileNameClean, presets);
+
       // Try to detect key from file name (e.g. "Pad_in_G.wav", "Warm Pad C.mp3")
       let detectedKey = 'C';
       for (const k of KEYS) {
@@ -245,7 +263,12 @@ export const PrayerAtmosphereModal: React.FC<PrayerAtmosphereModalProps> = ({ is
       }
       setActivePreset(newPad);
       setSelectedKey(detectedKey);
-      showToast(`Added device pad "${fileNameClean}" (Key of ${detectedKey})`);
+
+      if (padExists.exists) {
+        showToast(`Updated device pad "${fileNameClean}" (already in library)`);
+      } else {
+        showToast(`Added device pad "${fileNameClean}" (Key of ${detectedKey})`);
+      }
     }
 
     if (fileInputRef.current) fileInputRef.current.value = '';

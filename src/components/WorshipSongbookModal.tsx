@@ -28,6 +28,7 @@ import { ArrangerStyle } from '../types/arranger';
 import { FACTORY_STYLES } from '../audio/builtInStyles';
 import { stylePlayer } from '../audio/stylePlayer';
 import { ChordEngine } from '../audio/chordEngine';
+import { validateFileExists, checkSongExists } from '../utils/fileExistenceChecker';
 import { SongbookEntry, Setbook, SongbookData } from '../types/songbook';
 import { SongbookStorage, transposeChord, transposeProgression, transposeNote } from '../utils/songbookStorage';
 import { SongEditModal } from './SongEditModal';
@@ -237,17 +238,39 @@ export const WorshipSongbookModal: React.FC<WorshipSongbookModalProps> = ({
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // Check if file actually exists and is non-empty
+    const validation = validateFileExists(file);
+    if (!validation.exists) {
+      alert(validation.error || 'Selected file does not exist or is empty.');
+      e.target.value = '';
+      return;
+    }
+
     const reader = new FileReader();
     reader.onload = (ev) => {
       const text = ev.target?.result as string;
       if (text) {
-        const ok = SongbookStorage.importDataFromJson(text);
-        if (ok) {
-          const newData = SongbookStorage.loadData();
-          setSongbookData(newData);
-          if (newData.songs.length > 0) {
-            setSelectedSongId(newData.songs[0].id);
+        try {
+          const parsed = JSON.parse(text);
+          if (parsed && Array.isArray(parsed.songs)) {
+            const existingSongsCount = parsed.songs.filter((s: any) =>
+              checkSongExists(s.title || '', songbookData.songs).exists
+            ).length;
+
+            const ok = SongbookStorage.importDataFromJson(text);
+            if (ok) {
+              const newData = SongbookStorage.loadData();
+              setSongbookData(newData);
+              if (newData.songs.length > 0) {
+                setSelectedSongId(newData.songs[0].id);
+              }
+              if (existingSongsCount > 0) {
+                alert(`Imported ${parsed.songs.length} songs (${existingSongsCount} already existed and were updated).`);
+              }
+            }
           }
+        } catch {
+          alert('Failed to parse Songbook JSON file.');
         }
       }
     };

@@ -29,6 +29,7 @@ import {
   saveStoredDirectedFolders
 } from '../../utils/deviceFolderScanner';
 import { mediaPlayerEngine, MediaPlayerState } from '../../audio/mediaPlayerEngine';
+import { validateFileExists, checkMediaTrackExists } from '../../utils/fileExistenceChecker';
 import { MediaTrackList } from './MediaTrackList';
 import { NowPlayingBar } from './NowPlayingBar';
 import { LyricsViewer } from './LyricsViewer';
@@ -868,12 +869,15 @@ export const MediaPlayerView: React.FC<MediaPlayerViewProps> = ({
     setScanMessage('Accessing dropped files on device...');
     try {
       const { rootFolderName, files: fileEntries } = extractFilesFromDirectoryInput(e.dataTransfer.files);
-      if (fileEntries.length > 0) {
+      // Filter only files that actually exist and have positive binary size
+      const validFileEntries = fileEntries.filter((fe) => validateFileExists(fe.file).exists);
+
+      if (validFileEntries.length > 0) {
         const folderName = rootFolderName !== 'Device Media' ? rootFolderName : (directedFolderName || 'Device Storage');
-        const tracks = await convertFilesToMediaTracks(fileEntries, folderName);
+        const tracks = await convertFilesToMediaTracks(validFileEntries, folderName);
 
         // Store dropped blobs in IndexedDB vault
-        const blobBatch = fileEntries.map((fe, idx) => ({
+        const blobBatch = validFileEntries.map((fe, idx) => ({
           id: tracks[idx].id,
           blob: fe.file,
           fileName: fe.file.name,
@@ -881,7 +885,13 @@ export const MediaPlayerView: React.FC<MediaPlayerViewProps> = ({
         }));
         saveTrackBlobsBatch(blobBatch).catch(() => {});
 
-        const updated = [...tracks, ...customTracks];
+        // Check how many tracks already exist in library
+        const existingCount = tracks.filter((t) => checkMediaTrackExists(t.title, customTracks).exists).length;
+        const newCount = tracks.length - existingCount;
+
+        // De-duplicate against customTracks by track id/title
+        const existingIds = new Set(tracks.map((t) => t.id));
+        const updated = [...tracks, ...customTracks.filter((c) => !existingIds.has(c.id))];
         setCustomTracks(updated);
         saveStoredCustomTracks(updated);
         setUnlinkedCount(0);
@@ -889,8 +899,21 @@ export const MediaPlayerView: React.FC<MediaPlayerViewProps> = ({
           setDirectedFolderName(rootFolderName);
           saveStoredDirectedFolderName(rootFolderName);
         }
-        setUploadNotification(`Connected to ${tracks.length} media file(s) from device.`);
+
+        let notifMsg = `Connected to ${tracks.length} media file(s) from device.`;
+        if (tracks.length === 1 && existingCount > 0) {
+          notifMsg = `Track "${tracks[0].title}" already exists in your media library (updated).`;
+        } else if (existingCount > 0 && newCount > 0) {
+          notifMsg = `Imported ${newCount} new track(s) (${existingCount} already existed and were updated).`;
+        } else if (existingCount > 0 && newCount === 0) {
+          notifMsg = `All ${tracks.length} track(s) already exist in your media library.`;
+        }
+
+        setUploadNotification(notifMsg);
         setTimeout(() => setUploadNotification(null), 4000);
+      } else {
+        setUploadNotification('No non-empty media files found in dropped items.');
+        setTimeout(() => setUploadNotification(null), 3000);
       }
     } finally {
       setIsScanning(false);

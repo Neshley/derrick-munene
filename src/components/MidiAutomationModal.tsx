@@ -28,6 +28,7 @@ import {
   AutomationLaneSummary,
 } from '../midi/midiAutomationRecorder';
 import { MIDI_CC } from '../midi/midiConstants';
+import { validateFileExists } from '../utils/fileExistenceChecker';
 
 interface MidiAutomationModalProps {
   isOpen: boolean;
@@ -118,12 +119,26 @@ export const MidiAutomationModal: React.FC<MidiAutomationModalProps> = ({ isOpen
     const file = e.target.files?.[0];
     if (!file) return;
 
+    const validation = validateFileExists(file);
+    if (!validation.exists) {
+      setImportStatus(validation.error || 'Selected file does not exist or is empty.');
+      if (e.target) e.target.value = '';
+      setTimeout(() => setImportStatus(null), 3000);
+      return;
+    }
+
     const reader = new FileReader();
     reader.onload = (event) => {
       const content = event.target?.result as string;
+      const existingTakes = midiAutomationRecorder.getTakes();
+      const alreadyExisting = existingTakes.some((t) => t.name.toLowerCase() === file.name.replace(/\.[^/.]+$/, '').toLowerCase());
       const imported = midiAutomationRecorder.importTakeFromJson(content);
       if (imported) {
-        setImportStatus(`Successfully loaded take: ${imported.name}`);
+        setImportStatus(
+          alreadyExisting
+            ? `Updated automation take: ${imported.name}`
+            : `Successfully loaded take: ${imported.name}`
+        );
         setTimeout(() => setImportStatus(null), 3000);
       } else {
         setImportStatus('Failed to parse automation JSON file.');

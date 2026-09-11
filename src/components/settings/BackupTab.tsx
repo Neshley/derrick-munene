@@ -7,6 +7,7 @@ import React, { useState } from 'react';
 import { Database, Download, Upload, Trash2, RefreshCw, AlertTriangle, Check, Disc, Music, Layers, Sliders } from 'lucide-react';
 import { SystemSettings, resetSettingsGroup } from '../../utils/systemSettings';
 import { validateBackupPayload } from '../../utils/backupValidation';
+import { validateFileExists } from '../../utils/fileExistenceChecker';
 
 interface BackupTabProps {
   settings: SystemSettings;
@@ -57,8 +58,17 @@ export const BackupTab: React.FC<BackupTabProps> = ({
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // Verify file actually exists and contains data
+    const fileCheck = validateFileExists(file);
+    if (!fileCheck.exists) {
+      showToast(fileCheck.error || 'Selected backup file does not exist or is empty.');
+      e.target.value = '';
+      return;
+    }
+
     if (!file.name.endsWith('.json') && file.type !== 'application/json') {
       showToast('Please select a valid .json backup file.');
+      e.target.value = '';
       return;
     }
 

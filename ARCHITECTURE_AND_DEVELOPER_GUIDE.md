@@ -614,6 +614,34 @@ aiRouter.post('/ai/my-custom-feature', async (req: Request, res: Response) => {
 });
 ```
 
+### Recipe 5: How to Validate File Existence & Check Duplicates Before Importing
+All file import workflows across DM ARRANGIA (OS drag-and-drop, modals, and file pickers) must validate that incoming files exist, contain binary data, and do not collide with existing user assets before reading or importing:
+
+```typescript
+import {
+  validateFileExists,
+  checkStyleExists,
+  checkVoiceExists,
+  checkMediaTrackExists,
+  checkSongExists,
+  checkPrayerPadExists,
+} from '../utils/fileExistenceChecker';
+
+// 1. Validate the file object exists and has non-zero size
+const validation = validateFileExists(file);
+if (!validation.exists) {
+  showToast(validation.error || 'File does not exist or is empty.');
+  return;
+}
+
+// 2. Check for duplicate styles, voices, tracks, songs, or pads
+const existingCheck = checkStyleExists(file.name, existingStyles);
+if (existingCheck.exists) {
+  showToast(`Style "${file.name}" already exists in your library.`);
+  // Prompt or proceed with overwrite/update logic
+}
+```
+
 ---
 
 ## 15. Testing, Linting, Building & Deployment
@@ -623,15 +651,17 @@ The project uses **Vitest** for fast unit and integration testing. Run tests wit
 ```bash
 npm test
 ```
-All 18 test suites (111 unit tests) verify:
-1. `audioEngine.test.ts`: AudioContext initialization and voice synthesis graphs.
-2. `chordEngine.test.ts`: Major, minor, extended, and slash chord recognition.
-3. `stylePlayer.test.ts`: Arranger section state transitions and fill scheduling.
-4. `voiceImport.test.ts`: Yamaha VCE decoding, SoundFont 2 sfbk presets, JSON packs, and ZIP extraction.
-5. `midiParser.test.ts`: Byte-level Note On/Off, running status, and velocity decoding.
-6. `apiSecurity.test.ts`: Rate limiting, XSS payload rejection, and timeout handling.
-7. `aiValidationPipeline.test.ts`: Zod output parsing and range clamping.
-8. `mediaBlobStorage.test.ts`: Offline media caching and IndexedDB operations.
+All 20 test suites (123 unit tests) verify:
+1. `fileExistenceChecker.test.ts`: File existence validation, zero-byte rejection, and duplicate detection across styles, voices, media tracks, songbook entries, and prayer pads.
+2. `audioEngine.test.ts`: AudioContext initialization and voice synthesis graphs.
+3. `chordEngine.test.ts`: Major, minor, extended, and slash chord recognition.
+4. `stylePlayer.test.ts`: Arranger section state transitions and fill scheduling.
+5. `voiceImport.test.ts`: Yamaha VCE decoding, SoundFont 2 sfbk presets, JSON packs, and ZIP extraction.
+6. `midiParser.test.ts`: Byte-level Note On/Off, running status, and velocity decoding.
+7. `apiSecurity.test.ts`: Rate limiting, XSS payload rejection, and timeout handling.
+8. `aiValidationPipeline.test.ts`: Zod output parsing and range clamping.
+9. `mediaBlobStorage.test.ts`: Offline media caching and IndexedDB operations.
+10. `backupValidation.test.ts`: Full workstation backup schema validation and corrupt JSON rejection.
 
 ### 15.2 Linting & TypeScript Verification
 Run type-checking across the entire client and server codebase:

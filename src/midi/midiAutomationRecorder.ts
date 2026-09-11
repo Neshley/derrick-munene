@@ -438,6 +438,10 @@ export class MidiAutomationRecorder {
     this.notify();
   }
 
+  public getTakes(): AutomationTake[] {
+    return [...this.takes];
+  }
+
   public selectTake(takeId: string) {
     const t = this.takes.find((x) => x.id === takeId);
     if (t) {

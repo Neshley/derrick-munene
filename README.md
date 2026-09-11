@@ -7,13 +7,18 @@
 [![Web Audio API](https://img.shields.io/badge/Web_Audio_API-Native_DSP-orange.svg)](https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API)
 [![Web MIDI API](https://img.shields.io/badge/Web_MIDI-Plug_&_Play-green.svg)](https://developer.mozilla.org/en-US/docs/Web/API/Web_MIDI_API)
 [![Gemini AI](https://img.shields.io/badge/Google_Gemini-Server--Side_Proxy-8e75ff.svg)](https://ai.google.dev/)
-[![Tests](https://img.shields.io/badge/Tests-117%20Passed-brightgreen.svg)](https://vitest.dev/)
+[![Tests](https://img.shields.io/badge/Tests-123%20Passed-brightgreen.svg)](https://vitest.dev/)
 
 **DM ARRANGIA** is a full-featured, zero-latency arranger workstation and live performance engine engineered for keyboards, worship bands, music directors, and producers. Inspired by flagship hardware arranger keyboards (such as the Yamaha Genos, Tyros, and PSR-SX series), DM ARRANGIA brings multi-track accompaniment styles, algorithmic Web Audio synthesis, real-time chord detection, hardware Web MIDI connectivity, vocal processing, media playback, and AI-assisted arranging directly to the web.
 
 ---
 
 ## 🌟 Key Features & Capabilities
+
+### 🛡️ Enterprise File Existence & Import Safety System
+- **Comprehensive Pre-Import Existence & Integrity Check**: Every file import workflow across DM ARRANGIA (OS drag-and-drop, modals, and file selectors) validates that incoming files actually exist, contain non-zero binary bytes, and are readable before dispatching to decoders.
+- **Tolerant Duplicate & Collision Detection**: Standardized normalization algorithm checks incoming styles, voices, media tracks, songbook sheets, and prayer pads against existing libraries (ignoring case, extensions, and punctuation), warning users and providing clear feedback before overwriting or duplicating assets.
+- **Universal Import Support**: Supports Yamaha `.STY`, `.VCE`, `.SF2`, `.MID`, audio/video tracks (`.mp3`, `.wav`, `.m4a`, `.mp4`, `.webm`), worship songbooks (`.json`), prayer pad presets (`.json`, audio), and system backups (`.json`).
 
 ### 🎹 Arranger & Accompaniment Engine
 - **Hardware-Inspired PERF & STUDIO Console View Switcher**:

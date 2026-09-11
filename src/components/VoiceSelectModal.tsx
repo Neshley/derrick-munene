@@ -19,6 +19,7 @@ import { VoiceParser } from '../audio/voiceParser';
 import { InstrumentVoice } from '../types/arranger';
 import { audioEngine } from '../audio/audioEngine';
 import { VoiceEditModal } from './VoiceEditModal';
+import { validateFileExists, checkVoiceExists } from '../utils/fileExistenceChecker';
 import {
   X,
   Search,
@@ -190,12 +191,34 @@ export const VoiceSelectModal: React.FC<VoiceSelectModalProps> = ({
 
     const importedList: InstrumentVoice[] = [];
     const errorList: string[] = [];
+    const existingMatches: string[] = [];
 
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
+    const fileArray = Array.from(files);
+    for (let i = 0; i < fileArray.length; i++) {
+      const file = fileArray[i];
+
+      // Check if file actually exists and is non-empty
+      const fileValidation = validateFileExists(file);
+      if (!fileValidation.exists) {
+        errorList.push(fileValidation.error || `File ${file.name || 'item'} does not exist or is empty.`);
+        continue;
+      }
+
+      // Check if this file name or voice already exists before parsing/importing
+      const preCheck = checkVoiceExists(file.name);
+      if (preCheck.exists && preCheck.match) {
+        existingMatches.push(preCheck.match.name);
+      }
+
       try {
         const result = await VoiceParser.parseAnyVoiceFile(file);
         if (result.voices && result.voices.length > 0) {
+          result.voices.forEach((v) => {
+            const vCheck = checkVoiceExists(v.name);
+            if (vCheck.exists && vCheck.match && !existingMatches.includes(vCheck.match.name)) {
+              existingMatches.push(vCheck.match.name);
+            }
+          });
           importedList.push(...result.voices);
         }
         if (result.errors && result.errors.length > 0) {
@@ -211,8 +234,25 @@ export const VoiceSelectModal: React.FC<VoiceSelectModalProps> = ({
     if (importedList.length > 0) {
       registerCustomVoices(importedList);
       setSelectedCategory('Custom / User');
+
+      const existingCount = existingMatches.length;
+      const newCount = importedList.length - existingCount;
+
+      let msg = '';
+      if (importedList.length === 1) {
+        msg = existingCount > 0
+          ? `Voice "${importedList[0].name}" already exists in your library — updated preset!`
+          : `Successfully imported "${importedList[0].name}" into your voice library!`;
+      } else if (existingCount > 0 && newCount > 0) {
+        msg = `Imported ${newCount} new voice(s) (${existingCount} already existed and were updated).`;
+      } else if (existingCount > 0 && newCount <= 0) {
+        msg = `All ${importedList.length} voice(s) already exist in your library (presets refreshed).`;
+      } else {
+        msg = `Successfully imported ${importedList.length} voice(s) into your library!`;
+      }
+
       setImportNotice({
-        message: `Successfully imported ${importedList.length} voice(s) into your library!`,
+        message: msg,
         type: 'success',
       });
       // Automatically select the first imported voice for immediate audition
@@ -227,8 +267,8 @@ export const VoiceSelectModal: React.FC<VoiceSelectModalProps> = ({
     }
 
     setTimeout(() => {
-      setImportNotice(null), 6000;
-    });
+      setImportNotice(null);
+    }, 6000);
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {

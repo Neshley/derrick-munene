@@ -6,6 +6,12 @@ import { getStoredCustomTracks, saveStoredCustomTracks } from './mediaStorage';
 import { mediaPlayerEngine } from '../audio/mediaPlayerEngine';
 import { isVoiceFile, VoiceParser, ALL_VOICE_EXTENSIONS } from '../audio/voiceParser';
 import { registerCustomVoices } from '../audio/voiceBank';
+import {
+  validateFileExists,
+  checkStyleExists,
+  checkVoiceExists,
+  checkMediaTrackExists,
+} from './fileExistenceChecker';
 
 export type SupportedDestination = 'workstation' | 'media_player';
 
@@ -63,16 +69,41 @@ export function determineFileDestination(fileName: string): SupportedDestination
  * and loads it into the proper subsystem (Workstation style player or Media Player).
  */
 export async function processIncomingFile(file: File): Promise<FileLaunchResult> {
+  // 0. Validate that the file actually exists and is non-empty
+  const validation = validateFileExists(file);
+  if (!validation.exists) {
+    const rawName = (file as any)?.name || 'Unknown File';
+    return {
+      destination: determineFileDestination(rawName),
+      fileName: rawName,
+      fileSize: 0,
+      success: false,
+      message: validation.error || `File "${rawName}" does not exist or is empty.`,
+    };
+  }
+
   const fileName = file.name;
   const lowerName = fileName.toLowerCase();
 
+  // Helper to get stored styles for duplicate check
+  const getCustomStylesPool = (): ArrangerStyle[] => {
+    try {
+      return JSON.parse(localStorage.getItem('yamaha_custom_styles') || '[]');
+    } catch {
+      return [];
+    }
+  };
+
   // 1. Check if it is a Voice file (.vce, .liv, .swv, .sf2, .dmvoice, etc.)
   if (isVoiceFile(fileName)) {
+    const voiceExistCheck = checkVoiceExists(fileName);
     try {
       const parsed = await VoiceParser.parseAnyVoiceFile(file);
       if (parsed.voices && parsed.voices.length > 0) {
         registerCustomVoices(parsed.voices);
         const primaryVoice = parsed.voices[0];
+        const isExisting = voiceExistCheck.exists || checkVoiceExists(primaryVoice.name).exists;
+
         return {
           destination: 'workstation',
           fileName,
@@ -80,6 +111,8 @@ export async function processIncomingFile(file: File): Promise<FileLaunchResult>
           success: true,
           message: parsed.voices.length > 1
             ? `Imported ${parsed.voices.length} instrument voices into Workstation ("${primaryVoice.name}", ...)`
+            : isExisting
+            ? `Voice "${primaryVoice.name}" already exists in Workstation — refreshed preset.`
             : `Imported instrument voice "${primaryVoice.name}" into Workstation`,
           voice: primaryVoice,
           allVoices: parsed.voices,
@@ -100,10 +133,13 @@ export async function processIncomingFile(file: File): Promise<FileLaunchResult>
 
   // 2. Check if it is a Yamaha Style File or Workstation sequence
   if (isWorkstationStyleFile(fileName)) {
+    const styleExistCheck = checkStyleExists(fileName, getCustomStylesPool());
     try {
       const parsed = await StyParser.parseAnyFile(file);
       if (parsed.styles && parsed.styles.length > 0) {
         const primaryStyle = parsed.styles[0];
+        const isExisting = styleExistCheck.exists || checkStyleExists(primaryStyle.name, getCustomStylesPool()).exists;
+
         return {
           destination: 'workstation',
           fileName,
@@ -111,6 +147,8 @@ export async function processIncomingFile(file: File): Promise<FileLaunchResult>
           success: true,
           message: parsed.isZip 
             ? `Extracted ${parsed.styles.length} styles from archive into Workstation`
+            : isExisting
+            ? `Yamaha Style "${primaryStyle.name}" already exists in Workstation — reloaded and selected.`
             : `Loaded Yamaha Style "${primaryStyle.name}" into Workstation`,
           style: primaryStyle,
           allStyles: parsed.styles,
@@ -180,6 +218,7 @@ export async function processIncomingFile(file: File): Promise<FileLaunchResult>
 
       // Add to user's stored custom media tracks
       const currentStored = getStoredCustomTracks();
+      const existingCheck = checkMediaTrackExists(track.title, currentStored);
       const existingIdx = currentStored.findIndex(t => t.title === track.title && t.duration === track.duration);
       if (existingIdx >= 0) {
         currentStored[existingIdx] = track;
@@ -196,7 +235,9 @@ export async function processIncomingFile(file: File): Promise<FileLaunchResult>
         fileName,
         fileSize: file.size,
         success: true,
-        message: `Playing "${track.title}" in Media Player (${track.format.toUpperCase()})`,
+        message: existingCheck.exists
+          ? `Playing "${track.title}" in Media Player (already in playlist)`
+          : `Added and playing "${track.title}" in Media Player (${track.format.toUpperCase()})`,
         mediaTrack: track,
       };
     }
