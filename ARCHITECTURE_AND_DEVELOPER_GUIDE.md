@@ -417,6 +417,22 @@ In live stage, church sanctuary, and studio environments, keyboardists need inst
 - **Snapshot Persistence**: Saves entire workstation state to browser `localStorage` (`arranger_reg_memory`), capturing R1, R2, Left voices, split point, style variation, section, tempo, and accompaniment status.
 - **Freeze Mode**: Preserves active accompaniment style and tempo while recalling sound combinations during live performance.
 
+### 13.3 PERF & STUDIO Console View Mode Switcher (`WorkstationHeader.tsx`)
+In flagship arranger keyboards, players switch dynamically between sound design / editing and distraction-free live stage performance:
+- **PERF (Stage Performance View)**:
+  - **Button ID**: `#btn-view-performance`, active state attribute: `data-active="true"`, `aria-pressed="true"`.
+  - **Icon**: `Zap` (stage performance energy and instant live response).
+  - **Status LED (`#perf-mode-led`)**: Ignites into radiant stage amber (`#f59e0b` / `#d97706`) with white core luminescence (`shadow-[0_0_8px_#f59e0b,0_0_14px_#d97706]`) and an active pulse.
+  - **UI Adaptation**: Maximizes visual focus on chord recognition, rhythm section status, and full-width keys while hiding distracting sidebars.
+- **STUDIO (Full Console View)**:
+  - **Button ID**: `#btn-view-studio`, active state attribute: `data-active="true"`, `aria-pressed="true"`.
+  - **Icon**: `Sliders` (8-track sound mixer and console controls).
+  - **Status LED (`#studio-mode-led`)**: Illuminates with precision studio cyan (`#22d3ee` / `#06b6d4`) with radiant core glow.
+  - **UI Adaptation**: Exposes the complete arranger workstation tool suite, including the 8-track Sound Mixer, Multi-Pads, AI Music Director copilot, and Registration Memory snapshots.
+- **Dual Console Access**:
+  - Embedded within a hardware bezel enclosure on the top telemetry header (`#viewmode-switcher-container`).
+  - Mirrored directly inside the Studio Tools & Apps modal drawer (`#btn-modal-view-perf`, `#btn-modal-view-studio`) for seamless switching across all device viewport sizes.
+
 ---
 
 ## 14. Developer Recipes: How to Modify & Extend Everything

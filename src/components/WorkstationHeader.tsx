@@ -30,7 +30,8 @@ import {
   Disc,
   Film,
   FolderOpen,
-  Code
+  Code,
+  Zap
 } from 'lucide-react';
 import { subscribePwaStatus, PwaStatus } from '../pwaRegister';
 import { HardwareMidiDropdown } from './HardwareMidiDropdown';
@@ -323,34 +324,102 @@ export const WorkstationHeader: React.FC<WorkstationHeaderProps> = ({
               </button>
             </div>
 
-            {/* View Mode Switcher: Performance Mode vs Studio / Edit Mode */}
+            {/* View Mode Switcher: Performance Mode (Stage) vs Studio / Edit Mode */}
             {onToggleViewMode && (
-              <div className="flex items-center bg-zinc-950/90 p-1 rounded-xl border border-zinc-800 shadow-inner shrink-0">
+              <div 
+                id="viewmode-switcher-container"
+                className="flex items-center bg-zinc-950/95 p-1 rounded-xl border border-zinc-800/90 shadow-inner shrink-0 gap-1 select-none"
+              >
                 <button
                   id="btn-view-performance"
                   type="button"
                   onClick={() => onToggleViewMode('performance')}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-mono font-bold tracking-wide transition-all cursor-pointer whitespace-nowrap touch-manipulation min-h-[32px] ${
+                  aria-pressed={viewMode === 'performance'}
+                  data-active={viewMode === 'performance' ? 'true' : 'false'}
+                  className={`px-2.5 sm:px-3 py-1 rounded-lg text-xs font-mono font-bold tracking-wide flex items-center gap-1.5 sm:gap-2 transition-all cursor-pointer whitespace-nowrap touch-manipulation min-h-[34px] active:scale-95 ${
                     viewMode === 'performance'
-                      ? 'bg-amber-500 text-zinc-950 font-black shadow-sm'
-                      : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
+                      ? 'bg-gradient-to-r from-amber-400 via-amber-500 to-amber-500 text-zinc-950 font-black shadow-md shadow-amber-500/25 border border-amber-300 ring-1 ring-amber-400/60'
+                      : 'bg-zinc-900/60 hover:bg-zinc-850 text-zinc-400 hover:text-zinc-200 border border-zinc-800/80 hover:border-zinc-700'
                   }`}
-                  title="Stage View: Clean screen focused on large chord display"
+                  title="Stage Performance Mode (PERF): Distraction-free live layout with large chords and full-width keyboard"
                 >
-                  PERF
+                  {/* Hardware Status LED Diode */}
+                  <div 
+                    className={`h-2 px-1 rounded-full flex items-center justify-center transition-all duration-300 ${
+                      viewMode === 'performance'
+                        ? 'bg-black/80 border border-amber-950/80 shadow-inner'
+                        : 'bg-black/50 border border-zinc-850'
+                    }`}
+                    title={viewMode === 'performance' ? 'Performance Mode Active' : 'Performance Mode Standby'}
+                  >
+                    <span
+                      id="perf-mode-led"
+                      data-active={viewMode === 'performance' ? 'true' : 'false'}
+                      className={`relative inline-block rounded-full transition-all duration-300 ${
+                        viewMode === 'performance'
+                          ? 'w-2 h-2 bg-amber-200 shadow-[0_0_8px_#f59e0b,0_0_14px_#d97706] ring-1 ring-white/90 animate-pulse'
+                          : 'w-1.5 h-1.5 bg-amber-500/25 border border-amber-600/30'
+                      }`}
+                    >
+                      {viewMode === 'performance' && (
+                        <span className="absolute inset-0 bg-white rounded-full opacity-80 pointer-events-none" />
+                      )}
+                    </span>
+                  </div>
+
+                  <Zap className={`w-3.5 h-3.5 shrink-0 transition-transform ${viewMode === 'performance' ? 'text-zinc-950 scale-110' : 'text-amber-400/80'}`} />
+                  <span className="leading-none font-black">PERF</span>
+                  <span className={`text-[9px] font-mono px-1 py-0.5 rounded leading-none font-bold uppercase tracking-wider transition-colors ${
+                    viewMode === 'performance' ? 'bg-black/25 text-zinc-950' : 'bg-zinc-800/80 text-zinc-500'
+                  }`}>
+                    STAGE
+                  </span>
                 </button>
+
                 <button
                   id="btn-view-studio"
                   type="button"
                   onClick={() => onToggleViewMode('studio')}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-mono font-bold tracking-wide transition-all cursor-pointer whitespace-nowrap touch-manipulation min-h-[32px] ${
+                  aria-pressed={viewMode === 'studio'}
+                  data-active={viewMode === 'studio' ? 'true' : 'false'}
+                  className={`px-2.5 sm:px-3 py-1 rounded-lg text-xs font-mono font-bold tracking-wide flex items-center gap-1.5 sm:gap-2 transition-all cursor-pointer whitespace-nowrap touch-manipulation min-h-[34px] active:scale-95 ${
                     viewMode === 'studio'
-                      ? 'bg-amber-500 text-zinc-950 font-black shadow-sm'
-                      : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
+                      ? 'bg-gradient-to-r from-cyan-400 via-cyan-500 to-cyan-500 text-zinc-950 font-black shadow-md shadow-cyan-500/25 border border-cyan-300 ring-1 ring-cyan-400/60'
+                      : 'bg-zinc-900/60 hover:bg-zinc-850 text-zinc-400 hover:text-zinc-200 border border-zinc-800/80 hover:border-zinc-700'
                   }`}
-                  title="Studio View: Show Sound Mixer, Pads, and ARRANGIA AI"
+                  title="Studio Console Mode (STUDIO): Full arranger workstation with Sound Mixer, Multi-Pads, ARRANGIA AI & Registration Memory"
                 >
-                  STUDIO
+                  {/* Hardware Status LED Diode */}
+                  <div 
+                    className={`h-2 px-1 rounded-full flex items-center justify-center transition-all duration-300 ${
+                      viewMode === 'studio'
+                        ? 'bg-black/80 border border-cyan-950/80 shadow-inner'
+                        : 'bg-black/50 border border-zinc-850'
+                    }`}
+                    title={viewMode === 'studio' ? 'Studio Mode Active' : 'Studio Mode Standby'}
+                  >
+                    <span
+                      id="studio-mode-led"
+                      data-active={viewMode === 'studio' ? 'true' : 'false'}
+                      className={`relative inline-block rounded-full transition-all duration-300 ${
+                        viewMode === 'studio'
+                          ? 'w-2 h-2 bg-cyan-200 shadow-[0_0_8px_#22d3ee,0_0_14px_#06b6d4] ring-1 ring-white/90 animate-pulse'
+                          : 'w-1.5 h-1.5 bg-cyan-500/25 border border-cyan-600/30'
+                      }`}
+                    >
+                      {viewMode === 'studio' && (
+                        <span className="absolute inset-0 bg-white rounded-full opacity-80 pointer-events-none" />
+                      )}
+                    </span>
+                  </div>
+
+                  <Sliders className={`w-3.5 h-3.5 shrink-0 transition-transform ${viewMode === 'studio' ? 'text-zinc-950 scale-110' : 'text-cyan-400/80'}`} />
+                  <span className="leading-none font-black">STUDIO</span>
+                  <span className={`text-[9px] font-mono px-1 py-0.5 rounded leading-none font-bold uppercase tracking-wider transition-colors ${
+                    viewMode === 'studio' ? 'bg-black/25 text-zinc-950' : 'bg-zinc-800/80 text-zinc-500'
+                  }`}>
+                    CONSOLE
+                  </span>
                 </button>
               </div>
             )}
@@ -658,6 +727,44 @@ export const WorkstationHeader: React.FC<WorkstationHeaderProps> = ({
             {/* Scrollable Tool Categories Body */}
             <div className="flex-1 overflow-y-auto custom-scrollbar p-3.5 sm:p-5 flex flex-col gap-4 sm:gap-5">
               
+              {/* Quick View Mode Switcher */}
+              {onToggleViewMode && (
+                <div className="p-3 rounded-xl bg-zinc-900/90 border border-zinc-800/90 flex items-center justify-between gap-3 flex-wrap shadow-inner">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-mono font-bold uppercase text-zinc-300">Console View Mode:</span>
+                    <span className="text-[11px] text-zinc-500 hidden sm:inline">Switch layout between live stage and edit workstation</span>
+                  </div>
+                  <div className="flex items-center bg-zinc-950 p-1 rounded-xl border border-zinc-800 gap-1.5">
+                    <button
+                      id="btn-modal-view-perf"
+                      type="button"
+                      onClick={() => handleOpenTool(() => onToggleViewMode('performance'))}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                        viewMode === 'performance'
+                          ? 'bg-amber-500 text-zinc-950 font-black shadow-md shadow-amber-500/20'
+                          : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
+                      }`}
+                    >
+                      <Zap className="w-3.5 h-3.5" />
+                      <span>PERF (STAGE)</span>
+                    </button>
+                    <button
+                      id="btn-modal-view-studio"
+                      type="button"
+                      onClick={() => handleOpenTool(() => onToggleViewMode('studio'))}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-mono font-bold flex items-center gap-1.5 transition-all cursor-pointer ${
+                        viewMode === 'studio'
+                          ? 'bg-cyan-500 text-zinc-950 font-black shadow-md shadow-cyan-500/20'
+                          : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900'
+                      }`}
+                    >
+                      <Sliders className="w-3.5 h-3.5" />
+                      <span>STUDIO (CONSOLE)</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* Category 1: Creative & Arranger Engines */}
               <div className="flex flex-col gap-2">
                 <div className="text-xs font-mono font-bold uppercase tracking-wider text-amber-400/90 flex items-center gap-2">

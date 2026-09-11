@@ -7,7 +7,7 @@
 [![Web Audio API](https://img.shields.io/badge/Web_Audio_API-Native_DSP-orange.svg)](https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API)
 [![Web MIDI API](https://img.shields.io/badge/Web_MIDI-Plug_&_Play-green.svg)](https://developer.mozilla.org/en-US/docs/Web/API/Web_MIDI_API)
 [![Gemini AI](https://img.shields.io/badge/Google_Gemini-Server--Side_Proxy-8e75ff.svg)](https://ai.google.dev/)
-[![Tests](https://img.shields.io/badge/Tests-101%20Passed-brightgreen.svg)](https://vitest.dev/)
+[![Tests](https://img.shields.io/badge/Tests-104%20Passed-brightgreen.svg)](https://vitest.dev/)
 
 **DM ARRANGIA** is a full-featured, zero-latency arranger workstation and live performance engine engineered for keyboards, worship bands, music directors, and producers. Inspired by flagship hardware arranger keyboards (such as the Yamaha Genos, Tyros, and PSR-SX series), DM ARRANGIA brings multi-track accompaniment styles, algorithmic Web Audio synthesis, real-time chord detection, hardware Web MIDI connectivity, vocal processing, media playback, and AI-assisted arranging directly to the web.
 
@@ -16,6 +16,10 @@
 ## 🌟 Key Features & Capabilities
 
 ### 🎹 Arranger & Accompaniment Engine
+- **Hardware-Inspired PERF & STUDIO Console View Switcher**:
+  - **PERF (Stage View)**: Distraction-free live layout prioritizing high-visibility chord recognition, full-width keyboard, and clean stage performance controls. Features a glowing amber status LED diode with white core luminescence (`#perf-mode-led`), `Zap` stage icon, and `STAGE` badge.
+  - **STUDIO (Console View)**: Comprehensive workstation console exposing the 8-track Sound Mixer, Multi-Pads, AI Music Director copilot, and Registration Memory. Features a glowing cyan status LED diode (`#studio-mode-led`), `Sliders` console icon, and `CONSOLE` badge.
+  - Quick-switch accessibility available in both the top master telemetry bar and the Studio Tools modal drawer.
 - **Yamaha `.STY` / SFF Format Compatibility**: Integrated binary parser and real-time playback engine for Yamaha style accompaniment files.
 - **Registration Memory System with Live Performance Status LEDs**:
   - 8 instant-recall registration preset slots storing complete workstation snapshots (R1/R2/Left voice assignments, tempo, style, section variation, split point, and accompaniment status).
