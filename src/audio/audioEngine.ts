@@ -1,8 +1,9 @@
 // Web Audio API Polyphonic Synthesizer and Arranger Drum Engine
 
-import { EffectsRackSettings, ReverbType, VocalWorkstationSettings } from '../types/arranger';
+import { EffectsRackSettings, ReverbType, VocalWorkstationSettings, InstrumentVoice } from '../types/arranger';
 import { SystemSettings, getStoredSystemSettings, subscribeSystemSettings } from '../utils/systemSettings';
 import { microphoneService } from '../services/microphoneService';
+import { VOICE_MAP } from './voiceBank';
 
 export interface AudioEngineActiveNote {
   stop: (releaseTime?: number) => void;
@@ -1861,16 +1862,21 @@ export class AudioEngine {
     const initialPitchBend = this.currentPitchBend.get(track) ?? this.currentPitchBend.get('global') ?? 0;
     const initialModulation = this.currentModulation.get(track) ?? this.currentModulation.get('global') ?? 0;
 
+    const voiceObj = VOICE_MAP.get(voiceType);
+    const resolvedSynthType = voiceObj?.synthType || voiceType;
+    const presetParams = voiceObj?.presetParams;
+
     const noteKey = `${track}_${midiNote}_${Date.now()}_${Math.random()}`;
     const voiceCtrl = this.synthesizeMelodicVoice(
       freq,
       vel,
-      voiceType,
+      resolvedSynthType,
       dest,
       t,
       durationSec,
       initialPitchBend,
-      initialModulation
+      initialModulation,
+      presetParams
     );
 
     const handle: AudioEngineActiveNote = {
@@ -1905,7 +1911,8 @@ export class AudioEngine {
     t: number,
     durationSec?: number,
     initialPitchBend: number = 0,
-    initialModulation: number = 0
+    initialModulation: number = 0,
+    presetParams?: InstrumentVoice['presetParams']
   ): {
     stop: (releaseTime?: number) => void;
     setPitchBend: (semitones: number) => void;
@@ -2256,23 +2263,28 @@ export class AudioEngine {
       };
     }
 
-    // 9. SYNTH LEAD / PLUCK
+    // 9. SYNTH LEAD / PLUCK / CUSTOM PRESETS
     else {
       const osc = this.ctx.createOscillator();
       const gain = this.ctx.createGain();
       const filter = this.ctx.createBiquadFilter();
 
-      osc.type = 'sawtooth';
+      osc.type = presetParams?.waveform || 'sawtooth';
       osc.frequency.setValueAtTime(freq, t);
 
       applyPitchAndMod(osc, 0);
 
+      const cutoffFreq = presetParams?.cutoff ?? 3500;
+      const resQ = presetParams?.resonance ?? 4;
       filter.type = 'lowpass';
-      filter.frequency.setValueAtTime(3500, t);
-      filter.Q.setValueAtTime(4, t);
+      filter.frequency.setValueAtTime(cutoffFreq, t);
+      filter.Q.setValueAtTime(resQ, t);
+
+      const attackSec = presetParams?.attack ?? 0.01;
+      const releaseSec = presetParams?.release ?? 0.1;
 
       gain.gain.setValueAtTime(0.001, t);
-      gain.gain.linearRampToValueAtTime(0.6 * vel, t + 0.01);
+      gain.gain.linearRampToValueAtTime(0.6 * vel, t + attackSec);
 
       osc.connect(filter);
       filter.connect(gain);
@@ -2284,8 +2296,8 @@ export class AudioEngine {
         const stopTime = relTime || this.ctx!.currentTime;
         gain.gain.cancelScheduledValues(stopTime);
         gain.gain.setValueAtTime(gain.gain.value, stopTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, stopTime + 0.1);
-        osc.stop(stopTime + 0.12);
+        gain.gain.exponentialRampToValueAtTime(0.001, stopTime + releaseSec);
+        osc.stop(stopTime + releaseSec + 0.02);
       };
     }
 

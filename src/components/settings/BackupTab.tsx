@@ -32,6 +32,7 @@ export const BackupTab: React.FC<BackupTabProps> = ({
         version: '2.5.0',
         exportedAt: new Date().toISOString(),
         customStyles: JSON.parse(localStorage.getItem('yamaha_custom_styles') || '[]'),
+        customVoices: JSON.parse(localStorage.getItem('yamaha_custom_voices') || '[]'),
         userSongbooks: JSON.parse(localStorage.getItem('yamaha_user_songbooks') || '[]'),
         registrationMemory: JSON.parse(localStorage.getItem('yamaha_registration_memory') || '[]'),
         effectsRack: JSON.parse(localStorage.getItem('yamaha_effects_settings') || '{}'),
@@ -74,6 +75,7 @@ export const BackupTab: React.FC<BackupTabProps> = ({
 
         const data = validation.data;
         if (data.customStyles) localStorage.setItem('yamaha_custom_styles', JSON.stringify(data.customStyles));
+        if (data.customVoices) localStorage.setItem('yamaha_custom_voices', JSON.stringify(data.customVoices));
         if (data.userSongbooks) localStorage.setItem('yamaha_user_songbooks', JSON.stringify(data.userSongbooks));
         if (data.registrationMemory) localStorage.setItem('yamaha_registration_memory', JSON.stringify(data.registrationMemory));
         if (data.effectsRack) localStorage.setItem('yamaha_effects_settings', JSON.stringify(data.effectsRack));

@@ -1,9 +1,11 @@
 import { StyParser } from '../audio/styParser';
-import { ArrangerStyle } from '../types/arranger';
+import { ArrangerStyle, InstrumentVoice } from '../types/arranger';
 import { MediaTrack } from '../types/mediaPlayer';
 import { convertFilesToMediaTracks, isSupportedMediaFile } from './deviceFolderScanner';
 import { getStoredCustomTracks, saveStoredCustomTracks } from './mediaStorage';
 import { mediaPlayerEngine } from '../audio/mediaPlayerEngine';
+import { isVoiceFile, VoiceParser, ALL_VOICE_EXTENSIONS } from '../audio/voiceParser';
+import { registerCustomVoices } from '../audio/voiceBank';
 
 export type SupportedDestination = 'workstation' | 'media_player';
 
@@ -15,11 +17,16 @@ export interface FileLaunchResult {
   message: string;
   style?: ArrangerStyle;
   allStyles?: ArrangerStyle[];
+  voice?: InstrumentVoice;
+  allVoices?: InstrumentVoice[];
   mediaTrack?: MediaTrack;
 }
 
 // File extension categories
-export const WORKSTATION_EXTENSIONS = ['.sty', '.prs', '.sst', '.bcf', '.pst', '.fps', '.mid', '.midi'];
+export const WORKSTATION_EXTENSIONS = [
+  '.sty', '.prs', '.sst', '.bcf', '.pst', '.fps', '.mid', '.midi',
+  ...ALL_VOICE_EXTENSIONS
+];
 export const MEDIA_EXTENSIONS = [
   '.mp3', '.wav', '.ogg', '.oga', '.flac', '.m4a', '.aac', '.wma', '.ac3', '.dts',
   '.mp4', '.m4v', '.mkv', '.webm', '.avi', '.mov', '.flv', '.wmv', '.3gp', '.ts'
@@ -30,7 +37,7 @@ export const MEDIA_EXTENSIONS = [
  */
 export function isWorkstationStyleFile(fileName: string): boolean {
   const lower = fileName.toLowerCase();
-  return WORKSTATION_EXTENSIONS.some(ext => lower.endsWith(ext));
+  return ['.sty', '.prs', '.sst', '.bcf', '.pst', '.fps', '.mid', '.midi'].some(ext => lower.endsWith(ext));
 }
 
 /**
@@ -45,7 +52,7 @@ export function isAudioOrVideoMediaFile(fileName: string): boolean {
  * Determines whether an arbitrary incoming file belongs to the Workstation or Media Player
  */
 export function determineFileDestination(fileName: string): SupportedDestination {
-  if (isWorkstationStyleFile(fileName)) {
+  if (isWorkstationStyleFile(fileName) || isVoiceFile(fileName)) {
     return 'workstation';
   }
   return 'media_player';
@@ -59,7 +66,39 @@ export async function processIncomingFile(file: File): Promise<FileLaunchResult>
   const fileName = file.name;
   const lowerName = fileName.toLowerCase();
 
-  // 1. Check if it is a Yamaha Style File or Workstation sequence
+  // 1. Check if it is a Voice file (.vce, .liv, .swv, .sf2, .dmvoice, etc.)
+  if (isVoiceFile(fileName)) {
+    try {
+      const parsed = await VoiceParser.parseAnyVoiceFile(file);
+      if (parsed.voices && parsed.voices.length > 0) {
+        registerCustomVoices(parsed.voices);
+        const primaryVoice = parsed.voices[0];
+        return {
+          destination: 'workstation',
+          fileName,
+          fileSize: file.size,
+          success: true,
+          message: parsed.voices.length > 1
+            ? `Imported ${parsed.voices.length} instrument voices into Workstation ("${primaryVoice.name}", ...)`
+            : `Imported instrument voice "${primaryVoice.name}" into Workstation`,
+          voice: primaryVoice,
+          allVoices: parsed.voices,
+        };
+      }
+      throw new Error('No valid instrument voice presets found in file');
+    } catch (err: any) {
+      console.error('[FileLaunchRouter] Voice parse error:', err);
+      return {
+        destination: 'workstation',
+        fileName,
+        fileSize: file.size,
+        success: false,
+        message: err.message || 'Failed to parse instrument voice file',
+      };
+    }
+  }
+
+  // 2. Check if it is a Yamaha Style File or Workstation sequence
   if (isWorkstationStyleFile(fileName)) {
     try {
       const parsed = await StyParser.parseAnyFile(file);
@@ -90,8 +129,9 @@ export async function processIncomingFile(file: File): Promise<FileLaunchResult>
     }
   }
 
-  // 2. Check if it is a Zip file (could contain styles or media)
+  // 3. Check if it is a Zip file (could contain styles, voices, or media)
   if (lowerName.endsWith('.zip')) {
+    // First try extracting Yamaha styles
     try {
       const styleResult = await StyParser.parseAnyFile(file);
       if (styleResult.styles && styleResult.styles.length > 0) {
@@ -106,11 +146,30 @@ export async function processIncomingFile(file: File): Promise<FileLaunchResult>
         };
       }
     } catch {
-      // If zip does not contain styles, continue to check media
+      // If zip does not contain styles, try checking for voices
+    }
+
+    // Try extracting voices from ZIP
+    try {
+      const voiceResult = await VoiceParser.parseZipVoiceFile(file, fileName);
+      if (voiceResult.voices && voiceResult.voices.length > 0) {
+        registerCustomVoices(voiceResult.voices);
+        return {
+          destination: 'workstation',
+          fileName,
+          fileSize: file.size,
+          success: true,
+          message: `Extracted & imported ${voiceResult.voices.length} voice(s) into Workstation`,
+          voice: voiceResult.voices[0],
+          allVoices: voiceResult.voices,
+        };
+      }
+    } catch {
+      // Continue to check media files
     }
   }
 
-  // 3. Audio & Video Media Files -> Load & Play in Media Player
+  // 4. Audio & Video Media Files -> Load & Play in Media Player
   try {
     const tracks = convertFilesToMediaTracks([
       { file, relativePath: file.name, rootFolderName: 'Opened Files' }

@@ -13,6 +13,7 @@ const BackupPayloadSchema = z.object({
   version: z.string().optional(),
   exportedAt: z.string().optional(),
   customStyles: z.array(z.record(z.string(), z.unknown())).max(500).optional(),
+  customVoices: z.array(z.record(z.string(), z.unknown())).max(500).optional(),
   userSongbooks: z.array(z.record(z.string(), z.unknown())).max(1000).optional(),
   registrationMemory: z.array(z.unknown()).max(128).optional(),
   effectsRack: SafeObjectSchema.optional(),

@@ -57,3 +57,109 @@ export const INSTRUMENT_VOICES: InstrumentVoice[] = [
 export const VOICE_MAP = new Map<string, InstrumentVoice>(
   INSTRUMENT_VOICES.map(v => [v.id, v])
 );
+
+export const CUSTOM_VOICES_STORAGE_KEY = 'yamaha_custom_voices';
+
+type VoiceChangeListener = (voices: InstrumentVoice[]) => void;
+const voiceChangeListeners = new Set<VoiceChangeListener>();
+
+function notifyVoiceListeners() {
+  const current = getStoredCustomVoices();
+  voiceChangeListeners.forEach(fn => {
+    try {
+      fn(current);
+    } catch (err) {
+      console.error('[VoiceBank] Listener error:', err);
+    }
+  });
+}
+
+/**
+ * Retrieve custom imported voices from localStorage
+ */
+export function getStoredCustomVoices(): InstrumentVoice[] {
+  if (typeof window === 'undefined' || !window.localStorage) return [];
+  try {
+    const raw = localStorage.getItem(CUSTOM_VOICES_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch (err) {
+    console.warn('[VoiceBank] Failed to read stored custom voices:', err);
+    return [];
+  }
+}
+
+/**
+ * Save custom voices to localStorage and refresh VOICE_MAP
+ */
+export function saveStoredCustomVoices(voices: InstrumentVoice[]): void {
+  if (typeof window === 'undefined' || !window.localStorage) return;
+  try {
+    localStorage.setItem(CUSTOM_VOICES_STORAGE_KEY, JSON.stringify(voices));
+    syncVoiceMap();
+    notifyVoiceListeners();
+  } catch (err) {
+    console.error('[VoiceBank] Failed to save custom voices:', err);
+  }
+}
+
+/**
+ * Register one or more custom voices
+ */
+export function registerCustomVoices(newVoices: InstrumentVoice[]): void {
+  const existing = getStoredCustomVoices();
+  const existingMap = new Map<string, InstrumentVoice>(existing.map(v => [v.id, v]));
+
+  for (const v of newVoices) {
+    existingMap.set(v.id, v);
+  }
+
+  const merged = Array.from(existingMap.values());
+  saveStoredCustomVoices(merged);
+}
+
+/**
+ * Remove a custom voice by id
+ */
+export function removeCustomVoice(id: string): void {
+  const existing = getStoredCustomVoices();
+  const filtered = existing.filter(v => v.id !== id);
+  saveStoredCustomVoices(filtered);
+}
+
+/**
+ * Synchronize VOICE_MAP with built-in voices + custom voices
+ */
+export function syncVoiceMap(): void {
+  VOICE_MAP.clear();
+  INSTRUMENT_VOICES.forEach(v => VOICE_MAP.set(v.id, v));
+  const custom = getStoredCustomVoices();
+  custom.forEach(v => VOICE_MAP.set(v.id, v));
+}
+
+/**
+ * Subscribe to custom voice library updates
+ */
+export function subscribeCustomVoices(callback: VoiceChangeListener): () => void {
+  voiceChangeListeners.add(callback);
+  return () => {
+    voiceChangeListeners.delete(callback);
+  };
+}
+
+/**
+ * Returns all available voices (factory + user imported)
+ */
+export function getAllInstrumentVoices(): InstrumentVoice[] {
+  return [...INSTRUMENT_VOICES, ...getStoredCustomVoices()];
+}
+
+// Initial sync on module load
+if (typeof window !== 'undefined') {
+  try {
+    syncVoiceMap();
+  } catch (err) {
+    console.warn('[VoiceBank] Initial voice sync error:', err);
+  }
+}

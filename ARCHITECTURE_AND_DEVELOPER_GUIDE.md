@@ -433,6 +433,31 @@ In flagship arranger keyboards, players switch dynamically between sound design 
   - Embedded within a hardware bezel enclosure on the top telemetry header (`#viewmode-switcher-container`).
   - Mirrored directly inside the Studio Tools & Apps modal drawer (`#btn-modal-view-perf`, `#btn-modal-view-studio`) for seamless switching across all device viewport sizes.
 
+### 13.4 Custom Instrument Voice Import Engine (`src/audio/voiceParser.ts`, `voiceBank.ts`)
+DM ARRANGIA provides an extensible voice import pipeline mirroring the way custom styles are loaded:
+- **Supported File Formats**:
+  - **Yamaha Voice Presets**: `.VCE`, `.LIV` (Live!), `.SWV` (Sweet!), `.CLV` (Cool!), `.MGV` (MegaVoice), `.SAR` (Super Articulation), `.VOI`, `.ORG`, `.DRM`.
+  - **SoundFont 2**: `.SF2`, `.SFZ` (RIFF/sfbk container parser extracting preset names, bank assignments, and GM program changes from the `pdta/phdr` subchunk).
+  - **Synthesizer JSON & Presets**: `.JSON`, `.DMVOICE`, `.ARRANGIAVOICE` defining custom ADSR envelope curves, filter cutoff/resonance, waveforms, and chorus/reverb sends.
+  - **Bulk ZIP Archives**: `.ZIP` archives unpacked via JSZip, scanning and extracting hundreds of voice presets in a single operation.
+- **Yamaha SMF Decoding**:
+  - Detects Standard MIDI File headers (`MThd` / `MTrk`).
+  - Decodes Track Name Meta events (`0xFF 0x03`) to retrieve original voice labels.
+  - Extracts Controller values: Cutoff Frequency (CC 74), Resonance / Harmonics (CC 71), Attack Time (CC 73), Release Time (CC 72), Reverb Depth (CC 91), Chorus Depth (CC 93), Bank Select MSB/LSB (CC 0/32), and Program Change.
+  - Translates MIDI controllers directly into Web Audio DSP filter and envelope coefficients in `AudioEngine.synthesizeMelodicVoice`.
+- **Automatic Heuristic Classification**:
+  - `deduceVoiceCategoryAndSynth(name, programChange)` automatically categorizes incoming voices into *Piano*, *E.Piano & Clav*, *Organ & Accordion*, *Strings & Choir*, *Brass & Woodwinds*, *Guitar & Plucked*, *Bass*, *Synth & Lead*, or *Drum & Perc*.
+- **Live Voice Bank Synchronization & Persistence**:
+  - Stored persistently in browser `localStorage` (`yamaha_custom_voices`).
+  - `VOICE_MAP` cache is synchronized dynamically upon import, deletion, or restoration.
+  - `subscribeCustomVoices` allows UI components (like `VoiceSelectModal.tsx`) to update reactively without page reloads.
+- **Universal Import Entry Points**:
+  - Dedicated **"Import Voices"** button (`#btn-import-voices`) in `VoiceSelectModal.tsx`.
+  - Drag-and-drop dropzone overlay directly over the Voice Select modal.
+  - Global window drag-and-drop auto-routed via `fileLaunchRouter.ts`.
+  - OS file handler ("Open with -> DM ARRANGIA") via W3C LaunchQueue.
+  - Full inclusion in workstation backup export & restore in `BackupTab.tsx`.
+
 ---
 
 ## 14. Developer Recipes: How to Modify & Extend Everything
@@ -576,14 +601,15 @@ The project uses **Vitest** for fast unit and integration testing. Run tests wit
 ```bash
 npm test
 ```
-All 15 test suites verify:
+All 18 test suites (111 unit tests) verify:
 1. `audioEngine.test.ts`: AudioContext initialization and voice synthesis graphs.
 2. `chordEngine.test.ts`: Major, minor, extended, and slash chord recognition.
 3. `stylePlayer.test.ts`: Arranger section state transitions and fill scheduling.
-4. `midiParser.test.ts`: Byte-level Note On/Off, running status, and velocity decoding.
-5. `apiSecurity.test.ts`: Rate limiting, XSS payload rejection, and timeout handling.
-6. `aiValidationPipeline.test.ts`: Zod output parsing and range clamping.
-7. `mediaBlobStorage.test.ts`: Offline media caching and IndexedDB operations.
+4. `voiceImport.test.ts`: Yamaha VCE decoding, SoundFont 2 sfbk presets, JSON packs, and ZIP extraction.
+5. `midiParser.test.ts`: Byte-level Note On/Off, running status, and velocity decoding.
+6. `apiSecurity.test.ts`: Rate limiting, XSS payload rejection, and timeout handling.
+7. `aiValidationPipeline.test.ts`: Zod output parsing and range clamping.
+8. `mediaBlobStorage.test.ts`: Offline media caching and IndexedDB operations.
 
 ### 15.2 Linting & TypeScript Verification
 Run type-checking across the entire client and server codebase:

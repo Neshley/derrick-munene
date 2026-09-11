@@ -83,7 +83,7 @@ export interface ArrangerStyle {
 export interface InstrumentVoice {
   id: string;
   name: string;
-  category: 'Piano' | 'E.Piano & Clav' | 'Organ & Accordion' | 'Strings & Choir' | 'Brass & Woodwinds' | 'Guitar & Plucked' | 'Bass' | 'Synth & Lead' | 'Drum & Perc';
+  category: 'Piano' | 'E.Piano & Clav' | 'Organ & Accordion' | 'Strings & Choir' | 'Brass & Woodwinds' | 'Guitar & Plucked' | 'Bass' | 'Synth & Lead' | 'Drum & Perc' | 'Custom / User';
   synthType: 'piano' | 'epiano' | 'organ' | 'accordion' | 'strings' | 'brass' | 'flute' | 'guitar_acoustic' | 'guitar_electric' | 'bass_acoustic' | 'bass_electric' | 'synth_lead' | 'synth_pad' | 'synth_pluck' | 'drums';
   presetParams?: {
     attack?: number;
@@ -97,6 +97,15 @@ export interface InstrumentVoice {
     chorus?: number;
     reverb?: number;
   };
+  isCustom?: boolean;
+  sourceType?: 'yamaha-vce' | 'sf2' | 'user-created' | 'json' | 'built-in';
+  sourceFile?: string;
+  programChange?: number;
+  bankMsb?: number;
+  bankLsb?: number;
+  author?: string;
+  description?: string;
+  importedAt?: string;
 }
 
 export interface MultiPadData {

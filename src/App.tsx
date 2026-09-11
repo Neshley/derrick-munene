@@ -598,7 +598,7 @@ export default function App() {
     try {
       const result: FileLaunchResult = await processIncomingFile(file);
 
-      if (result.destination === 'workstation') {
+        if (result.destination === 'workstation') {
         handleSwitchMode('workstation');
         if (result.success && result.style) {
           if (result.allStyles && result.allStyles.length > 0) {
@@ -608,6 +608,8 @@ export default function App() {
             });
           }
           handleSelectStyle(result.style);
+        } else if (result.success && result.voice) {
+          handleApplyVoice('r1', result.voice.id);
         }
       } else {
         handleSwitchMode('media_player');
@@ -1638,7 +1640,7 @@ export default function App() {
           }
           e.target.value = '';
         }}
-        accept=".sty,.prs,.sst,.bcf,.pst,.fps,.mid,.midi,.mp3,.wav,.ogg,.flac,.m4a,.aac,.wma,.mp4,.mkv,.webm,.avi,.mov,.flv,.zip"
+        accept=".sty,.prs,.sst,.bcf,.pst,.fps,.mid,.midi,.vce,.liv,.swv,.clv,.mgv,.sar,.voi,.org,.drm,.sf2,.sfz,.json,.dmvoice,.arrangiavoice,.mp3,.wav,.ogg,.flac,.m4a,.aac,.wma,.mp4,.mkv,.webm,.avi,.mov,.flv,.zip"
         className="hidden"
       />
 

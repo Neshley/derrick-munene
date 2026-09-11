@@ -7,7 +7,7 @@
 [![Web Audio API](https://img.shields.io/badge/Web_Audio_API-Native_DSP-orange.svg)](https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API)
 [![Web MIDI API](https://img.shields.io/badge/Web_MIDI-Plug_&_Play-green.svg)](https://developer.mozilla.org/en-US/docs/Web/API/Web_MIDI_API)
 [![Gemini AI](https://img.shields.io/badge/Google_Gemini-Server--Side_Proxy-8e75ff.svg)](https://ai.google.dev/)
-[![Tests](https://img.shields.io/badge/Tests-104%20Passed-brightgreen.svg)](https://vitest.dev/)
+[![Tests](https://img.shields.io/badge/Tests-111%20Passed-brightgreen.svg)](https://vitest.dev/)
 
 **DM ARRANGIA** is a full-featured, zero-latency arranger workstation and live performance engine engineered for keyboards, worship bands, music directors, and producers. Inspired by flagship hardware arranger keyboards (such as the Yamaha Genos, Tyros, and PSR-SX series), DM ARRANGIA brings multi-track accompaniment styles, algorithmic Web Audio synthesis, real-time chord detection, hardware Web MIDI connectivity, vocal processing, media playback, and AI-assisted arranging directly to the web.
 
@@ -53,6 +53,13 @@
   - *Strings & Pads*: Warm Analog Pad, Worship Shimmer Strings, Choir Aahs, Synth Brass, Ambient Drone.
   - *Basses*: Gospel Finger Bass, Picked Electric Bass, Moog Synth Bass, Slap Bass.
   - *Guitars, Drums & Percussion*: Steel Acoustic Guitar, Nylon Acoustic Guitar, Clean Electric Guitar, 808/909 Electronic & Acoustic Drum Kits.
+- **Custom Voice Import Engine (.VCE, .LIV, .SWV, .CLV, .MGV, .SAR, .SF2, .JSON, .ZIP)**:
+  - **Yamaha Voice Compatibility**: Import native Yamaha voice files (`.vce`, `.liv`, `.swv`, `.clv`, `.mgv`, `.sar`, `.voi`, `.org`, `.drm`) parsed from Standard MIDI File structures (Track Name Meta 0x03, Program Change, Bank MSB/LSB, Cutoff CC 74, Resonance CC 71, Attack CC 73, Release CC 72, Reverb CC 91, Chorus CC 93) or binary voice dumps.
+  - **SoundFont 2 Support (.SF2)**: Parse RIFF/sfbk structures with `INFO` titles and `pdta` preset headers (`phdr`), extracting individual instrument presets into the voice bank.
+  - **Preset Packs & Custom JSON (.JSON, .DMVOICE)**: Import custom synthesized presets with configurable envelopes, cutoffs, and waveform modulations.
+  - **Bulk ZIP Extraction**: Drag and drop complete voice libraries or ZIP archives containing hundreds of voice files; automatically unpacked and categorized.
+  - **Universal Routing**: Drag files anywhere onto the window, use OS "Open with -> DM ARRANGIA", or use the dedicated "Import Voices" button in the Voice Select modal.
+  - **Voice Bank Management**: Audition voices in real-time, categorize into dedicated `Custom / User` library with badges, remove custom voices, or export custom voice packs as JSON backups.
 - **Master Effects Rack (DSP)**:
   - Studio Convolver Reverb with impulse simulation and wet/dry mix.
   - Stereo Ping-Pong / Tempo-Synced Delay with lowpass feedback damping.
