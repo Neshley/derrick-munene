@@ -7,7 +7,7 @@
 [![Web Audio API](https://img.shields.io/badge/Web_Audio_API-Native_DSP-orange.svg)](https://developer.mozilla.org/en-US/docs/Web/API/Web_Audio_API)
 [![Web MIDI API](https://img.shields.io/badge/Web_MIDI-Plug_&_Play-green.svg)](https://developer.mozilla.org/en-US/docs/Web/API/Web_MIDI_API)
 [![Gemini AI](https://img.shields.io/badge/Google_Gemini-Server--Side_Proxy-8e75ff.svg)](https://ai.google.dev/)
-[![Tests](https://img.shields.io/badge/Tests-111%20Passed-brightgreen.svg)](https://vitest.dev/)
+[![Tests](https://img.shields.io/badge/Tests-117%20Passed-brightgreen.svg)](https://vitest.dev/)
 
 **DM ARRANGIA** is a full-featured, zero-latency arranger workstation and live performance engine engineered for keyboards, worship bands, music directors, and producers. Inspired by flagship hardware arranger keyboards (such as the Yamaha Genos, Tyros, and PSR-SX series), DM ARRANGIA brings multi-track accompaniment styles, algorithmic Web Audio synthesis, real-time chord detection, hardware Web MIDI connectivity, vocal processing, media playback, and AI-assisted arranging directly to the web.
 
@@ -41,18 +41,25 @@
 - **Dynamic Fills**: Velocity-sensitive fill triggers based on performance intensity.
 - **Tap Tempo & BPM Controls**: Fine-grained tempo adjustment (40–280 BPM) with tap-tempo calculation.
 
-### 🎛️ Real Web Audio Synthesis & Voices
+### 🎛️ Real Web Audio Synthesis, Sound Creator Studio & Voice Management
 - **100% Algorithmic Web Audio**: Synthesized with pure Web Audio API nodes (`OscillatorNode`, `BiquadFilterNode`, `GainNode`, `ConvolverNode`, `DelayNode`, `DynamicsCompressorNode`). Zero reliance on sluggish external audio samples for core synth voices.
 - **Multi-Part Keyboard Layering**:
   - **Right 1 (R1)**: Primary lead/solo voice with dedicated octave and volume controls.
   - **Right 2 (R2)**: Layered secondary voice with independent volume, pan, and octave shift.
   - **Left (L)**: Split keyboard bass/chord voice activated below the configurable split point.
-- **40+ Built-In Workstation Voices**:
-  - *Pianos & Keys*: Concert Grand Piano, Warm Electric Piano, DX7 FM Tine Piano, Harpsichord, Clavinet.
-  - *Organs*: Drawbar Gospel B3 Organ (with Leslie rotary simulation), Church Pipe Organ, Jazz Click Organ.
-  - *Strings & Pads*: Warm Analog Pad, Worship Shimmer Strings, Choir Aahs, Synth Brass, Ambient Drone.
-  - *Basses*: Gospel Finger Bass, Picked Electric Bass, Moog Synth Bass, Slap Bass.
-  - *Guitars, Drums & Percussion*: Steel Acoustic Guitar, Nylon Acoustic Guitar, Clean Electric Guitar, 808/909 Electronic & Acoustic Drum Kits.
+- **Sound Creator Studio & Parametric Synth Engine (`VoiceEditModal.tsx`)**:
+  - **Dual-Oscillator Wave Modeling**: Configurable primary and secondary oscillators with independent waveforms (`sawtooth`, `sine`, `square`, `triangle`), octave transpose (-2 to +2), and detune spread in cents.
+  - **Sub-Oscillator Generator**: Sine sub-oscillator mixed down 1 octave for ground-shaking synth bass and rich leads.
+  - **4-Stage ADSR Volume Envelope**: Millisecond-precise Attack, Decay, Sustain, and Release envelope control.
+  - **Resonant Multi-Mode Filter**: Lowpass, Highpass, and Bandpass filter types with adjustable cutoff frequency (20Hz–20kHz), resonance peak (Q 0.1–20), and velocity tracking.
+  - **Pitch LFO & Modulation**: Independent LFO with variable rate (0.5Hz–20Hz) and depth for lush analog vibrato.
+  - **Interactive ADSR Canvas Visualizer**: Real-time visual envelope curve graphing showing attack slopes, sustain heights, and release tails.
+  - **Integrated Auditioning Keyboard & Arpeggiator**: Audition tweaks directly in the studio with custom test chords and automated arpeggiator patterns.
+- **⭐ Favorite Voices & Quick-Access Pinning**:
+  - One-click star-pinning on any voice card to build a personalized live setlist sound palette.
+  - Dedicated `⭐ Favorites` bank filter in the voice library for rapid stage navigation.
+- **A/B Voice Comparison Engine**:
+  - Seamless A/B auditioning tool to compare two voices side-by-side on live performance chords before assigning to lead or layer parts.
 - **Custom Voice Import Engine (.VCE, .LIV, .SWV, .CLV, .MGV, .SAR, .SF2, .JSON, .ZIP)**:
   - **Yamaha Voice Compatibility**: Import native Yamaha voice files (`.vce`, `.liv`, `.swv`, `.clv`, `.mgv`, `.sar`, `.voi`, `.org`, `.drm`) parsed from Standard MIDI File structures (Track Name Meta 0x03, Program Change, Bank MSB/LSB, Cutoff CC 74, Resonance CC 71, Attack CC 73, Release CC 72, Reverb CC 91, Chorus CC 93) or binary voice dumps.
   - **SoundFont 2 Support (.SF2)**: Parse RIFF/sfbk structures with `INFO` titles and `pdta` preset headers (`phdr`), extracting individual instrument presets into the voice bank.

@@ -208,6 +208,28 @@ DM ARRANGIA includes over 40 synthesized voices modeled through subtractive and 
 5. **Gospel Finger & Slap Bass**: Square/saw wave filtered with steep 24dB lowpass envelope, providing low-end punch without muddiness.
 6. **Acoustic & Electronic Drums**: Procedural kick (swept pitch sine), snare (pitch envelope + highpass white noise burst), hi-hats (bandpass noise), and toms.
 
+### 4.3 Universal Voice Import Pipeline (`voiceParser.ts`)
+DM ARRANGIA includes a universal binary and container decoder for instrument voices:
+- **Yamaha Native Formats (.VCE, .LIV, .SWV, .CLV, .MGV, .SAR, .VOI, .ORG, .DRM)**: Decodes standard MIDI format chunks (track name meta event 0x03, bank MSB/LSB CC0/CC32, program change, filter cutoff CC74, resonance CC71, envelope attack CC73, release CC72, reverb send CC91, chorus send CC93) and Yamaha sysex voice dumps.
+- **SoundFont 2 Architecture (.SF2)**: Decodes RIFF/sfbk structures, reading the `INFO` list chunk for soundfont and sample titles and parsing the `pdta` preset chunk (`phdr` preset headers and `pbag` preset zones) to generate individual voice presets into the voice bank.
+- **Custom JSON Presets (.JSON, .DMVOICE)**: Direct serialization format for multi-oscillator synthesizer models.
+- **ZIP Archive Extraction**: Uses recursive decompression to unroll nested directories of voice files, extracting all valid voice presets into the user's custom bank in a single operation.
+
+### 4.4 Sound Creator Studio & Parametric Synthesis (`VoiceEditModal.tsx` & `audioEngine.ts`)
+The Sound Creator Studio allows keyboardists and producers to deeply customize, sculpt, and store synthesizer presets:
+- **Dual-Oscillator Engine**: Primary and secondary oscillators with independent waveshapes (`sawtooth`, `sine`, `square`, `triangle`), octave offsets (-2 to +2), and micro-tuning detune spread (cents).
+- **Sub-Oscillator Generator**: Sine-wave sub-oscillator pitched one octave below note fundamental with independent mix control for punchy bass and warm worship leads.
+- **4-Stage ADSR Volume & Filter Envelopes**: Microsecond-precise linear and exponential ramp curves for Attack, Decay, Sustain, and Release.
+- **Resonant Multi-Mode Filter**: Lowpass, Highpass, and Bandpass filter modes with controllable Cutoff (20Hz–20kHz), Resonance Q (0.1–20), and velocity-tracking sensitivity.
+- **Real-Time Visual ADSR Canvas**: HTML5 Canvas rendering mathematical bezier curves of the envelope in real-time as sliders are adjusted.
+- **Interactive Studio Auditioning**: Embedded touch/mouse keyboard with octave shifting and an automated arpeggiator for instant live listening.
+
+### 4.5 Favorites Management & Voice Bank Persistence (`voiceBank.ts`)
+- **Stage Star-Pinning**: Users can star-pin any voice (factory or user-imported) to create a dedicated live performance quick-access palette.
+- **Local Storage Persistence**: Custom voices (`yamaha_custom_voices`) and favorites (`yamaha_favorite_voices`) are automatically persisted in browser client storage.
+- **Reactive Subscription Pattern**: `subscribeCustomVoices` and `subscribeFavoriteVoices` allow UI components (`VoiceSelectModal`, `VoiceSection`) to automatically re-render when voices are created, edited, imported, or deleted.
+- **Batch Export & Backup**: Custom voice libraries can be downloaded as formatted JSON files and transferred to other machines or backup archives.
+
 ---
 
 ## 5. Yamaha .STY Arranger Sequencer & Lookahead Clock

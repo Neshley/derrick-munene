@@ -120,12 +120,127 @@ export function registerCustomVoices(newVoices: InstrumentVoice[]): void {
 }
 
 /**
+ * Update or save an edited custom voice preset
+ */
+export function updateCustomVoice(voice: InstrumentVoice): void {
+  const existing = getStoredCustomVoices();
+  const index = existing.findIndex(v => v.id === voice.id);
+  if (index >= 0) {
+    existing[index] = voice;
+    saveStoredCustomVoices(existing);
+  } else {
+    registerCustomVoices([voice]);
+  }
+}
+
+/**
  * Remove a custom voice by id
  */
 export function removeCustomVoice(id: string): void {
   const existing = getStoredCustomVoices();
   const filtered = existing.filter(v => v.id !== id);
   saveStoredCustomVoices(filtered);
+}
+
+// --- FAVORITE VOICES PINNING ENGINE ---
+export const FAVORITE_VOICES_STORAGE_KEY = 'yamaha_favorite_voices';
+
+type FavoritesChangeListener = (favorites: string[]) => void;
+const favoritesChangeListeners = new Set<FavoritesChangeListener>();
+
+function notifyFavoriteListeners() {
+  const current = getFavoriteVoiceIds();
+  favoritesChangeListeners.forEach(fn => {
+    try {
+      fn(current);
+    } catch (err) {
+      console.error('[VoiceBank] Favorite listener error:', err);
+    }
+  });
+}
+
+export function getFavoriteVoiceIds(): string[] {
+  if (typeof window === 'undefined' || !window.localStorage) return [];
+  try {
+    const raw = localStorage.getItem(FAVORITE_VOICES_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveFavoriteVoiceIds(favorites: string[]): void {
+  if (typeof window === 'undefined' || !window.localStorage) return;
+  try {
+    localStorage.setItem(FAVORITE_VOICES_STORAGE_KEY, JSON.stringify(favorites));
+    notifyFavoriteListeners();
+  } catch (err) {
+    console.error('[VoiceBank] Failed to save favorites:', err);
+  }
+}
+
+export function toggleFavoriteVoice(id: string): boolean {
+  const favs = getFavoriteVoiceIds();
+  const exists = favs.includes(id);
+  const updated = exists ? favs.filter(favId => favId !== id) : [...favs, id];
+  saveFavoriteVoiceIds(updated);
+  return !exists;
+}
+
+export function isFavoriteVoice(id: string): boolean {
+  return getFavoriteVoiceIds().includes(id);
+}
+
+export function subscribeFavoriteVoices(callback: FavoritesChangeListener): () => void {
+  favoritesChangeListeners.add(callback);
+  return () => {
+    favoritesChangeListeners.delete(callback);
+  };
+}
+
+/**
+ * Create a fresh, pristine customizable voice preset derived from a base voice or initialized from scratch
+ */
+export function createDefaultCustomPreset(base?: Partial<InstrumentVoice>): InstrumentVoice {
+  const id = `user_preset_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+  return {
+    id,
+    name: base?.name ? `${base.name} (Custom Edit)` : 'New Custom Synth Voice',
+    category: base?.category || 'Synth & Lead',
+    synthType: base?.synthType || 'synth_lead',
+    isCustom: true,
+    sourceType: 'user-created',
+    author: 'Keyboardist',
+    description: 'Custom sculpted live voice crafted in Voice Edit Studio',
+    bankMsb: 104,
+    bankLsb: 1,
+    programChange: Math.floor(Math.random() * 127) + 1,
+    presetParams: {
+      attack: base?.presetParams?.attack ?? 0.02,
+      decay: base?.presetParams?.decay ?? 0.35,
+      sustain: base?.presetParams?.sustain ?? 0.65,
+      release: base?.presetParams?.release ?? 0.45,
+      cutoff: base?.presetParams?.cutoff ?? 4200,
+      resonance: base?.presetParams?.resonance ?? 3.5,
+      harmonicity: base?.presetParams?.harmonicity ?? 1.0,
+      waveform: base?.presetParams?.waveform ?? 'sawtooth',
+      subOscMix: base?.presetParams?.subOscMix ?? 0.25,
+      detuneCents: base?.presetParams?.detuneCents ?? 8,
+      octaveShift: base?.presetParams?.octaveShift ?? 0,
+      vibratoRate: base?.presetParams?.vibratoRate ?? 5.5,
+      vibratoDepth: base?.presetParams?.vibratoDepth ?? 20,
+      velocitySens: base?.presetParams?.velocitySens ?? 0.65,
+      portamento: base?.presetParams?.portamento ?? 0,
+      volumeTrim: base?.presetParams?.volumeTrim ?? 0,
+      chorus: base?.presetParams?.chorus ?? 20,
+      reverb: base?.presetParams?.reverb ?? 30,
+      delay: base?.presetParams?.delay ?? 0,
+      voiceEngine: base?.presetParams?.voiceEngine ?? 'dual_osc',
+    },
+    importedAt: new Date().toISOString(),
+  };
 }
 
 /**

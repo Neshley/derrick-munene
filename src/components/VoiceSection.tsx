@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { VOICE_MAP } from '../audio/voiceBank';
+import React, { useState, useEffect } from 'react';
+import { VOICE_MAP, subscribeCustomVoices } from '../audio/voiceBank';
 import { 
   Piano, 
   Volume2, 
@@ -65,8 +65,27 @@ export const VoiceSection: React.FC<VoiceSectionProps> = ({
     left: false,
   });
 
-  const getVoiceName = (id: string) => VOICE_MAP[id]?.name || id;
-  const getVoiceCategory = (id: string) => VOICE_MAP[id]?.category || 'Instrument';
+  const [, setVoiceVersion] = useState(0);
+
+  useEffect(() => {
+    return subscribeCustomVoices(() => {
+      setVoiceVersion(v => v + 1);
+    });
+  }, []);
+
+  const getVoiceName = (id: string) => {
+    if (VOICE_MAP instanceof Map) {
+      return VOICE_MAP.get(id)?.name || id;
+    }
+    return (VOICE_MAP as any)[id]?.name || id;
+  };
+
+  const getVoiceCategory = (id: string) => {
+    if (VOICE_MAP instanceof Map) {
+      return VOICE_MAP.get(id)?.category || 'Instrument';
+    }
+    return (VOICE_MAP as any)[id]?.category || 'Instrument';
+  };
 
   const handleOctaveChange = (part: 'r1' | 'r2' | 'left', delta: number) => {
     setOctaves((prev) => ({

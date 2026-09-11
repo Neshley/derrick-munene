@@ -94,8 +94,18 @@ export interface InstrumentVoice {
     resonance?: number;
     harmonicity?: number;
     waveform?: OscillatorType;
+    subOscMix?: number;
+    detuneCents?: number;
+    octaveShift?: number;
+    vibratoRate?: number;
+    vibratoDepth?: number;
+    velocitySens?: number;
+    portamento?: number;
+    volumeTrim?: number;
     chorus?: number;
     reverb?: number;
+    delay?: number;
+    voiceEngine?: 'subtractive' | 'fm' | 'dual_osc' | 'pcm_synth';
   };
   isCustom?: boolean;
   sourceType?: 'yamaha-vce' | 'sf2' | 'user-created' | 'json' | 'built-in';

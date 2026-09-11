@@ -1922,13 +1922,16 @@ export class AudioEngine {
       return { stop: () => {}, setPitchBend: () => {}, setModulation: () => {} };
     }
 
-    // Common vibrato LFO node for modulation wheel (5.5 Hz musical vibrato)
+    // Common vibrato LFO node for modulation wheel & preset vibrato
     const lfo = this.ctx.createOscillator();
     const lfoGain = this.ctx.createGain();
     lfo.type = 'sine';
-    lfo.frequency.setValueAtTime(5.5, t);
-    // Subtle vibrato depth up to 35 cents
-    lfoGain.gain.setValueAtTime(initialModulation * 35, t);
+    const vibRate = presetParams?.vibratoRate ?? 5.5;
+    const baseVibDepth = presetParams?.vibratoDepth ?? 0;
+    lfo.frequency.setValueAtTime(vibRate, t);
+    // Depth incorporates initialModulation or base preset vibrato depth
+    const effectiveDepth = Math.max(initialModulation * 40, (baseVibDepth * (initialModulation > 0 ? initialModulation : 0.4)));
+    lfoGain.gain.setValueAtTime(effectiveDepth, t);
     lfo.connect(lfoGain);
     lfo.start(t);
 
@@ -2263,41 +2266,93 @@ export class AudioEngine {
       };
     }
 
-    // 9. SYNTH LEAD / PLUCK / CUSTOM PRESETS
+    // 9. SYNTH LEAD / PLUCK / PADS / CUSTOM SOUND CREATOR VOICES
     else {
-      const osc = this.ctx.createOscillator();
+      const octaveShift = presetParams?.octaveShift ?? 0;
+      const baseFreq = freq * Math.pow(2, octaveShift);
+      const detuneCents = presetParams?.detuneCents ?? 0;
+      const waveform = presetParams?.waveform || (voiceType === 'synth_pad' ? 'sawtooth' : (voiceType === 'square_lead' ? 'square' : 'sawtooth'));
+      const subMix = Math.max(0, Math.min(1.0, presetParams?.subOscMix ?? 0));
+      const hasDualOsc = presetParams?.voiceEngine === 'dual_osc' || Math.abs(detuneCents) > 1 || voiceType === 'synth_pad';
+
+      const osc1 = this.ctx.createOscillator();
+      let osc2: OscillatorNode | null = null;
+      let oscSub: OscillatorNode | null = null;
+      let subGain: GainNode | null = null;
+
+      const voiceMixGain = this.ctx.createGain();
       const gain = this.ctx.createGain();
       const filter = this.ctx.createBiquadFilter();
 
-      osc.type = presetParams?.waveform || 'sawtooth';
-      osc.frequency.setValueAtTime(freq, t);
+      osc1.type = waveform;
+      osc1.frequency.setValueAtTime(baseFreq, t);
+      applyPitchAndMod(osc1, -detuneCents / 2);
+      osc1.connect(voiceMixGain);
 
-      applyPitchAndMod(osc, 0);
+      if (hasDualOsc) {
+        osc2 = this.ctx.createOscillator();
+        osc2.type = waveform;
+        osc2.frequency.setValueAtTime(baseFreq, t);
+        const spread = detuneCents !== 0 ? detuneCents / 2 : 7;
+        applyPitchAndMod(osc2, spread);
+        osc2.connect(voiceMixGain);
+      }
 
-      const cutoffFreq = presetParams?.cutoff ?? 3500;
-      const resQ = presetParams?.resonance ?? 4;
+      if (subMix > 0.01) {
+        oscSub = this.ctx.createOscillator();
+        subGain = this.ctx.createGain();
+        oscSub.type = 'sine';
+        oscSub.frequency.setValueAtTime(baseFreq * 0.5, t);
+        subGain.gain.setValueAtTime(subMix * 0.8, t);
+        applyPitchAndMod(oscSub, 0);
+        oscSub.connect(subGain);
+        subGain.connect(voiceMixGain);
+      }
+
+      // Dynamic Filter with Velocity Sensitivity
+      const baseCutoff = presetParams?.cutoff ?? (voiceType === 'synth_pad' ? 2400 : (voiceType === 'synth_pluck' ? 4800 : 3800));
+      const velSens = Math.max(0, Math.min(1.0, presetParams?.velocitySens ?? 0.6));
+      const velFactor = 0.25 + 0.75 * Math.pow(vel, Math.max(0.1, velSens));
+      const dynamicCutoff = Math.max(60, Math.min(20000, baseCutoff * velFactor));
+      const resQ = Math.max(0.5, Math.min(20, presetParams?.resonance ?? (voiceType === 'synth_pad' ? 2.0 : 3.8)));
+
       filter.type = 'lowpass';
-      filter.frequency.setValueAtTime(cutoffFreq, t);
+      filter.frequency.setValueAtTime(dynamicCutoff, t);
       filter.Q.setValueAtTime(resQ, t);
 
-      const attackSec = presetParams?.attack ?? 0.01;
-      const releaseSec = presetParams?.release ?? 0.1;
+      // Full ADSR Envelope
+      const attackSec = Math.max(0.001, presetParams?.attack ?? (voiceType === 'synth_pluck' ? 0.005 : (voiceType === 'synth_pad' ? 0.4 : 0.015)));
+      const decaySec = Math.max(0.01, presetParams?.decay ?? (voiceType === 'synth_pluck' ? 0.25 : 0.35));
+      const sustainNorm = Math.max(0.01, Math.min(1.0, presetParams?.sustain ?? (voiceType === 'synth_pluck' ? 0.15 : 0.65)));
+      const releaseSec = Math.max(0.01, presetParams?.release ?? (voiceType === 'synth_pluck' ? 0.2 : (voiceType === 'synth_pad' ? 0.8 : 0.35)));
 
-      gain.gain.setValueAtTime(0.001, t);
-      gain.gain.linearRampToValueAtTime(0.6 * vel, t + attackSec);
+      const volTrimDb = presetParams?.volumeTrim ?? 0;
+      const trimMul = Math.pow(10, volTrimDb / 20);
+      const peakGain = 0.65 * vel * trimMul;
+      const sustainGain = peakGain * sustainNorm;
 
-      osc.connect(filter);
+      gain.gain.setValueAtTime(0.0001, t);
+      gain.gain.linearRampToValueAtTime(peakGain, t + attackSec);
+      gain.gain.exponentialRampToValueAtTime(Math.max(0.0001, sustainGain), t + attackSec + decaySec);
+
+      voiceMixGain.connect(filter);
       filter.connect(gain);
       gain.connect(dest);
 
-      osc.start(t);
+      osc1.start(t);
+      if (osc2) osc2.start(t);
+      if (oscSub) oscSub.start(t);
 
       stopVoiceFn = (relTime) => {
         const stopTime = relTime || this.ctx!.currentTime;
         gain.gain.cancelScheduledValues(stopTime);
         gain.gain.setValueAtTime(gain.gain.value, stopTime);
-        gain.gain.exponentialRampToValueAtTime(0.001, stopTime + releaseSec);
-        osc.stop(stopTime + releaseSec + 0.02);
+        gain.gain.exponentialRampToValueAtTime(0.0001, stopTime + releaseSec);
+
+        const killTime = stopTime + releaseSec + 0.05;
+        try { osc1.stop(killTime); } catch {}
+        if (osc2) { try { osc2.stop(killTime); } catch {} }
+        if (oscSub) { try { oscSub.stop(killTime); } catch {} }
       };
     }
 
