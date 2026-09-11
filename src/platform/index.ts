@@ -8,6 +8,7 @@ import { capabilities, getCapabilities } from './capabilities';
 export * from './types';
 export * from './platformDetection';
 export * from './capabilities';
+export * from './platform';
 
 export const platform = {
   isDesktop,

@@ -4,6 +4,7 @@ import { EffectsRackSettings, ReverbType, VocalWorkstationSettings, InstrumentVo
 import { SystemSettings, getStoredSystemSettings, subscribeSystemSettings } from '../utils/systemSettings';
 import { microphoneService } from '../services/microphoneService';
 import { VOICE_MAP } from './voiceBank';
+import { voiceManager } from './voice/VoiceManager';
 
 export interface AudioEngineActiveNote {
   stop: (releaseTime?: number) => void;
@@ -1879,28 +1880,44 @@ export class AudioEngine {
       presetParams
     );
 
+    const voiceHandle = voiceManager.registerVoice({
+      midiNote,
+      velocity,
+      voiceType: resolvedSynthType,
+      track,
+      durationSec,
+      timeOffset,
+      nodes: {
+        customStop: (releaseTime) => voiceCtrl.stop(releaseTime),
+        customPitchBend: (semitones) => voiceCtrl.setPitchBend(semitones),
+        customModulation: (mod01) => voiceCtrl.setModulation(mod01),
+      },
+    });
+
     const handle: AudioEngineActiveNote = {
       stop: (releaseTime?: number) => {
-        voiceCtrl.stop(releaseTime);
+        voiceHandle.stop(releaseTime);
         this.activeNotes.delete(noteKey);
       },
       setPitchBend: (semitones: number) => {
-        voiceCtrl.setPitchBend(semitones);
+        voiceHandle.setPitchBend(semitones);
       },
       setModulation: (mod01: number) => {
-        voiceCtrl.setModulation(mod01);
+        voiceHandle.setModulation(mod01);
       },
     };
 
     this.activeNotes.set(noteKey, handle);
 
-    if (durationSec) {
-      setTimeout(() => {
-        handle.stop();
-      }, (timeOffset + durationSec) * 1000);
-    }
-
     return handle;
+  }
+
+  public stopNote(track: string, midiNote: number, releaseTime?: number): void {
+    voiceManager.releaseNote(track, midiNote, releaseTime);
+  }
+
+  public setSustain(active: boolean, releaseTime?: number): void {
+    voiceManager.setSustain(active, releaseTime);
   }
 
   private synthesizeMelodicVoice(
