@@ -21,7 +21,8 @@ import {
   Layers,
   Lightbulb,
   HelpCircle,
-  CheckCircle2
+  CheckCircle2,
+  Code
 } from 'lucide-react';
 import { 
   WORSHIP_GUIDE_SECTIONS, 
@@ -42,6 +43,7 @@ interface UserGuideModalProps {
   isOpen: boolean;
   onClose: () => void;
   onOpenCreatorMessage?: () => void;
+  initialCategory?: GuideCategory | 'All Topics';
 }
 
 type TabSelection = GuideCategory | 'All Topics';
@@ -49,9 +51,10 @@ type TabSelection = GuideCategory | 'All Topics';
 export const UserGuideModal: React.FC<UserGuideModalProps> = ({ 
   isOpen, 
   onClose, 
-  onOpenCreatorMessage 
+  onOpenCreatorMessage,
+  initialCategory
 }) => {
-  const [selectedTab, setSelectedTab] = useState<TabSelection>('Getting Started');
+  const [selectedTab, setSelectedTab] = useState<TabSelection>(initialCategory || 'Getting Started');
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedIds, setExpandedIds] = useState<Set<string>>(() => {
     // Open the first 2 chapters of Getting Started by default
@@ -60,6 +63,15 @@ export const UserGuideModal: React.FC<UserGuideModalProps> = ({
   const [downloadingDocx, setDownloadingDocx] = useState(false);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [copiedType, setCopiedType] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (isOpen && initialCategory) {
+      setSelectedTab(initialCategory);
+      if (initialCategory === 'Developer & Architecture') {
+        setExpandedIds(new Set(['dev-architecture-overview', 'dev-console-layout', 'dev-audio-dsp-pipeline']));
+      }
+    }
+  }, [isOpen, initialCategory]);
 
   // Filter sections by search and category
   const filteredSections = useMemo(() => {
@@ -159,6 +171,7 @@ export const UserGuideModal: React.FC<UserGuideModalProps> = ({
     'Arranger Basics': WORSHIP_GUIDE_SECTIONS.filter(s => s.category === 'Arranger Basics').length,
     'MIDI Configuration': WORSHIP_GUIDE_SECTIONS.filter(s => s.category === 'MIDI Configuration').length,
     'Advanced Studio Features': WORSHIP_GUIDE_SECTIONS.filter(s => s.category === 'Advanced Studio Features').length,
+    'Developer & Architecture': WORSHIP_GUIDE_SECTIONS.filter(s => s.category === 'Developer & Architecture').length,
   };
 
   const getCategoryIcon = (cat: GuideCategory) => {
@@ -171,6 +184,8 @@ export const UserGuideModal: React.FC<UserGuideModalProps> = ({
         return <Plug className="w-3.5 h-3.5 text-cyan-400" />;
       case 'Advanced Studio Features':
         return <Sliders className="w-3.5 h-3.5 text-purple-400" />;
+      case 'Developer & Architecture':
+        return <Code className="w-3.5 h-3.5 text-indigo-400" />;
     }
   };
 
@@ -184,6 +199,8 @@ export const UserGuideModal: React.FC<UserGuideModalProps> = ({
         return 'bg-cyan-500/15 text-cyan-300 border-cyan-500/30';
       case 'Advanced Studio Features':
         return 'bg-purple-500/15 text-purple-300 border-purple-500/30';
+      case 'Developer & Architecture':
+        return 'bg-indigo-500/15 text-indigo-300 border-indigo-500/30';
     }
   };
 
@@ -339,6 +356,23 @@ export const UserGuideModal: React.FC<UserGuideModalProps> = ({
               <span>Advanced Studio Features</span>
               <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-purple-950 text-purple-400 border border-purple-500/30">
                 {categoryCounts['Advanced Studio Features']}
+              </span>
+            </button>
+
+            {/* Developer & Architecture Tab */}
+            <button
+              id="tab-developer-guide"
+              onClick={() => { setSelectedTab('Developer & Architecture'); setSearchTerm(''); }}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-2 cursor-pointer transition-all ${
+                selectedTab === 'Developer & Architecture'
+                  ? 'bg-indigo-500/20 text-indigo-300 border border-indigo-500/40 shadow-sm'
+                  : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/60 border border-transparent'
+              }`}
+            >
+              <Code className="w-3.5 h-3.5 text-indigo-400" />
+              <span>Developer & Architecture</span>
+              <span className="px-1.5 py-0.2 rounded-full text-[10px] bg-indigo-950 text-indigo-300 border border-indigo-500/30">
+                {categoryCounts['Developer & Architecture']}
               </span>
             </button>
 
@@ -531,6 +565,20 @@ export const UserGuideModal: React.FC<UserGuideModalProps> = ({
                   {isExpanded && (
                     <div className="px-3.5 sm:px-5 pb-5 pt-1 border-t border-zinc-800/60 space-y-4 text-xs sm:text-sm text-zinc-300 animate-fade-in">
                       
+                      {/* Diagram or Infographic Image */}
+                      {sec.image && (
+                        <div className="rounded-xl overflow-hidden border border-zinc-800 bg-zinc-900/90 p-2.5 space-y-2 my-2 shadow-lg">
+                          <img
+                            src={sec.image.url}
+                            alt={sec.image.caption}
+                            className="w-full h-auto rounded-lg object-contain max-h-[420px] bg-zinc-950/80 mx-auto"
+                            referrerPolicy="no-referrer"
+                            loading="lazy"
+                          />
+                          <p className="text-[11px] font-mono text-zinc-400 text-center tracking-wide">{sec.image.caption}</p>
+                        </div>
+                      )}
+
                       {/* Pro Tip Callout Box */}
                       {sec.tips && sec.tips.length > 0 && (
                         <div className="p-3 rounded-lg bg-amber-950/25 border border-amber-600/30 flex items-start gap-2.5 text-xs text-amber-200">

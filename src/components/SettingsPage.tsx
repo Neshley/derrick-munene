@@ -39,6 +39,7 @@ export interface SettingsPageProps {
   onOpenApiKeyModal: () => void;
   onOpenUserGuide: () => void;
   onOpenCreatorMessage: () => void;
+  onOpenDeveloperGuide?: () => void;
   // Live states from App
   splitPoint: number;
   onSplitPointChange: (note: number) => void;
@@ -92,6 +93,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
   onOpenApiKeyModal,
   onOpenUserGuide,
   onOpenCreatorMessage,
+  onOpenDeveloperGuide,
   splitPoint,
   onSplitPointChange,
   chordMode,
@@ -410,6 +412,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
               <AboutTab
                 onOpenUserGuide={onOpenUserGuide}
                 onOpenCreatorMessage={onOpenCreatorMessage}
+                onOpenDeveloperGuide={onOpenDeveloperGuide}
               />
             )}
           </div>

@@ -7,14 +7,15 @@ export type GuideCategory =
   | 'Getting Started' 
   | 'Arranger Basics' 
   | 'MIDI Configuration' 
-  | 'Advanced Studio Features';
+  | 'Advanced Studio Features'
+  | 'Developer & Architecture';
 
 export interface GuideCategoryMeta {
   id: GuideCategory;
   name: string;
   shortName: string;
   description: string;
-  icon: 'rocket' | 'piano' | 'plug' | 'sliders';
+  icon: 'rocket' | 'piano' | 'plug' | 'sliders' | 'code';
   badgeColor: string;
 }
 
@@ -24,6 +25,10 @@ export interface GuideSection {
   category: GuideCategory;
   level: 1 | 2 | 3;
   summary?: string;
+  image?: {
+    url: string;
+    caption: string;
+  };
   content: string[];
   tips?: string[];
   subsections?: {
@@ -75,6 +80,14 @@ export const WORSHIP_GUIDE_CATEGORIES: GuideCategoryMeta[] = [
     description: 'ARRANGIA AI Studio, AI Music Director, Selah prayer atmosphere, vocal channel strip, LARK media player, themes, and backup.',
     icon: 'sliders',
     badgeColor: 'bg-purple-500/20 text-purple-300 border-purple-500/30'
+  },
+  {
+    id: 'Developer & Architecture',
+    name: 'Developer & Architecture',
+    shortName: 'Developer',
+    description: 'System architecture, visual signal flow diagrams, Web Audio DSP pipelines, lookahead clocks, Yamaha .STY parsers, and developer extension recipes.',
+    icon: 'code',
+    badgeColor: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30'
   }
 ];
 
@@ -788,6 +801,144 @@ export const WORSHIP_GUIDE_SECTIONS: GuideSection[] = [
         ["GitHub Repository", "https://github.com/Neshley/derrick-munene", "Star the project, report issues, and view open source code"]
       ]
     }
+  },
+
+  // =========================================================================
+  // CATEGORY 5: DEVELOPER & ARCHITECTURE GUIDE (Chapters 31 - 38)
+  // =========================================================================
+  {
+    id: "dev-architecture-overview",
+    title: "Chapter 31: System Architecture & Visual Signal Flow",
+    category: "Developer & Architecture",
+    level: 1,
+    summary: "Complete full-stack architectural map connecting React 19, Web Audio DSP, Web MIDI, Arranger Sequencer, and Node.js Express server.",
+    image: {
+      url: "/docs/images/system_architecture_diagram.jpg",
+      caption: "Figure 1: DM ARRANGIA Full-Stack System Architecture Diagram"
+    },
+    content: [
+      "DM ARRANGIA is architected across three core tiers to ensure sub-15 millisecond latency, robust stability, and complete server-side credential isolation:",
+      "1. Client UI & State Tier (React 19, Tailwind CSS 4, Motion): Houses responsive arranger controls, Yamaha-styled LCD monitors, 8-track mixers, touch/mouse keyboard, and modal dialogs.",
+      "2. Real-Time Audio & Hardware Services (Web Audio API & Web MIDI API): Executes multi-oscillator subtractive/FM sound generation, CASM/NTT chord transpositions, 8-track accompaniment scheduling, and physical USB/Bluetooth MIDI event processing.",
+      "3. Full-Stack Express Backend (Node.js 22, Express, Vite, Google Gemini AI): Serves the Vite SPA in production, manages rate-limited /api/ai/* endpoints, protects secret GEMINI_API_KEY tokens, and validates outputs with Zod schemas.",
+      "• Client Port & Routing: In container environments, the Express server binds strictly to 0.0.0.0 on Port 3000.\n• Development Mode: Vite dev server runs as internal Express middleware with fast on-the-fly TypeScript compilation.\n• Production Mode: Standalone CommonJS bundle (dist/server.cjs) compiled by esbuild serving optimized Vite static bundles."
+    ],
+    tips: [
+      "Refer to /ARCHITECTURE_AND_DEVELOPER_GUIDE.md in the project root for full technical diagrams, code listings, and deployment configuration."
+    ]
+  },
+  {
+    id: "dev-console-layout",
+    title: "Chapter 32: Workstation Console Anatomy & Hardware Routing",
+    category: "Developer & Architecture",
+    level: 1,
+    summary: "Physical console layout mapping mimicking the Yamaha Genos, Tyros, and PSR flagship arranger series.",
+    image: {
+      url: "/docs/images/console_layout_guide.jpg",
+      caption: "Figure 2: Hardware-Style Arranger Console Layout & Signal Routing Map"
+    },
+    content: [
+      "The workstation user interface is organized following time-tested hardware arranger ergonomics:",
+      "1. Top Master Bar: Master volume slider, panic all-notes-off button, view mode switch (Studio vs Live Performance), and Workstation / Media Player switcher.",
+      "2. Center Retro LCD Display: Real-time readout of active style name, tempo BPM, time signature, detected chord, arranger section, and measure beat counter.",
+      "3. Arranger Transport Section: Hardware-styled push buttons for Intro 1-3, Main Variations A-D, Auto-Fills AA-DD, Break, and Ending 1-3.",
+      "4. Real-Time Multi-Pads: 4 velocity-sensitive pads triggering synced musical phrases, brass stabs, harp glissandos, and shakers.",
+      "5. 8-Track Accompaniment Mixer: Dedicated faders, stereo pan, reverb sends, and mute/solo toggles for Rhythm 1, Rhythm 2, Bass, Chord 1, Chord 2, Pad, Phrase 1, and Phrase 2.",
+      "6. Virtual Keyboard & Split Point: 61-key piano with illuminated note markers and a draggable chord split point (default C3 / MIDI 48)."
+    ]
+  },
+  {
+    id: "dev-audio-dsp-pipeline",
+    title: "Chapter 33: Web Audio DSP Pipeline & Microsecond Lookahead Clock",
+    category: "Developer & Architecture",
+    level: 1,
+    summary: "AudioContext node graph routing and two-tier lookahead scheduling engine that eliminates browser timer jitter.",
+    image: {
+      url: "/docs/images/audio_dsp_pipeline.jpg",
+      caption: "Figure 3: Web Audio DSP Node Routing Graph & Two-Tier Scheduling Engine"
+    },
+    content: [
+      "Standard browser timers (setTimeout and setInterval) suffer from severe thread jitter when the UI repaints or background tabs throttle. DM ARRANGIA solves this using a two-tier lookahead scheduler:",
+      "• Tier 1 (JavaScript Heartbeat): A 25ms timer routinely queries the musical playback position and scans ahead 100 milliseconds into the future.",
+      "• Tier 2 (Hardware AudioContext Clock): Notes, drum hits, and parameter envelopes are dispatched directly to the hardware audio thread using AudioContext.currentTime, achieving sub-millisecond precision.",
+      "Audio Node Graph Routing:",
+      "Oscillator / Noise Source ──► ADSR GainNode ──► BiquadFilter ──► StereoPanner ──► Track Bus ──► Dry/Wet Send ──► Master 3-Band Parametric EQ ──► Dynamics Limiter ──► AudioContext.destination."
+    ],
+    tips: [
+      "Inspect src/audio/audioEngine.ts to examine how audio nodes are created, pooled, and cleaned up to prevent memory leaks."
+    ]
+  },
+  {
+    id: "dev-yamaha-sty-parser",
+    title: "Chapter 34: Yamaha .STY Binary Parser & Section State Machine",
+    category: "Developer & Architecture",
+    level: 2,
+    summary: "Reverse-engineered binary parsing of Yamaha Style File Format (SFF1/SFF2) files with CASM and NTT chord transposition.",
+    content: [
+      "Yamaha .STY files are standard MIDI files wrapped with specialized arranger metadata chunks:",
+      "• CASM (Channel Assignment & Style Modification): Defines which MIDI channels control which accompaniment parts (Rhythm, Bass, Chord, Pad, Phrase).",
+      "• NTT (Note Transposition Table): Converts source pattern notes into the live chord requested by the keyboardist using musical voice-leading algorithms.",
+      "• Arranger Section State Machine: Handles smooth musical transitions between Intro (1-3), Main (A-D), Fill (AA-DD), Break, and Ending (1-3).",
+      "• Auto-Fill Logic: When transitioning from Main A to Main B, the engine automatically schedules Fill AA for the remaining beats of the current measure before landing on Main B on beat 1."
+    ]
+  },
+  {
+    id: "dev-chord-midi-engine",
+    title: "Chapter 35: Real-Time Chord Detection & Hardware Web MIDI",
+    category: "Developer & Architecture",
+    level: 2,
+    summary: "Polyphonic chord detection, interval bitmasking, single-finger mode, and Web MIDI hardware controller mapping.",
+    content: [
+      "The Chord Engine (src/audio/chordEngine.ts) continuously gathers active MIDI notes pressed below the split point:",
+      "1. Root Normalization: Notes are converted to pitch classes (0-11 modulo 12).",
+      "2. Bass Identification: The lowest active note determines inversions and slash chords (e.g. C/E, G/B).",
+      "3. Interval Matching: Semitone differences are matched against bitmasks for Major, Minor, 7th, Maj7, Min7, Dim, Aug, Sus2, Sus4, Add9, and 6th chords.",
+      "4. Web MIDI API (src/midi/midiManager.ts): Auto-detects connected USB/BLE keyboards, normalizes channel messages, maps Sustain Pedal (CC 64) with acoustic damper noise, and routes Pitch Bend."
+    ]
+  },
+  {
+    id: "dev-server-ai-security",
+    title: "Chapter 36: Full-Stack Express Server & Gemini AI Security Pipeline",
+    category: "Developer & Architecture",
+    level: 2,
+    summary: "Server-side proxy pattern, rate limiting, Zod schema validation, and offline music theory fallbacks.",
+    content: [
+      "To ensure maximum security and protect developer secrets, all AI capabilities use a strict server-side proxy pattern:",
+      "• Never Client-Side: GEMINI_API_KEY is stored in server-side environment variables and is never exposed in browser bundles.",
+      "• Rate Limiting: A sliding window rate limiter protects endpoints against spam (30 requests/min per IP with automatic eviction).",
+      "• Timeout Wrapper: 20-second timeout race prevents hung HTTP connections.",
+      "• Zod Output Validation: All AI responses are validated against rigorous schemas in src/server/aiSchemas.ts.",
+      "• Algorithmic Fallbacks: If no API key is provided or the server is offline, intelligent client-side music algorithms provide instant style and chord generation."
+    ]
+  },
+  {
+    id: "dev-developer-cookbook",
+    title: "Chapter 37: Developer Cookbook: Extending Voices, Styles, Multi-Pads & APIs",
+    category: "Developer & Architecture",
+    level: 2,
+    summary: "Concrete step-by-step developer recipes for adding custom voices, styles, multi-pad banks, and backend endpoints.",
+    content: [
+      "Step 1: Adding a New Voice: Open src/audio/voiceBank.ts. Add a new VoiceDefinition with unique ID, name, category, and synth parameters (oscillatorType, attack, decay, sustain, release, filterCutoff, reverbSend).",
+      "Step 2: Adding a New Built-in Style: Open src/audio/builtInStyles.ts. Define an ArrangerStyle with ID, tempo, timeSignature, and 8-track note events for main_a, fill_aa, intro_1, and ending_1.",
+      "Step 3: Adding a Multi-Pad Bank: Open src/audio/multiPads.ts. Register a new bank with 4 pad definitions containing delay, duration, velocity, and note events.",
+      "Step 4: Adding a New Server API Route: Open src/server/aiRouter.ts. Register a new POST endpoint, sanitize inputs, call the Gemini SDK, validate with Zod, and return JSON."
+    ],
+    tips: [
+      "Review /ARCHITECTURE_AND_DEVELOPER_GUIDE.md for complete, copy-pasteable TypeScript recipes for each of these tasks."
+    ]
+  },
+  {
+    id: "dev-maintenance-mandate",
+    title: "Chapter 38: Testing, Bundling & The Documentation Maintenance Mandate",
+    category: "Developer & Architecture",
+    level: 1,
+    summary: "Test suite execution, esbuild production compilation, and the standing rule to update all documentation on every code change.",
+    content: [
+      "• Vitest Test Suite: Run 'npm test' to verify 15 test suites covering audio graphs, chord detection, MIDI parsing, and API security.",
+      "• TypeScript Linting: Run 'npm run lint' (tsc --noEmit) to ensure 100% type safety across both frontend and backend.",
+      "• Production Build: Run 'npm run build' to bundle the Vite client SPA and compile server.ts into dist/server.cjs.",
+      "• The Documentation Maintenance Contract: Whenever any feature, voice, style, API route, or UI component is modified or created, both ARCHITECTURE_AND_DEVELOPER_GUIDE.md and README.md must be updated in lockstep to keep all developer guides current and complete."
+    ]
   }
 ];
 

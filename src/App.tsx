@@ -43,6 +43,7 @@ import { StartupLoadingScreen } from './components/StartupLoadingScreen';
 import { DesktopTitleBar } from './components/DesktopTitleBar';
 import { addMultiPadBank } from './audio/multiPads';
 import { applyThemeToDom, getStoredSystemSettings } from './utils/systemSettings';
+import { GuideCategory } from './utils/worshipGuideContent';
 import { 
   processIncomingFile, 
   initLaunchQueueConsumer, 
@@ -228,6 +229,7 @@ export default function App() {
   const [isChordSeqModalOpen, setIsChordSeqModalOpen] = useState(false);
   const [isMidiHelpModalOpen, setIsMidiHelpModalOpen] = useState(false);
   const [isUserGuideModalOpen, setIsUserGuideModalOpen] = useState(false);
+  const [userGuideCategory, setUserGuideCategory] = useState<GuideCategory | 'All Topics'>('Getting Started');
   const [isCreatorModalOpen, setIsCreatorModalOpen] = useState(false);
   const [isPrayerModalOpen, setIsPrayerModalOpen] = useState(false);
   const [isEffectsModalOpen, setIsEffectsModalOpen] = useState(false);
@@ -1458,6 +1460,7 @@ export default function App() {
       <UserGuideModal
         isOpen={isUserGuideModalOpen}
         onClose={() => setIsUserGuideModalOpen(false)}
+        initialCategory={userGuideCategory}
         onOpenCreatorMessage={() => {
           setIsUserGuideModalOpen(false);
           setIsCreatorModalOpen(true);
@@ -1584,6 +1587,12 @@ export default function App() {
         }}
         onOpenUserGuide={() => {
           setIsSettingsModalOpen(false);
+          setUserGuideCategory('Getting Started');
+          setIsUserGuideModalOpen(true);
+        }}
+        onOpenDeveloperGuide={() => {
+          setIsSettingsModalOpen(false);
+          setUserGuideCategory('Developer & Architecture');
           setIsUserGuideModalOpen(true);
         }}
         onOpenCreatorMessage={() => {

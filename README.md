@@ -104,6 +104,26 @@
 
 ---
 
+## 📖 Complete Technical Architecture & Developer Handbook
+
+For a comprehensive deep dive into the engineering, DSP pipeline, Yamaha SFF1/SFF2 binary parser, and developer contribution guides, see the master guide:
+👉 **[Master Architecture & Developer Guide (ARCHITECTURE_AND_DEVELOPER_GUIDE.md)](./ARCHITECTURE_AND_DEVELOPER_GUIDE.md)**
+
+Inside the running application, this documentation is also accessible via the **Settings (⚙️) ➔ About Tab ➔ "Developer Guide"** or directly in the **Worship Guide ➔ "Developer & Architecture"** section.
+
+### Visual Architecture & Diagrams
+
+#### 1. System Architecture Diagram
+![DM ARRANGIA System Architecture](/public/docs/images/system_architecture_diagram.jpg)
+
+#### 2. Arranger Workstation Console Layout
+![DM ARRANGIA Console Layout](/public/docs/images/console_layout_guide.jpg)
+
+#### 3. Web Audio DSP & Multi-Bus Signal Pipeline
+![DM ARRANGIA Web Audio DSP Pipeline](/public/docs/images/audio_dsp_pipeline.jpg)
+
+---
+
 ## 🏛️ Architecture & System Design
 
 ```
