@@ -32,6 +32,12 @@ const RATE_LIMIT_WINDOW_MS = 60 * 1000; // 1 minute
 const MAX_REQUESTS_PER_WINDOW = 30; // 30 AI requests per minute
 const MAX_RATE_LIMIT_ENTRIES = 10000; // Cap map size to prevent memory exhaustion DoS
 
+function getModelText(response: unknown): string {
+  if (!response || typeof response !== 'object') return '';
+  const text = (response as { text?: unknown }).text;
+  return typeof text === 'string' ? text : '';
+}
+
 export function clearRateLimits() {
   ipRateLimits.clear();
 }
@@ -172,7 +178,7 @@ aiRouter.get('/ai/status', async (req: Request, res: Response) => {
       8000
     );
 
-    const validation = processStatusOutput(response.text);
+    const validation = processStatusOutput(getModelText(response));
     if (!validation.success) {
       console.warn('[AI Validation Error] /ai/status:', validation.safeDiagnostics?.issues?.join('; ') || 'Status check failed');
       return res.json({
@@ -215,7 +221,7 @@ aiRouter.post('/ai/validate-key', async (req: Request, res: Response) => {
       }),
       8000
     );
-    const validation = processStatusOutput(response.text);
+    const validation = processStatusOutput(getModelText(response));
     if (validation.success) {
       return res.json({ success: true, message: 'Server-side Gemini AI is active!' });
     }
@@ -284,7 +290,7 @@ Allowed voices: piano, bright_piano, dx_epiano, epiano, organ, rotary_organ, slo
     );
 
     // AI response -> JSON parsing -> schema validation -> sanitization -> range clamping -> application
-    const pipelineResult = processStyleOutput(response.text);
+    const pipelineResult = processStyleOutput(getModelText(response));
 
     if (!pipelineResult.success) {
       console.warn('[AI Validation Error] /ai/generate-style:', pipelineResult.safeDiagnostics?.issues?.join('; ') || 'Style validation failed');
@@ -359,7 +365,7 @@ Return ONLY valid JSON with this exact schema (no additional properties):
     );
 
     // AI response -> JSON parsing -> schema validation -> sanitization -> range clamping -> application
-    const pipelineResult = processChordsOutput(response.text);
+    const pipelineResult = processChordsOutput(getModelText(response));
 
     if (!pipelineResult.success) {
       console.warn('[AI Validation Error] /ai/generate-chords:', pipelineResult.safeDiagnostics?.issues?.join('; ') || 'Chords validation failed');
@@ -436,7 +442,7 @@ Allowed voices: piano, bright_piano, dx_epiano, epiano, organ, rotary_organ, slo
     );
 
     // AI response -> JSON parsing -> schema validation -> sanitization -> range clamping -> application
-    const pipelineResult = processSongOutput(response.text);
+    const pipelineResult = processSongOutput(getModelText(response));
 
     if (!pipelineResult.success) {
       console.warn('[AI Validation Error] /ai/generate-song:', pipelineResult.safeDiagnostics?.issues?.join('; ') || 'Song validation failed');
@@ -521,7 +527,7 @@ Allowed waveforms: sine, square, sawtooth, triangle.`;
     );
 
     // AI response -> JSON parsing -> schema validation -> sanitization -> range clamping -> application
-    const pipelineResult = processVoiceOutput(response.text);
+    const pipelineResult = processVoiceOutput(getModelText(response));
 
     if (!pipelineResult.success) {
       console.warn('[AI Validation Error] /ai/generate-voice:', pipelineResult.safeDiagnostics?.issues?.join('; ') || 'Voice validation failed');
@@ -598,7 +604,7 @@ Allowed delay timeModes: short, medium, long, dotted_eighth, triplet.`;
       })
     );
 
-    const pipelineResult = processMixOutput(response.text);
+    const pipelineResult = processMixOutput(getModelText(response));
     if (!pipelineResult.success) {
       console.warn('[AI Validation Error] /ai/generate-mix:', pipelineResult.safeDiagnostics?.issues?.join('; ') || 'Mix validation failed');
       return res.status(422).json({
@@ -694,7 +700,7 @@ Allowed types: synth_stab, orchestra_hit, harp_gliss, brass_hit, drum_fill, perc
       })
     );
 
-    const pipelineResult = processMultiPadsOutput(response.text);
+    const pipelineResult = processMultiPadsOutput(getModelText(response));
     if (!pipelineResult.success) {
       console.warn('[AI Validation Error] /ai/generate-multipads:', pipelineResult.safeDiagnostics?.issues?.join('; ') || 'Multipads validation failed');
       return res.status(422).json({
@@ -769,7 +775,7 @@ Allowed suggestedSections: intro_1, intro_2, intro_3, intro_a, intro_b, intro_c,
       })
     );
 
-    const pipelineResult = processDirectorSuggestionOutput(response.text);
+    const pipelineResult = processDirectorSuggestionOutput(getModelText(response));
     if (!pipelineResult.success) {
       console.warn('[AI Validation Error] /ai/director-suggestion:', pipelineResult.safeDiagnostics?.issues?.join('; ') || 'Director suggestion validation failed');
       return res.status(422).json({
@@ -845,7 +851,7 @@ Provide a concise, practical 2-sentence response with musical tips or chord reco
       })
     );
 
-    const pipelineResult = processDirectorChatOutput(response.text);
+    const pipelineResult = processDirectorChatOutput(getModelText(response));
     if (!pipelineResult.success) {
       console.warn('[AI Validation Error] /ai/director-chat:', pipelineResult.safeDiagnostics?.issues?.join('; ') || 'Director chat validation failed');
       return res.status(422).json({

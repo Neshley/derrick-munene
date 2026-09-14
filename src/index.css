@@ -505,9 +505,27 @@ select:not([multiple]) optgroup {
   color: #f4f4f5;
 }
 
+select:not([multiple]) option:checked,
+select:not([multiple]) option:hover {
+  background: #27272a;
+  color: var(--control-accent);
+}
+
 select:not([multiple]) optgroup {
   color: #a1a1aa;
   font-weight: 700;
+}
+
+/* Keep form controls visually stable inside flex/grid layouts. */
+select:not([multiple]),
+input:not([type="range"]),
+textarea {
+  box-sizing: border-box;
+  min-width: 0;
+}
+
+select:not([multiple])::selection {
+  background: transparent;
 }
 
 /* Small hardware selectors can remain compact without losing the arrow or

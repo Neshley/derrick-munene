@@ -92,22 +92,49 @@ function clamp7(value: number): number {
   return Math.max(0, Math.min(127, Math.round(value)));
 }
 
-function noteLimitForTrack(track: TrackType): { ntr: number; ntt: number; high: number; low: number; rtr: number } {
+/** Yamaha SFF/CASM enumerations used by the Universal profile. */
+const NTR = { ROOT_TRANS: 0, ROOT_FIXED: 1, GUITAR: 2, BYPASS: 3 } as const;
+const NTT = { BYPASS: 0, MELODY: 1, CHORD: 2, BASS: 3, MELODIC_MINOR: 4, HARMONIC_MINOR: 5 } as const;
+const RTR = { STOP: 0, PITCH_SHIFT: 1, PITCH_SHIFT_TO_ROOT: 2, RETRIGGER: 3, RETRIGGER_TO_ROOT: 4, NOTE_GENERATOR: 5 } as const;
+
+interface CasmTrackConfig {
+  ntr: number;
+  ntt: number;
+  highKey: number;
+  low: number;
+  high: number;
+  rtr: number;
+}
+
+function casmConfig(track: TrackType): CasmTrackConfig {
   switch (track) {
-    case 'bass': return { ntr: 0, ntt: 3, high: 60, low: 24, rtr: 2 };
+    case 'bass':
+      return { ntr: NTR.ROOT_TRANS, ntt: NTT.BASS, highKey: 60, low: 24, high: 60, rtr: RTR.PITCH_SHIFT_TO_ROOT };
     case 'chord1':
-    case 'chord2': return { ntr: 0, ntt: 2, high: 84, low: 36, rtr: 1 };
-    case 'pad': return { ntr: 0, ntt: 2, high: 96, low: 36, rtr: 1 };
+    case 'chord2':
+      return { ntr: NTR.ROOT_TRANS, ntt: NTT.CHORD, highKey: 84, low: 36, high: 84, rtr: RTR.PITCH_SHIFT };
+    case 'pad':
+      return { ntr: NTR.ROOT_TRANS, ntt: NTT.CHORD, highKey: 96, low: 36, high: 96, rtr: RTR.PITCH_SHIFT };
     case 'phrase1':
-    case 'phrase2': return { ntr: 3, ntt: 1, high: 96, low: 36, rtr: 3 };
-    default: return { ntr: 3, ntt: 0, high: 127, low: 0, rtr: 0 };
+    case 'phrase2':
+      return { ntr: NTR.BYPASS, ntt: NTT.MELODY, highKey: 96, low: 36, high: 96, rtr: RTR.RETRIGGER };
+    default:
+      return { ntr: NTR.BYPASS, ntt: NTT.BYPASS, highKey: 127, low: 0, high: 127, rtr: RTR.STOP };
   }
 }
 
-/** Build a conservative Yamaha Ctab (27-byte channel table). */
+/**
+ * Build a verified 27-byte Yamaha Ctab layout.
+ *
+ * The important fields are deliberately kept in their Yamaha positions:
+ * source/destination channel, note/chord mute masks, source chord, NTR/NTT,
+ * high key, note limits and RTR. A previous implementation placed the
+ * transposition fields three bytes too early, which could make an otherwise
+ * valid-looking style behave incorrectly on hardware.
+ */
 function buildCtab(track: TrackType): number[] {
   const ch = TRACK_CHANNELS[track];
-  const limits = noteLimitForTrack(track);
+  const cfg = casmConfig(track);
   const isRhythm = track === 'rhythm1' || track === 'rhythm2';
   const names: Record<TrackType, string> = {
     rhythm1: 'Rhythm1 ', rhythm2: 'Rhythm2 ', bass: 'Bass ', chord1: 'Chord1 ',
@@ -115,44 +142,48 @@ function buildCtab(track: TrackType): number[] {
   };
 
   const body = new Array<number>(27).fill(0);
-  body[0] = ch;
+  body[0] = ch & 0x0f;
   body.splice(1, 8, ...pad8(names[track]));
-  body[9] = ch;
-  body[10] = 1;
+  body[9] = ch & 0x0f;
+  body[10] = 1; // editable
+  // Note mute: 12 bits, MSB first. Zero means audible.
   body[11] = 0x0f;
   body[12] = 0xff;
+  // Chord mute: rhythm plays regardless of chord; melodic parts follow chord.
   body[13] = isRhythm ? 0x07 : 0x03;
   body[14] = 0xff;
   body[15] = 0xff;
   body[16] = 0xff;
   body[17] = 0xff;
-  body[18] = 0; // source chord root: C
-  body[19] = 2; // source chord type used by Yamaha styles
-  body[20] = limits.ntr;
-  body[21] = limits.ntt;
-  body[22] = limits.high;
-  body[23] = limits.low;
-  body[24] = limits.high === 127 ? 127 : limits.high;
-  body[25] = limits.rtr;
+  body[18] = 0; // source chord root C
+  body[19] = 2; // source chord type (Yamaha common M7 source)
+  body[20] = cfg.ntr;
+  body[21] = cfg.ntt & 0x7f;
+  body[22] = cfg.highKey & 0x7f;
+  body[23] = cfg.low & 0x7f;
+  body[24] = cfg.high & 0x7f;
+  body[25] = cfg.rtr;
   body[26] = 0;
   return chunk('Ctab', body);
 }
 
-/**
- * Universal mode intentionally omits Cntt. Cntt is optional and is not
- * supported cleanly by some older Yamaha models; the bass NTT is already
- * represented in Ctab. This keeps the CASM conservative for SFF1 targets.
- */
+/** Cntt carries the NTT and bass-on flag used by real keyboard-loadable styles. */
+function buildCntt(track: TrackType): number[] {
+  const ch = TRACK_CHANNELS[track];
+  const cfg = casmConfig(track);
+  const isBass = track === 'bass';
+  return chunk('Cntt', [ch & 0x0f, (cfg.ntt & 0x7f) | (isBass ? 0x80 : 0)]);
+}
 
 function buildCasm(): number[] {
-  // Three CSEG groups mirror the grouping used by real Yamaha styles and keep
-  // the section map manageable on older/newer arrangers alike.
+  // Keep sections partitioned into multiple CSEG blocks, matching the way
+  // Yamaha styles commonly group their section policies. Every group carries
+  // the same eight accompaniment channel policies so all sections are covered.
   const groups: StyleSection[][] = [
-    ['main_a', 'main_b', 'main_c', 'fill_aa', 'fill_bb', 'fill_cc', 'intro_a', 'ending_a'],
-    ['main_d', 'fill_dd', 'break'],
+    ['main_a', 'main_b', 'main_c', 'fill_aa', 'fill_bb', 'fill_cc', 'intro_a', 'ending_a', 'break'],
+    ['main_d', 'fill_dd'],
     ['intro_b', 'intro_c', 'ending_b', 'ending_c'],
   ];
-
   const tracks: TrackType[] = ['rhythm2', 'rhythm1', 'bass', 'chord1', 'chord2', 'pad', 'phrase1', 'phrase2'];
   const segments: number[] = [];
 
@@ -161,9 +192,9 @@ function buildCasm(): number[] {
     const payload: number[] = [];
     payload.push(...chunk('Sdec', strBytes(names)));
     for (const track of tracks) payload.push(...buildCtab(track));
+    for (const track of tracks) payload.push(...buildCntt(track));
     segments.push(...chunk('CSEG', payload));
   }
-
   return chunk('CASM', segments);
 }
 
@@ -174,7 +205,7 @@ function sectionLengthTicks(section: StyleSectionData, num: number, den: number)
 }
 
 function defaultSectionLengthTicks(style: ArrangerStyle, sec: StyleSectionData): number {
-  const [num, den] = style.timeSignature || [4, 4];
+  const [num, den] = sec.timeSignature || style.timeSignature || [4, 4];
   return sectionLengthTicks(sec, num || 4, den || 4);
 }
 
@@ -183,13 +214,15 @@ function addNoteEvents(
   sectionStart: number,
   track: TrackType,
   pattern: StyleSectionData['tracks'][TrackType],
+  sectionSteps: number,
 ) {
   const channel = TRACK_CHANNELS[track];
   for (const ev of pattern.notes || []) {
-    const step = Math.max(0, Number(ev.step) || 0);
+    const step = Math.max(0, Math.min(sectionSteps - 1, Number(ev.step) || 0));
     const duration = Math.max(1, Number(ev.duration) || 1);
     const start = sectionStart + Math.round(step * SIXTEENTH);
-    const length = Math.max(SIXTEENTH / 2, Math.round(duration * SIXTEENTH - 10));
+    const maxDuration = Math.max(1, sectionSteps - step);
+    const length = Math.max(SIXTEENTH / 2, Math.min(maxDuration * SIXTEENTH - 10, Math.round(duration * SIXTEENTH - 10)));
     const note = clamp7(ev.note);
     const velocity = clamp7(ev.velocity || 100) || 1;
     events.push({ tick: start, order: 20, bytes: [0x90 | channel, note, velocity] });
@@ -239,6 +272,8 @@ function buildSmfTrack(style: ArrangerStyle): number[] {
     const secData = style.sections[section];
     const marker = SECTION_MARKERS[section];
     events.push({ tick: cursor, order: 0, bytes: meta(0x06, marker) });
+    // Yamaha tools commonly pair the section marker with an fn: text event.
+    events.push({ tick: cursor, order: 1, bytes: meta(0x01, `fn:${marker}\0`) });
 
     if (secData) {
       const tracks: TrackType[] = ['rhythm2', 'rhythm1', 'bass', 'chord1', 'chord2', 'pad', 'phrase1', 'phrase2'];
@@ -246,7 +281,11 @@ function buildSmfTrack(style: ArrangerStyle): number[] {
         const pattern = secData.tracks[track];
         if (!pattern) continue;
         addTrackSetup(events, cursor, track, pattern);
-        if (!pattern.muted) addNoteEvents(events, cursor, track, pattern);
+        if (!pattern.muted) {
+          const sectionMeasures = Math.max(1, Math.floor(secData.measures || 1));
+          const sectionSteps = sectionMeasures * 16;
+          addNoteEvents(events, cursor, track, pattern, sectionSteps);
+        }
       }
       cursor += defaultSectionLengthTicks(style, secData);
     } else {
@@ -283,9 +322,14 @@ function buildSmf(style: ArrangerStyle): number[] {
   ];
 }
 
-/** Basic structural check used before a Universal Yamaha download. */
-export function validateUniversalYamahaStyle(buffer: Uint8Array): { ok: boolean; errors: string[] } {
+/**
+ * Strict structural validation used before a Universal Yamaha download.
+ * This does not replace physical keyboard testing, but it catches malformed
+ * SMF/CASM containers and mismatched section maps before the user exports.
+ */
+export function validateUniversalYamahaStyle(buffer: Uint8Array): { ok: boolean; errors: string[]; warnings: string[] } {
   const errors: string[] = [];
+  const warnings: string[] = [];
   const ascii = (text: string) => strBytes(text);
   const contains = (needle: number[]) => {
     outer: for (let i = 0; i <= buffer.length - needle.length; i++) {
@@ -294,17 +338,95 @@ export function validateUniversalYamahaStyle(buffer: Uint8Array): { ok: boolean;
     }
     return false;
   };
+  const u32 = (offset: number) => offset + 4 <= buffer.length
+    ? (((buffer[offset] << 24) >>> 0) | (buffer[offset + 1] << 16) | (buffer[offset + 2] << 8) | buffer[offset + 3]) >>> 0
+    : -1;
 
   if (buffer.length < 64) errors.push('Style file is too small.');
-  if (!contains(ascii('MThd'))) errors.push('Missing Standard MIDI header.');
-  if (!contains(ascii('MTrk'))) errors.push('Missing MIDI track.');
+  if (String.fromCharCode(...buffer.subarray(0, 4)) !== 'MThd') errors.push('Missing Standard MIDI header.');
+  const headerLength = u32(4);
+  if (headerLength !== 6) errors.push(`Unexpected MIDI header length: ${headerLength}.`);
+  const format = buffer.length >= 10 ? (buffer[8] << 8) | buffer[9] : -1;
+  const tracks = buffer.length >= 12 ? (buffer[10] << 8) | buffer[11] : -1;
+  const division = buffer.length >= 14 ? (buffer[12] << 8) | buffer[13] : -1;
+  if (format !== 0) errors.push('Universal Yamaha export must use SMF Format 0.');
+  if (tracks !== 1) errors.push('Universal Yamaha export must contain one conductor track.');
+  if (division <= 0 || division > 0x7fff) errors.push('Invalid MIDI PPQ division.');
+  if (buffer.length < 22 || String.fromCharCode(...buffer.subarray(14, 18)) !== 'MTrk') errors.push('Missing MIDI track.');
+
+  const trackLength = u32(18);
+  const trackEnd = trackLength >= 0 ? 22 + trackLength : -1;
+  if (trackEnd < 22 || trackEnd > buffer.length) errors.push('MIDI track length exceeds file size.');
+  if (trackEnd > 0 && !contains([0xff, 0x2f, 0x00])) warnings.push('MIDI End-of-Track event was not found by byte scan.');
+
   if (!contains(ascii('SFF1'))) errors.push('Missing SFF1 marker.');
   if (!contains(ascii('SInt'))) errors.push('Missing SInt marker.');
   if (!contains(ascii('CASM'))) errors.push('Missing CASM compatibility block.');
   if (!contains(ascii('CSEG'))) errors.push('Missing CASM CSEG.');
-  if (!contains(ascii('Sdec'))) errors.push('Missing CASM Sdec.');
+  if (!contains(ascii('Sdec'))) errors.push('Missing CASM Sdec section map.');
   if (!contains(ascii('Ctab'))) errors.push('Missing Yamaha Ctab channel tables.');
-    return { ok: errors.length === 0, errors };
+  if (!contains(ascii('Cntt'))) warnings.push('No Cntt channel metadata found; bass-on/NTT behavior may be less reliable on some models.');
+
+  const casmOffset = (() => {
+    for (let i = Math.max(0, trackEnd > 0 ? trackEnd - 16 : 0); i <= buffer.length - 8; i++) {
+      if (buffer[i] === 0x43 && buffer[i + 1] === 0x41 && buffer[i + 2] === 0x53 && buffer[i + 3] === 0x4d) return i;
+    }
+    return -1;
+  })();
+
+  if (casmOffset >= 0) {
+    const casmSize = u32(casmOffset + 4);
+    const casmEnd = casmSize >= 0 ? casmOffset + 8 + casmSize : -1;
+    if (casmEnd > buffer.length) {
+      errors.push('CASM chunk length exceeds file size.');
+    } else if (casmSize < 32) {
+      warnings.push('CASM chunk is unusually small.');
+    } else {
+      let p = casmOffset + 8;
+      let csegCount = 0;
+      while (p + 8 <= casmEnd) {
+        const id = String.fromCharCode(...buffer.subarray(p, p + 4));
+        const size = u32(p + 4);
+        if (size < 0 || p + 8 + size > casmEnd) {
+          errors.push(`Malformed CASM child chunk near byte ${p}.`);
+          break;
+        }
+        if (id === 'CSEG') {
+          csegCount++;
+          let q = p + 8;
+          const qEnd = q + size;
+          let hasSdec = false;
+          let ctabCount = 0;
+          let cnttCount = 0;
+          while (q + 8 <= qEnd) {
+            const child = String.fromCharCode(...buffer.subarray(q, q + 4));
+            const childSize = u32(q + 4);
+            if (childSize < 0 || q + 8 + childSize > qEnd) {
+              errors.push(`Malformed CSEG child near byte ${q}.`);
+              break;
+            }
+            if (child === 'Sdec') hasSdec = childSize > 0;
+            if (child === 'Ctab') {
+              if (childSize !== 27) errors.push(`Ctab has invalid payload size ${childSize}; expected 27.`);
+              ctabCount++;
+            }
+            if (child === 'Cntt') {
+              if (childSize !== 2) errors.push(`Cntt has invalid payload size ${childSize}; expected 2.`);
+              cnttCount++;
+            }
+            q += 8 + childSize;
+          }
+          if (!hasSdec) errors.push(`CSEG ${csegCount} is missing Sdec.`);
+          if (ctabCount !== 8) errors.push(`CSEG ${csegCount} has ${ctabCount} Ctab tables; expected 8.`);
+          if (cnttCount !== 8) errors.push(`CSEG ${csegCount} has ${cnttCount} Cntt tables; expected 8.`);
+        }
+        p += 8 + size;
+      }
+      if (csegCount !== 3) warnings.push(`CASM contains ${csegCount} CSEG groups; Universal profile normally emits 3.`);
+    }
+  }
+
+  return { ok: errors.length === 0, errors, warnings };
 }
 
 export class StyleMidiExporter {
