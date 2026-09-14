@@ -75,6 +75,9 @@ describe('Universal Yamaha style exporter', () => {
     expect(report.casmSegments).toBe(15);
     expect(report.ctabTables).toBe(120);
     expect(report.cnttTables).toBe(120);
+    expect(report.diagnostics).toHaveLength(120);
+    expect(report.diagnostics.every(item => item.valid)).toBe(true);
+    expect(new Set(report.diagnostics.map(item => item.destinationChannel))).toEqual(new Set([8, 9, 10, 11, 12, 13, 14, 15]));
   });
 
   it('keeps the universal profile free of model-specific audio chunks', () => {

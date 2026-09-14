@@ -426,6 +426,21 @@ export function validateUniversalYamahaStyle(buffer: Uint8Array): { ok: boolean;
   return { ok: errors.length === 0, errors, warnings };
 }
 
+export interface YamahaCtabDiagnostic {
+  section: StyleSection;
+  sourceChannel: number;
+  destinationChannel: number;
+  track: TrackType | null;
+  ntr: number;
+  ntt: number;
+  highKey: number;
+  lowNote: number;
+  highNote: number;
+  rtr: number;
+  valid: boolean;
+  warnings: string[];
+}
+
 export interface YamahaCompatibilityReport {
   profile: 'Universal Yamaha SFF1';
   format: 'SMF Format 0';
@@ -434,6 +449,7 @@ export interface YamahaCompatibilityReport {
   casmSegments: number;
   ctabTables: number;
   cnttTables: number;
+  diagnostics: YamahaCtabDiagnostic[];
   errors: string[];
   warnings: string[];
   ok: boolean;
@@ -445,6 +461,78 @@ export function inspectUniversalYamahaStyle(buffer: Uint8Array): YamahaCompatibi
   const ppq = buffer.length >= 14 ? ((buffer[12] << 8) | buffer[13]) : 0;
   const text = new TextDecoder().decode(buffer);
   const count = (needle: string) => text.split(needle).length - 1;
+  const diagnostics: YamahaCtabDiagnostic[] = [];
+  const warnings = [...validation.warnings];
+  const trackByDestination: Record<number, TrackType> = {
+    8: 'rhythm2', 9: 'rhythm1', 10: 'bass', 11: 'chord1',
+    12: 'chord2', 13: 'pad', 14: 'phrase1', 15: 'phrase2',
+  };
+  const sectionByName: Record<string, StyleSection> = Object.fromEntries(
+    FULL_SECTIONS.map(section => [SECTION_MARKERS[section].toLowerCase(), section]),
+  );
+  const readU32 = (at: number) => at + 4 <= buffer.length
+    ? (((buffer[at] << 24) >>> 0) | (buffer[at + 1] << 16) | (buffer[at + 2] << 8) | buffer[at + 3]) >>> 0
+    : -1;
+  const readText = (at: number, length: number) => new TextDecoder().decode(buffer.subarray(at, Math.min(buffer.length, at + length))).replace(/\0/g, '').trim().toLowerCase();
+
+  const casmOffset = (() => {
+    for (let i = 0; i + 8 <= buffer.length; i++) {
+      if (buffer[i] === 0x43 && buffer[i + 1] === 0x41 && buffer[i + 2] === 0x53 && buffer[i + 3] === 0x4d) return i;
+    }
+    return -1;
+  })();
+
+  if (casmOffset >= 0) {
+    const casmSize = readU32(casmOffset + 4);
+    const casmEnd = casmSize >= 0 ? Math.min(buffer.length, casmOffset + 8 + casmSize) : -1;
+    let p = casmOffset + 8;
+    while (casmEnd >= 0 && p + 8 <= casmEnd) {
+      const id = String.fromCharCode(...buffer.subarray(p, p + 4));
+      const size = readU32(p + 4);
+      if (size < 0 || p + 8 + size > casmEnd) break;
+      if (id === 'CSEG') {
+        const end = p + 8 + size;
+        let q = p + 8;
+        let section: StyleSection | null = null;
+        while (q + 8 <= end) {
+          const child = String.fromCharCode(...buffer.subarray(q, q + 4));
+          const childSize = readU32(q + 4);
+          if (childSize < 0 || q + 8 + childSize > end) break;
+          if (child === 'Sdec') section = sectionByName[readText(q + 8, childSize)] ?? null;
+          if (child === 'Ctab' && childSize === 27 && section) {
+            const b = q + 8;
+            const sourceChannel = buffer[b] & 0x0f;
+            const destinationChannel = buffer[b + 9] & 0x0f;
+            const ntr = buffer[b + 20] & 0x7f;
+            const ntt = buffer[b + 21] & 0x7f;
+            const highKey = buffer[b + 22] & 0x7f;
+            const lowNote = buffer[b + 23] & 0x7f;
+            const highNote = buffer[b + 24] & 0x7f;
+            const rtr = buffer[b + 25] & 0x7f;
+            const track = trackByDestination[destinationChannel] ?? null;
+            const rowWarnings: string[] = [];
+            if (!track) rowWarnings.push(`Destination channel ${destinationChannel + 1} is outside Yamaha accompaniment channels 9–16.`);
+            if (lowNote > highNote) rowWarnings.push('Note-limit low value is above high value.');
+            if (highKey > 127) rowWarnings.push('High-key value exceeds MIDI range.');
+            if (![0, 1, 2, 3].includes(ntr)) rowWarnings.push(`Unknown NTR value ${ntr}.`);
+            if (![0, 1, 2, 3, 4, 5].includes(ntt)) rowWarnings.push(`Unknown NTT value ${ntt}.`);
+            if (![0, 1, 2, 3, 4, 5].includes(rtr)) rowWarnings.push(`Unknown RTR value ${rtr}.`);
+            diagnostics.push({ section, sourceChannel, destinationChannel, track, ntr, ntt, highKey, lowNote, highNote, rtr, valid: rowWarnings.length === 0, warnings: rowWarnings });
+          }
+          q += 8 + childSize;
+        }
+      }
+      p += 8 + size;
+    }
+  }
+
+  const destinationSet = new Set(diagnostics.map(d => d.destinationChannel));
+  for (const track of Object.keys(YAMAHA_UNIVERSAL_PROFILE) as TrackType[]) {
+    const destination = YAMAHA_UNIVERSAL_PROFILE[track].channel;
+    if (!destinationSet.has(destination)) warnings.push(`Universal profile track ${track} has no CASM destination mapping.`);
+  }
+  for (const diagnostic of diagnostics) warnings.push(...diagnostic.warnings.map(w => `${diagnostic.section}: ${w}`));
+
   return {
     profile: 'Universal Yamaha SFF1',
     format: 'SMF Format 0',
@@ -453,9 +541,10 @@ export function inspectUniversalYamahaStyle(buffer: Uint8Array): YamahaCompatibi
     casmSegments: count('CSEG'),
     ctabTables: count('Ctab'),
     cnttTables: count('Cntt'),
+    diagnostics,
     errors: validation.errors,
-    warnings: validation.warnings,
-    ok: validation.ok,
+    warnings: [...new Set(warnings)],
+    ok: validation.ok && diagnostics.every(d => d.valid),
   };
 }
 
