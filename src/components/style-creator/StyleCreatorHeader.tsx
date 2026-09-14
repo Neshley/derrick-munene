@@ -254,8 +254,8 @@ export const StyleCreatorHeader: React.FC<StyleCreatorHeaderProps> = ({
                 >
                   <Download className="w-4 h-4 text-indigo-400" />
                   <div>
-                    <div className="font-bold">Export Yamaha .STY</div>
-                    <div className="text-[10px] text-zinc-400">For Genos, Tyros, PSR, MIDI DAWs</div>
+                    <div className="font-bold">Universal Yamaha SFF1 .STY</div>
+                    <div className="text-[10px] text-zinc-400">Maximum Yamaha compatibility</div>
                   </div>
                 </button>
 
@@ -365,7 +365,7 @@ export const StyleCreatorHeader: React.FC<StyleCreatorHeaderProps> = ({
                   className="w-full text-left px-2.5 py-2 rounded-lg hover:bg-zinc-800 text-zinc-200 flex items-center gap-2 cursor-pointer"
                 >
                   <Download className="w-4 h-4 text-indigo-400" />
-                  <span>Export Yamaha .STY</span>
+                  <span>Universal Yamaha SFF1 .STY</span>
                 </button>
 
                 <button
