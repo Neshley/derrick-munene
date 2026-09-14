@@ -247,6 +247,9 @@ export class StyParser {
       const trackLength = data.getUint32(offset);
       offset += 4;
       const trackEnd = offset + trackLength;
+      if (trackEnd > data.byteLength) {
+        throw new Error(`Invalid MIDI track ${t + 1}: track data exceeds file size.`);
+      }
 
       let currentTick = 0;
       let lastStatus = 0;
@@ -254,7 +257,8 @@ export class StyParser {
 
       while (offset < trackEnd && offset < data.byteLength) {
         // Read delta time
-        const { value: delta, bytesRead } = this.readVarInt(data, offset);
+        const { value: delta, bytesRead } = this.readVarInt(data, offset, trackEnd);
+        if (bytesRead === 0) break;
         offset += bytesRead;
         currentTick += delta;
 
@@ -262,7 +266,10 @@ export class StyParser {
 
         let status = data.getUint8(offset);
         if (status < 0x80) {
-          // Running status: current byte is first data byte
+          // Running status: the current byte is the first data byte. A data
+          // byte without a preceding channel status is malformed; stop this
+          // track rather than getting stuck on the same byte forever.
+          if (lastStatus < 0x80 || lastStatus >= 0xf0) break;
           status = lastStatus;
         } else {
           offset++;
@@ -272,13 +279,30 @@ export class StyParser {
         const eventType = status & 0xf0;
         const channel = status & 0x0f;
 
+        // System-common/realtime events are not part of the arranger note
+        // model. Consume their documented data bytes when encountered so a
+        // valid MIDI stream cannot desynchronise the parser.
+        if (status >= 0xf1 && status <= 0xfe) {
+          lastStatus = 0;
+          if (status === 0xf1 || status === 0xf3) {
+            if (offset + 1 > trackEnd) break;
+            offset += 1;
+          } else if (status === 0xf2) {
+            if (offset + 2 > trackEnd) break;
+            offset += 2;
+          }
+          continue;
+        }
+
         if (status === 0xff) {
           // Meta Event
           lastStatus = 0; // Meta events cancel running status
           if (offset >= data.byteLength) break;
           const metaType = data.getUint8(offset++);
-          const { value: metaLen, bytesRead: metaLenBytes } = this.readVarInt(data, offset);
+          const { value: metaLen, bytesRead: metaLenBytes } = this.readVarInt(data, offset, trackEnd);
+          if (metaLenBytes === 0 || offset + metaLenBytes > trackEnd) break;
           offset += metaLenBytes;
+          if (offset + metaLen > trackEnd) break;
 
           if (metaType === 0x51 && metaLen === 3 && offset + 3 <= data.byteLength) {
             // Set Tempo event
@@ -305,11 +329,12 @@ export class StyParser {
         } else if (status === 0xf0 || status === 0xf7) {
           // SysEx event
           lastStatus = 0;
-          const { value: sysexLen, bytesRead: sysexBytes } = this.readVarInt(data, offset);
+          const { value: sysexLen, bytesRead: sysexBytes } = this.readVarInt(data, offset, trackEnd);
+          if (sysexBytes === 0 || offset + sysexBytes + sysexLen > trackEnd) break;
           offset += sysexBytes + sysexLen;
         } else if (eventType === 0x90) {
           // Note On
-          if (offset + 1 >= data.byteLength) break;
+          if (offset + 1 >= trackEnd) break;
           const note = data.getUint8(offset++);
           const velocity = data.getUint8(offset++);
           const key = `${channel}_${note}`;
@@ -330,7 +355,7 @@ export class StyParser {
           }
         } else if (eventType === 0x80) {
           // Note Off
-          if (offset + 1 >= data.byteLength) break;
+          if (offset + 1 >= trackEnd) break;
           const note = data.getUint8(offset++);
           offset++; // Skip release velocity
           const key = `${channel}_${note}`;
@@ -348,7 +373,7 @@ export class StyParser {
           }
         } else if (eventType === 0xc0) {
           // Program change
-          if (offset >= data.byteLength) break;
+          if (offset >= trackEnd) break;
           const program = data.getUint8(offset++);
           channelPrograms.set(channel, program);
           rawEventsByChannel.get(channel)?.push({
@@ -361,15 +386,17 @@ export class StyParser {
           });
         } else if (eventType === 0xb0) {
           // Control change
-          if (offset + 1 >= data.byteLength) break;
+          if (offset + 1 >= trackEnd) break;
           const ccNumber = data.getUint8(offset++);
           const ccValue = data.getUint8(offset++);
           if (ccNumber === 7) channelVolumes.set(channel, ccValue);
           if (ccNumber === 10) channelPans.set(channel, ccValue - 64);
           if (ccNumber === 91) channelReverbs.set(channel, ccValue);
         } else if (eventType === 0xe0 || eventType === 0xa0) {
+          if (offset + 2 > trackEnd) break;
           offset += 2;
         } else if (eventType === 0xd0) {
+          if (offset + 1 > trackEnd) break;
           offset += 1;
         }
       }
@@ -735,14 +762,16 @@ export class StyParser {
     return str;
   }
 
-  private static readVarInt(data: DataView, offset: number): { value: number; bytesRead: number } {
+  private static readVarInt(data: DataView, offset: number, limit: number = data.byteLength): { value: number; bytesRead: number } {
     let value = 0;
     let bytesRead = 0;
     let byte = 0;
+    // MIDI VLQs are at most four bytes. Refusing longer values prevents
+    // malformed files from causing integer overflow or scanning past a track.
     do {
-      if (offset + bytesRead >= data.byteLength) break;
+      if (offset + bytesRead >= limit || bytesRead >= 4) return { value: 0, bytesRead: 0 };
       byte = data.getUint8(offset + bytesRead);
-      value = (value << 7) | (byte & 0x7f);
+      value = (value * 128) + (byte & 0x7f);
       bytesRead++;
     } while (byte & 0x80);
 

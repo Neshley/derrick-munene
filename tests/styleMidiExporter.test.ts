@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { StyleMidiExporter, validateUniversalYamahaStyle } from '../src/audio/styleMidiExporter';
+import { StyleMidiExporter, YAMAHA_UNIVERSAL_PROFILE, inspectUniversalYamahaStyle, validateUniversalYamahaStyle } from '../src/audio/styleMidiExporter';
 import { ArrangerStyle, StyleSection, TrackType } from '../src/types/arranger';
 
 const tracks: TrackType[] = ['rhythm1', 'rhythm2', 'bass', 'chord1', 'chord2', 'pad', 'phrase1', 'phrase2'];
@@ -64,6 +64,19 @@ describe('Universal Yamaha style exporter', () => {
     expect((text.match(/Sdec/g) || []).length).toBe(15);
   });
 
+  it('exposes a stable Yamaha track profile and compatibility report', () => {
+    expect(YAMAHA_UNIVERSAL_PROFILE.rhythm1.channel).toBe(9);
+    expect(YAMAHA_UNIVERSAL_PROFILE.bass.ntt).toBe(3);
+    const report = inspectUniversalYamahaStyle(StyleMidiExporter.exportToStyBuffer(makeFixture()));
+    expect(report.ok).toBe(true);
+    expect(report.profile).toBe('Universal Yamaha SFF1');
+    expect(report.format).toBe('SMF Format 0');
+    expect(report.ppq).toBe(480);
+    expect(report.casmSegments).toBe(15);
+    expect(report.ctabTables).toBe(120);
+    expect(report.cnttTables).toBe(120);
+  });
+
   it('keeps the universal profile free of model-specific audio chunks', () => {
     const buffer = StyleMidiExporter.exportToStyBuffer(makeFixture());
     const text = new TextDecoder('latin1').decode(buffer);
@@ -71,6 +84,25 @@ describe('Universal Yamaha style exporter', () => {
     expect(text.includes('AFil')).toBe(false);
     expect(text.includes('AWav')).toBe(false);
   });
+
+  it('rejects malformed CASM child lengths instead of accepting a corrupt style', () => {
+    const buffer = StyleMidiExporter.exportToStyBuffer(makeFixture());
+    const casm = new TextDecoder('latin1').decode(buffer);
+    const casmOffset = casm.indexOf('CASM');
+    expect(casmOffset).toBeGreaterThan(0);
+    const broken = new Uint8Array(buffer);
+    // Locate the first CSEG payload length and make it exceed the containing CASM chunk.
+    const cseg = casm.indexOf('CSEG', casmOffset + 4);
+    expect(cseg).toBeGreaterThan(casmOffset);
+    broken[cseg + 4] = 0x7f;
+    broken[cseg + 5] = 0xff;
+    broken[cseg + 6] = 0xff;
+    broken[cseg + 7] = 0xff;
+    const result = validateUniversalYamahaStyle(broken);
+    expect(result.ok).toBe(false);
+    expect(result.errors.some(error => /CASM|CSEG/i.test(error))).toBe(true);
+  });
+
 });
 
 it('round-trips the exported style through the Yamaha parser without losing CASM-mapped tracks', async () => {

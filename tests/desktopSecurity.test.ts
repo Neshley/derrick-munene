@@ -262,7 +262,7 @@ describe('Desktop Security Architecture & Path Validation', () => {
 
       const caps = getDesktopCapabilities();
       expect(caps.isDesktop).toBe(true);
-      expect(caps.version).toBe('2.7.1');
+      expect(caps.version).toBe('2.8.0');
       expect(caps.hasFilesystem).toBe(true);
       expect(caps.hasWindowControls).toBe(true);
       expect(caps.hasMidiBridge).toBe(false);

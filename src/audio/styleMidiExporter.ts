@@ -28,16 +28,7 @@ const FULL_SECTIONS: StyleSection[] = [
 ];
 
 // Yamaha accompaniment channels, zero based: MIDI 9..16.
-const TRACK_CHANNELS: Record<TrackType, number> = {
-  rhythm2: 8,
-  rhythm1: 9,
-  bass: 10,
-  chord1: 11,
-  chord2: 12,
-  pad: 13,
-  phrase1: 14,
-  phrase2: 15,
-};
+const TRACK_CHANNELS: Record<TrackType, number> = { rhythm2: 8, rhythm1: 9, bass: 10, chord1: 11, chord2: 12, pad: 13, phrase1: 14, phrase2: 15 };
 
 const VOICE_TO_GM: Record<string, number> = {
   piano: 0, bright_piano: 1, honky_tonk: 3, epiano: 4, dx_epiano: 5, clavinet: 7,
@@ -97,6 +88,16 @@ const NTR = { ROOT_TRANS: 0, ROOT_FIXED: 1, GUITAR: 2, BYPASS: 3 } as const;
 const NTT = { BYPASS: 0, MELODY: 1, CHORD: 2, BASS: 3, MELODIC_MINOR: 4, HARMONIC_MINOR: 5 } as const;
 const RTR = { STOP: 0, PITCH_SHIFT: 1, PITCH_SHIFT_TO_ROOT: 2, RETRIGGER: 3, RETRIGGER_TO_ROOT: 4, NOTE_GENERATOR: 5 } as const;
 
+export interface YamahaCasmTrackProfile {
+  channel: number;
+  ntr: number;
+  ntt: number;
+  highKey: number;
+  lowNote: number;
+  highNote: number;
+  rtr: number;
+}
+
 interface CasmTrackConfig {
   ntr: number;
   ntt: number;
@@ -106,21 +107,21 @@ interface CasmTrackConfig {
   rtr: number;
 }
 
+/** Public compatibility profile: one stable Yamaha accompaniment policy per track. */
+export const YAMAHA_UNIVERSAL_PROFILE: Readonly<Record<TrackType, YamahaCasmTrackProfile>> = {
+  rhythm2: { channel: 8, ntr: NTR.BYPASS, ntt: NTT.BYPASS, highKey: 127, lowNote: 0, highNote: 127, rtr: RTR.STOP },
+  rhythm1: { channel: 9, ntr: NTR.BYPASS, ntt: NTT.BYPASS, highKey: 127, lowNote: 0, highNote: 127, rtr: RTR.STOP },
+  bass: { channel: 10, ntr: NTR.ROOT_TRANS, ntt: NTT.BASS, highKey: 60, lowNote: 24, highNote: 60, rtr: RTR.PITCH_SHIFT_TO_ROOT },
+  chord1: { channel: 11, ntr: NTR.ROOT_TRANS, ntt: NTT.CHORD, highKey: 84, lowNote: 36, highNote: 84, rtr: RTR.PITCH_SHIFT },
+  chord2: { channel: 12, ntr: NTR.ROOT_TRANS, ntt: NTT.CHORD, highKey: 84, lowNote: 36, highNote: 84, rtr: RTR.PITCH_SHIFT },
+  pad: { channel: 13, ntr: NTR.ROOT_TRANS, ntt: NTT.CHORD, highKey: 96, lowNote: 36, highNote: 96, rtr: RTR.PITCH_SHIFT },
+  phrase1: { channel: 14, ntr: NTR.BYPASS, ntt: NTT.MELODY, highKey: 96, lowNote: 36, highNote: 96, rtr: RTR.RETRIGGER },
+  phrase2: { channel: 15, ntr: NTR.BYPASS, ntt: NTT.MELODY, highKey: 96, lowNote: 36, highNote: 96, rtr: RTR.RETRIGGER },
+};
+
 function casmConfig(track: TrackType): CasmTrackConfig {
-  switch (track) {
-    case 'bass':
-      return { ntr: NTR.ROOT_TRANS, ntt: NTT.BASS, highKey: 60, low: 24, high: 60, rtr: RTR.PITCH_SHIFT_TO_ROOT };
-    case 'chord1':
-    case 'chord2':
-      return { ntr: NTR.ROOT_TRANS, ntt: NTT.CHORD, highKey: 84, low: 36, high: 84, rtr: RTR.PITCH_SHIFT };
-    case 'pad':
-      return { ntr: NTR.ROOT_TRANS, ntt: NTT.CHORD, highKey: 96, low: 36, high: 96, rtr: RTR.PITCH_SHIFT };
-    case 'phrase1':
-    case 'phrase2':
-      return { ntr: NTR.BYPASS, ntt: NTT.MELODY, highKey: 96, low: 36, high: 96, rtr: RTR.RETRIGGER };
-    default:
-      return { ntr: NTR.BYPASS, ntt: NTT.BYPASS, highKey: 127, low: 0, high: 127, rtr: RTR.STOP };
-  }
+  const profile = YAMAHA_UNIVERSAL_PROFILE[track];
+  return { ntr: profile.ntr, ntt: profile.ntt, highKey: profile.highKey, low: profile.lowNote, high: profile.highNote, rtr: profile.rtr };
 }
 
 /**
@@ -423,6 +424,39 @@ export function validateUniversalYamahaStyle(buffer: Uint8Array): { ok: boolean;
   }
 
   return { ok: errors.length === 0, errors, warnings };
+}
+
+export interface YamahaCompatibilityReport {
+  profile: 'Universal Yamaha SFF1';
+  format: 'SMF Format 0';
+  ppq: number;
+  sections: number;
+  casmSegments: number;
+  ctabTables: number;
+  cnttTables: number;
+  errors: string[];
+  warnings: string[];
+  ok: boolean;
+}
+
+/** Lightweight machine-readable report for UI/export diagnostics. */
+export function inspectUniversalYamahaStyle(buffer: Uint8Array): YamahaCompatibilityReport {
+  const validation = validateUniversalYamahaStyle(buffer);
+  const ppq = buffer.length >= 14 ? ((buffer[12] << 8) | buffer[13]) : 0;
+  const text = new TextDecoder().decode(buffer);
+  const count = (needle: string) => text.split(needle).length - 1;
+  return {
+    profile: 'Universal Yamaha SFF1',
+    format: 'SMF Format 0',
+    ppq,
+    sections: FULL_SECTIONS.length,
+    casmSegments: count('CSEG'),
+    ctabTables: count('Ctab'),
+    cnttTables: count('Cntt'),
+    errors: validation.errors,
+    warnings: validation.warnings,
+    ok: validation.ok,
+  };
 }
 
 export class StyleMidiExporter {
