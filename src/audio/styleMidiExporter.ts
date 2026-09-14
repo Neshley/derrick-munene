@@ -257,7 +257,8 @@ function buildSmfTrack(style: ArrangerStyle): number[] {
   events.push({ tick: 0, order: 4, bytes: meta(0x01, `DM ARRANGIA Universal Yamaha | ${style.category}`) });
   events.push({ tick: 0, order: 5, bytes: meta(0x06, 'SInt') });
   // Standard GM System On makes the setup deterministic on broad Yamaha families.
-  events.push({ tick: 0, order: 6, bytes: [0xf0, 0x7e, 0x7f, 0x09, 0x01, 0xf7] });
+  // SMF SysEx events carry a VLQ payload length after F0.
+  events.push({ tick: 0, order: 6, bytes: [0xf0, 0x05, 0x7e, 0x7f, 0x09, 0x01, 0xf7] });
 
   // One setup bar precedes style content. Yamaha style documentation places SFF1
   // and SInt in measure 1; actual Intro/Main/etc. patterns begin in measure 2.

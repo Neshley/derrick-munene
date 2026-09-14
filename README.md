@@ -471,3 +471,12 @@ Your contributions directly fund:
 
 This project is licensed under the [MIT License](LICENSE).  
 Developed with passion by **Derrick Munene** for musicians, church worship teams, and producers worldwide.
+
+## 2.7.1 Yamaha compatibility hardening
+
+- Fixed the exported SMF System Exclusive event to include its required payload-length VLQ, preventing MIDI parsers from losing synchronization after the setup block.
+- Yamaha CASM imports now read section-specific `Ctab` source/destination mappings when available, while retaining the previous fixed MIDI 9–16 fallback for simpler files.
+- Section marker parsing now accepts Yamaha `Fill In BA` as the Break section and safely strips NUL terminators from marker text.
+- Added exporter/parser round-trip coverage so generated Universal Yamaha styles can be imported back without losing mapped accompaniment notes.
+
+These changes are intentionally additive: the existing Universal Yamaha export profile, Style Creator UI, audio engine, and security controls are preserved. Physical keyboard validation is still required before claiming compatibility with a particular Yamaha model.

@@ -386,6 +386,77 @@ export class StyParser {
       });
     }
 
+    // Parse embedded Yamaha CASM after the declared MIDI tracks.
+    // Some real Yamaha styles use source channels other than MIDI 9-16 and
+    // remap them to the eight accompaniment destinations through Ctab.
+    // Keep this additive: fixed 9-16 mapping remains the fallback for simple
+    // styles that have no usable CASM map.
+    const casmChannelMaps: Partial<Record<StyleSection, Map<number, TrackType>>> = {};
+    const standardDestinationTracks: Record<number, TrackType> = {
+      8: 'rhythm2', 9: 'rhythm1', 10: 'bass', 11: 'chord1',
+      12: 'chord2', 13: 'pad', 14: 'phrase1', 15: 'phrase2',
+    };
+    const normalizeCasmSection = (text: string): StyleSection | null => {
+      const clean = text.replace(/[:\-_]+/g, ' ').replace(/\s+/g, ' ').trim().toLowerCase();
+      const aliases: Record<string, StyleSection> = {
+        'intro a': 'intro_a', 'intro b': 'intro_b', 'intro c': 'intro_c',
+        'main a': 'main_a', 'main b': 'main_b', 'main c': 'main_c', 'main d': 'main_d',
+        'fill in aa': 'fill_aa', 'fill in bb': 'fill_bb', 'fill in cc': 'fill_cc', 'fill in dd': 'fill_dd',
+        'fill in ba': 'break', 'break': 'break',
+        'ending a': 'ending_a', 'ending b': 'ending_b', 'ending c': 'ending_c',
+      };
+      return aliases[clean] ?? null;
+    };
+
+    const readU32At = (at: number): number =>
+      at + 4 <= data.byteLength ? data.getUint32(at) : -1;
+
+    while (offset + 8 <= data.byteLength) {
+      const chunkType = this.readString(data, offset, 4);
+      const chunkSize = readU32At(offset + 4);
+      if (chunkSize < 0 || offset + 8 + chunkSize > data.byteLength) break;
+      if (chunkType === 'CASM') {
+        const casmEnd = offset + 8 + chunkSize;
+        let csegOffset = offset + 8;
+        while (csegOffset + 8 <= casmEnd) {
+          const childType = this.readString(data, csegOffset, 4);
+          const childSize = readU32At(csegOffset + 4);
+          if (childSize < 0 || csegOffset + 8 + childSize > casmEnd) break;
+          if (childType === 'CSEG') {
+            const csegEnd = csegOffset + 8 + childSize;
+            let q = csegOffset + 8;
+            let sectionKey: StyleSection | null = null;
+            const entries: { source: number; destination: number }[] = [];
+            while (q + 8 <= csegEnd) {
+              const subType = this.readString(data, q, 4);
+              const subSize = readU32At(q + 4);
+              if (subSize < 0 || q + 8 + subSize > csegEnd) break;
+              if (subType === 'Sdec' && subSize > 0) {
+                sectionKey = normalizeCasmSection(this.readString(data, q + 8, subSize));
+              } else if (subType === 'Ctab' && subSize >= 10) {
+                const source = data.getUint8(q + 8) & 0x0f;
+                const destination = data.getUint8(q + 17) & 0x0f;
+                entries.push({ source, destination });
+              }
+              q += 8 + subSize;
+            }
+            if (sectionKey && entries.length) {
+              const map = new Map<number, TrackType>();
+              for (const entry of entries) {
+                const track = standardDestinationTracks[entry.destination];
+                if (track) map.set(entry.source, track);
+              }
+              if (map.size) casmChannelMaps[sectionKey] = map;
+            }
+          }
+          csegOffset += 8 + childSize;
+        }
+        offset = casmEnd;
+      } else {
+        offset += 8 + chunkSize;
+      }
+    }
+
     // Comprehensive Yamaha SFF Section Marker Patterns (PSR, Tyros, Genos, Clavinova)
     const standardSectionMatchers: { pattern: RegExp; key: StyleSection }[] = [
       // Fills first
@@ -393,7 +464,7 @@ export class StyParser {
       { pattern: /^(fill\s*(in\s*)?bb?\b|fill_?bb?\b|fill\s*2\b|\bfb\b|fill_b\b|f_b\b)/i, key: 'fill_bb' },
       { pattern: /^(fill\s*(in\s*)?cc?\b|fill_?cc?\b|fill\s*3\b|\bfc\b|fill_c\b|f_c\b)/i, key: 'fill_cc' },
       { pattern: /^(fill\s*(in\s*)?dd?\b|fill_?dd?\b|fill\s*4\b|\bfd\b|fill_d\b|f_d\b)/i, key: 'fill_dd' },
-      { pattern: /^(break|brk|fill\s*break|fill_break|breakdown)/i, key: 'break' },
+      { pattern: /^(break|brk|fill\s*break|fill_break|fill\s*in\s*ba|breakdown)/i, key: 'break' },
       
       // Main Variations
       { pattern: /^(main\s*a\b|main_?a\b|main\s*1\b|\bma\b|pattern\s*a\b|var(iation)?\s*a\b|m_a\b)/i, key: 'main_a' },
@@ -419,7 +490,7 @@ export class StyParser {
 
     for (let i = 0; i < markers.length; i++) {
       const m = markers[i];
-      const cleanText = m.text.replace(/[:\-_\s]+/g, ' ').trim();
+      const cleanText = m.text.replace(/\0/g, '').replace(/[:\-_\s]+/g, ' ').trim();
 
       for (const matcher of standardSectionMatchers) {
         if (matcher.pattern.test(cleanText) || matcher.pattern.test(m.text)) {
@@ -465,7 +536,7 @@ export class StyParser {
     // MIDI Ch 14 (index 13): Pad
     // MIDI Ch 15 (index 14): Phrase 1
     // MIDI Ch 16 (index 15): Phrase 2
-    const channelToTrackType: Record<number, TrackType> = standardChannelsHaveNotes ? {
+    const fallbackChannelToTrackType: Record<number, TrackType> = standardChannelsHaveNotes ? {
       9: 'rhythm1',
       8: 'rhythm2',
       10: 'bass',
@@ -576,7 +647,13 @@ export class StyParser {
         },
       };
 
-      // Extract note events for each style track in this section window
+      // Extract note events for each style track in this section window.
+      // Prefer the section-specific CASM source-channel map; fall back to the
+      // legacy fixed-channel behavior when CASM is absent or incomplete.
+      const sectionChannelMap = casmChannelMaps[sec.key];
+      const channelToTrackType: Record<number, TrackType> = sectionChannelMap
+        ? Object.fromEntries(sectionChannelMap.entries()) as Record<number, TrackType>
+        : fallbackChannelToTrackType;
       for (const [chan, trackType] of Object.entries(channelToTrackType)) {
         const ch = parseInt(chan);
         const events = rawEventsByChannel.get(ch) || [];

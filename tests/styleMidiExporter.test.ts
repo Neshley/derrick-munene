@@ -72,3 +72,16 @@ describe('Universal Yamaha style exporter', () => {
     expect(text.includes('AWav')).toBe(false);
   });
 });
+
+it('round-trips the exported style through the Yamaha parser without losing CASM-mapped tracks', async () => {
+  const { StyParser } = await import('../src/audio/styParser');
+  const source = makeFixture();
+  const buffer = StyleMidiExporter.exportToStyBuffer(source);
+  const parsed = StyParser.parseStyBuffer(buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength), source.name);
+
+  expect(parsed.tempo).toBe(120);
+  expect(parsed.timeSignature).toEqual([4, 4]);
+  expect(parsed.sections.main_a?.measures).toBe(2);
+  expect(parsed.sections.main_a?.tracks.rhythm1.notes.length).toBeGreaterThan(0);
+  expect(parsed.sections.break).toBeDefined();
+});

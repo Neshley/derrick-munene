@@ -80,7 +80,7 @@ contextBridge.exposeInMainWorld('desktopBridge', {
   isDesktop: true,
   platform: normalizedPlatform,
   arch: process.arch,
-  version: '2.7.0',
+  version: '2.7.1',
 
   window: windowControls,
   filesystem,
