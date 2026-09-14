@@ -38,7 +38,8 @@ export const StyleCreatorTrackMixer: React.FC<StyleCreatorTrackMixerProps> = ({
   const activeNoteCount = activeTrack.notes?.length || 0;
 
   return (
-    <>
+    <div className="style-creator-mixer">
+      <>
       {/* MOBILE COMPACT TRACK BAR (md:hidden) */}
       <div className="md:hidden bg-zinc-900 border-b border-zinc-800 px-3 py-1.5 select-none">
         <div className="flex items-center justify-between gap-2">
@@ -310,6 +311,7 @@ export const StyleCreatorTrackMixer: React.FC<StyleCreatorTrackMixerProps> = ({
           })}
         </div>
       </div>
-    </>
+      </>
+    </div>
   );
 };

@@ -38,7 +38,7 @@ export const StyleCreatorTransport: React.FC<StyleCreatorTransportProps> = ({
   const currentBeatInBar = (Math.floor((currentStep % stepsPerBar) / 4) + 1);
 
   return (
-    <div className="bg-zinc-950 border-b border-zinc-800 px-3 sm:px-4 py-2 flex items-center justify-between gap-2.5 flex-wrap shrink-0 select-none">
+    <div className="style-creator-transport bg-zinc-950 border-b border-zinc-800 px-3 sm:px-4 py-2 flex items-center justify-between gap-2.5 flex-wrap shrink-0 select-none">
       
       {/* Left: Playback & Audition Controls */}
       <div className="flex items-center gap-2 flex-wrap">

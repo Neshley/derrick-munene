@@ -411,6 +411,122 @@ export const PHRASE_PATTERN_PRESETS: PatternPresetOption[] = [
 /**
  * Creates a complete blank ArrangerStyle initialized with all 15 sections ready for editing
  */
+
+/**
+ * Builds a production-oriented starter style from the existing musical presets.
+ * The generator deliberately uses original transformations (velocity, octave,
+ * density and fills) instead of copying one loop into every section.
+ */
+export function generateProStyle(
+  name: string = 'DM Worship Pro Groove',
+  category: ArrangerStyle['category'] = 'Worship & Praise',
+  tempo: number = 112,
+  timeSignature: [number, number] = [4, 4],
+): ArrangerStyle {
+  const base = createNewBlankStyle(name, category);
+  base.tempo = Math.max(60, Math.min(220, tempo));
+  base.timeSignature = timeSignature;
+  base.description = 'Original DM ARRANGIA generated arranger style with structured variations, fills, intros and endings.';
+
+  const clone = (notes: NoteEvent[]): NoteEvent[] => notes.map(n => ({ ...n }));
+  const pick = <T extends PatternPresetOption>(list: T[], id: string) => list.find(x => x.id === id) ?? list[0];
+  const drum = pick(DRUM_PATTERN_PRESETS, 'gospel_praise_swing').notes;
+  const african = pick(DRUM_PATTERN_PRESETS, 'african_makossa_groove').notes;
+  const fill = pick(DRUM_PATTERN_PRESETS, 'snare_fill_roll').notes;
+  const bass = pick(BASS_PATTERN_PRESETS, 'bass_gospel_walk').notes;
+  const africanBass = pick(BASS_PATTERN_PRESETS, 'bass_african_makossa').notes;
+  const chord = pick(CHORD_PATTERN_PRESETS, 'chord_rhodes_comp').notes;
+  const strum = pick(CHORD_PATTERN_PRESETS, 'chord_acoustic_strum').notes;
+
+  const shift = (notes: NoteEvent[], steps: number, velocity = 1, octave = 0): NoteEvent[] =>
+    notes.map(n => ({
+      ...n,
+      step: Math.max(0, n.step + steps),
+      note: Math.max(0, Math.min(127, n.note + octave)),
+      velocity: Math.max(35, Math.min(127, Math.round(n.velocity * velocity))),
+    }));
+
+  const thin = (notes: NoteEvent[], every: number): NoteEvent[] => notes.filter((_, i) => i % every !== every - 1);
+  const accent = (notes: NoteEvent[], amount: number): NoteEvent[] => notes.map((n, i) => ({
+    ...n,
+    velocity: Math.max(35, Math.min(127, n.velocity + (i % 4 === 0 ? amount : 0))),
+  }));
+
+  const setTrack = (section: StyleSection, track: TrackType, notes: NoteEvent[], voice?: string) => {
+    const sec = base.sections[section];
+    if (!sec) return;
+    sec.tracks[track].notes = clone(notes);
+    if (voice) sec.tracks[track].voiceId = voice;
+  };
+
+  // Main variations: each has a distinct density/texture.
+  setTrack('main_a', 'rhythm1', accent(drum, 5));
+  setTrack('main_a', 'rhythm2', shift(thin(african, 2), 0, .78), 'drums');
+  setTrack('main_a', 'bass', bass, 'bass_electric');
+  setTrack('main_a', 'chord1', chord, 'epiano');
+  setTrack('main_a', 'chord2', thin(strum, 2), 'guitar_acoustic');
+  setTrack('main_a', 'pad', [{ note: 48, step: 0, duration: 15, velocity: 62, isChordNote: true }], 'strings');
+
+  setTrack('main_b', 'rhythm1', accent(african, 4));
+  setTrack('main_b', 'rhythm2', shift(drum, 1, .72), 'drums');
+  setTrack('main_b', 'bass', africanBass, 'bass_electric');
+  setTrack('main_b', 'chord1', shift(chord, 0, .95), 'epiano');
+  setTrack('main_b', 'chord2', shift(strum, 1, .82), 'guitar_acoustic');
+  setTrack('main_b', 'phrase1', shift(chord.slice(0, 6), 2, .75, 12), 'synth_pluck');
+
+  setTrack('main_c', 'rhythm1', accent(shift(drum, 0, 1.04), 7));
+  setTrack('main_c', 'rhythm2', african, 'drums');
+  setTrack('main_c', 'bass', shift(africanBass, 0, 1.04), 'bass_electric');
+  setTrack('main_c', 'chord1', shift(chord, 0, 1.02), 'epiano');
+  setTrack('main_c', 'chord2', strum, 'guitar_acoustic');
+  setTrack('main_c', 'pad', [{ note: 48, step: 0, duration: 31, velocity: 55, isChordNote: true }], 'strings');
+  setTrack('main_c', 'phrase1', shift(chord.slice(0, 9), 0, .78, 12), 'synth_pluck');
+
+  setTrack('main_d', 'rhythm1', accent(shift(african, 0, 1.08), 9));
+  setTrack('main_d', 'rhythm2', accent(shift(drum, 2, .86), 5), 'drums');
+  setTrack('main_d', 'bass', accent(africanBass, 4), 'bass_electric');
+  setTrack('main_d', 'chord1', accent(chord, 5), 'epiano');
+  setTrack('main_d', 'chord2', accent(strum, 3), 'guitar_acoustic');
+  setTrack('main_d', 'phrase1', shift(fill, 8, .65, 12), 'synth_pluck');
+
+  // Fills/breaks are deliberately one-bar and use clear transitions.
+  for (const [section, offset, gain] of [
+    ['fill_aa', 0, .92], ['fill_bb', 4, 1.0], ['fill_cc', 8, 1.08], ['fill_dd', 12, 1.16],
+  ] as const) {
+    setTrack(section, 'rhythm1', shift(fill, offset, gain));
+    setTrack(section, 'rhythm2', shift(thin(african, 2), offset, .72));
+    setTrack(section, 'bass', shift(bass.slice(-4), offset, .88), 'bass_electric');
+    setTrack(section, 'chord1', shift(chord.slice(-6), offset, .75), 'epiano');
+  }
+  setTrack('break', 'rhythm1', [{ note: 49, step: 0, duration: 2, velocity: 118 }, { note: 38, step: 12, duration: 1, velocity: 108 }, { note: 49, step: 15, duration: 1, velocity: 124 }]);
+  setTrack('break', 'bass', [{ note: 36, step: 0, duration: 8, velocity: 100, isBassNote: true }], 'bass_electric');
+
+  // Intros/endings get their own contour instead of being clones of Main A.
+  setTrack('intro_a', 'rhythm1', shift(thin(drum, 2), 0, .62));
+  setTrack('intro_a', 'bass', [{ note: 36, step: 0, duration: 15, velocity: 72, isBassNote: true }], 'bass_electric');
+  setTrack('intro_a', 'chord1', shift(chord.slice(0, 9), 0, .58), 'epiano');
+  setTrack('intro_b', 'rhythm1', shift(drum, 0, .76));
+  setTrack('intro_b', 'bass', shift(bass, 0, .72), 'bass_electric');
+  setTrack('intro_b', 'chord1', shift(chord, 0, .72), 'epiano');
+  setTrack('intro_b', 'phrase1', shift(chord.slice(0, 6), 4, .62, 12), 'synth_pluck');
+  setTrack('intro_c', 'rhythm1', accent(shift(african, 0, .86), 5));
+  setTrack('intro_c', 'bass', shift(africanBass, 0, .82), 'bass_electric');
+  setTrack('intro_c', 'chord1', shift(chord, 0, .82), 'epiano');
+  setTrack('intro_c', 'phrase1', shift(fill, 0, .65, 12), 'synth_pluck');
+
+  setTrack('ending_a', 'rhythm1', shift(fill, 0, .72));
+  setTrack('ending_a', 'bass', [{ note: 36, step: 0, duration: 15, velocity: 82, isBassNote: true }], 'bass_electric');
+  setTrack('ending_a', 'chord1', shift(chord.slice(0, 6), 0, .62), 'epiano');
+  setTrack('ending_b', 'rhythm1', shift(african, 0, .7));
+  setTrack('ending_b', 'bass', shift(bass.slice(0, 8), 0, .7), 'bass_electric');
+  setTrack('ending_b', 'chord1', shift(chord, 0, .68), 'epiano');
+  setTrack('ending_c', 'rhythm1', shift(fill, 0, .8));
+  setTrack('ending_c', 'bass', [{ note: 36, step: 0, duration: 31, velocity: 76, isBassNote: true }], 'bass_electric');
+  setTrack('ending_c', 'chord1', [{ note: 48, step: 0, duration: 31, velocity: 68, isChordNote: true }, { note: 52, step: 0, duration: 31, velocity: 64, isChordNote: true }, { note: 55, step: 0, duration: 31, velocity: 64, isChordNote: true }], 'epiano');
+
+  return base;
+}
+
 export function createNewBlankStyle(name: string = 'My Custom Style', category: ArrangerStyle['category'] = 'Custom'): ArrangerStyle {
   const sections: Partial<Record<StyleSection, StyleSectionData>> = {};
 

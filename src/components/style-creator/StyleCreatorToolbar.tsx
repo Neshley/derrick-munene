@@ -129,7 +129,7 @@ export const StyleCreatorToolbar: React.FC<StyleCreatorToolbarProps> = ({
   ];
 
   return (
-    <div className="bg-zinc-900/90 border-b border-zinc-800 px-3 py-2 flex items-center justify-between gap-2 flex-wrap shrink-0 select-none">
+    <div className="style-creator-toolbar bg-zinc-900/90 border-b border-zinc-800 px-3 py-2 flex items-center justify-between gap-2 flex-wrap shrink-0 select-none">
       
       {/* Left Group: Active Track Info & Note Duration */}
       <div className="flex items-center gap-2 flex-wrap">

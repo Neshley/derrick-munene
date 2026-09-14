@@ -440,3 +440,277 @@ code, kbd, samp, pre {
   font-size: 17px;
 }
 
+
+/* =========================================================
+   STYLE CREATOR — POLISHED CONTROL SYSTEM
+   Keeps native controls visually consistent across desktop,
+   tablet, mobile and Electron/browser builds.
+   ========================================================= */
+.style-creator-shell {
+  --sc-control-bg: rgba(24, 24, 27, 0.94);
+  --sc-control-bg-hover: rgba(39, 39, 42, 0.98);
+  --sc-control-border: rgba(82, 82, 91, 0.72);
+  --sc-control-border-hover: rgba(245, 158, 11, 0.65);
+  --sc-control-text: #e4e4e7;
+  --sc-control-muted: #a1a1aa;
+  --sc-accent: var(--workstation-accent, #f59e0b);
+}
+
+.style-creator-shell button,
+.style-creator-shell select,
+.style-creator-shell input {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* All visible select controls: clean, compact, no browser-default bevel. */
+.style-creator-shell select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  color: var(--sc-control-text);
+  background-color: var(--sc-control-bg);
+  border: 1px solid var(--sc-control-border);
+  border-radius: 10px;
+  min-height: 32px;
+  padding: 0 28px 0 10px;
+  line-height: 1.1;
+  font-weight: 700;
+  cursor: pointer;
+  outline: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23a1a1aa' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  background-size: 14px 14px;
+  transition: border-color .16s ease, background-color .16s ease, box-shadow .16s ease, color .16s ease;
+}
+
+.style-creator-shell select:hover {
+  background-color: var(--sc-control-bg-hover);
+  border-color: var(--sc-control-border-hover);
+}
+
+.style-creator-shell select:focus-visible {
+  border-color: var(--sc-accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--sc-accent) 18%, transparent);
+}
+
+.style-creator-shell select option,
+.style-creator-shell select optgroup {
+  background: #18181b;
+  color: #f4f4f5;
+}
+
+/* Inputs match the select controls. */
+.style-creator-shell input:not([type="range"]) {
+  min-height: 32px;
+  border-radius: 10px;
+  transition: border-color .16s ease, box-shadow .16s ease, background-color .16s ease;
+}
+
+.style-creator-shell input:not([type="range"]):focus-visible {
+  border-color: var(--sc-accent) !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--sc-accent) 15%, transparent);
+}
+
+/* Header / transport / editor toolbar buttons: tactile hardware-console feel. */
+.style-creator-header button,
+.style-creator-transport button,
+.style-creator-toolbar button,
+.style-creator-sectionbar button,
+.style-creator-mixer button {
+  min-height: 34px;
+  border-radius: 10px;
+  border-color: rgba(82, 82, 91, 0.72);
+  transition: transform .14s ease, background-color .16s ease, border-color .16s ease,
+    color .16s ease, box-shadow .16s ease;
+}
+
+.style-creator-header button:hover:not(:disabled),
+.style-creator-transport button:hover:not(:disabled),
+.style-creator-toolbar button:hover:not(:disabled),
+.style-creator-sectionbar button:hover:not(:disabled),
+.style-creator-mixer button:hover:not(:disabled) {
+  border-color: rgba(161, 161, 170, 0.72);
+}
+
+.style-creator-header button:active:not(:disabled),
+.style-creator-transport button:active:not(:disabled),
+.style-creator-toolbar button:active:not(:disabled),
+.style-creator-sectionbar button:active:not(:disabled),
+.style-creator-mixer button:active:not(:disabled) {
+  transform: translateY(1px) scale(.985);
+}
+
+.style-creator-header button:focus-visible,
+.style-creator-transport button:focus-visible,
+.style-creator-toolbar button:focus-visible,
+.style-creator-sectionbar button:focus-visible,
+.style-creator-mixer button:focus-visible {
+  outline: none;
+  border-color: var(--sc-accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--sc-accent) 16%, transparent);
+}
+
+/* Make the compact mobile controls feel deliberate instead of squeezed. */
+@media (max-width: 767px) {
+  .style-creator-shell select {
+    min-height: 34px;
+    max-width: min(58vw, 240px);
+    padding-left: 9px;
+    padding-right: 28px;
+  }
+
+  .style-creator-header,
+  .style-creator-transport,
+  .style-creator-toolbar,
+  .style-creator-sectionbar {
+    overflow: visible;
+  }
+
+  .style-creator-header > div,
+  .style-creator-transport > div,
+  .style-creator-toolbar > div {
+    min-width: 0;
+  }
+}
+
+/* Small screens: dropdown menus should stay inside the viewport. */
+@media (max-width: 520px) {
+  .style-creator-shell .absolute.w-56 { max-width: calc(100vw - 24px); }
+  .style-creator-shell .absolute.w-64 { max-width: calc(100vw - 24px); }
+  .style-creator-shell .absolute.w-72 { max-width: calc(100vw - 24px); }
+}
+
+/* Respect users who prefer reduced motion. */
+@media (prefers-reduced-motion: reduce) {
+  .style-creator-shell button,
+  .style-creator-shell select,
+  .style-creator-shell input {
+    transition: none !important;
+  }
+}
+
+/* =========================================================
+   STYLE CREATOR — POLISHED CONTROL SYSTEM
+   ========================================================= */
+.style-creator-shell {
+  --sc-control-bg: rgba(24, 24, 27, 0.94);
+  --sc-control-bg-hover: rgba(39, 39, 42, 0.98);
+  --sc-control-border: rgba(82, 82, 91, 0.72);
+  --sc-control-border-hover: rgba(245, 158, 11, 0.65);
+  --sc-control-text: #e4e4e7;
+  --sc-accent: var(--workstation-accent, #f59e0b);
+}
+
+.style-creator-shell button,
+.style-creator-shell select,
+.style-creator-shell input {
+  -webkit-tap-highlight-color: transparent;
+}
+
+.style-creator-shell select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  color: var(--sc-control-text);
+  background-color: var(--sc-control-bg);
+  border: 1px solid var(--sc-control-border);
+  border-radius: 10px;
+  min-height: 32px;
+  padding: 0 28px 0 10px;
+  line-height: 1.1;
+  font-weight: 700;
+  cursor: pointer;
+  outline: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23a1a1aa' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  background-size: 14px 14px;
+  transition: border-color .16s ease, background-color .16s ease, box-shadow .16s ease, color .16s ease;
+}
+
+.style-creator-shell select:hover {
+  background-color: var(--sc-control-bg-hover);
+  border-color: var(--sc-control-border-hover);
+}
+
+.style-creator-shell select:focus-visible {
+  border-color: var(--sc-accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--sc-accent) 18%, transparent);
+}
+
+.style-creator-shell select option,
+.style-creator-shell select optgroup {
+  background: #18181b;
+  color: #f4f4f5;
+}
+
+.style-creator-shell input:not([type="range"]):focus-visible {
+  border-color: var(--sc-accent) !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--sc-accent) 15%, transparent);
+}
+
+.style-creator-header button,
+.style-creator-transport button,
+.style-creator-toolbar button,
+.style-creator-sectionbar button,
+.style-creator-mixer button {
+  min-height: 34px;
+  border-radius: 10px;
+  transition: transform .14s ease, background-color .16s ease, border-color .16s ease, color .16s ease, box-shadow .16s ease;
+}
+
+.style-creator-header button:hover:not(:disabled),
+.style-creator-transport button:hover:not(:disabled),
+.style-creator-toolbar button:hover:not(:disabled),
+.style-creator-sectionbar button:hover:not(:disabled),
+.style-creator-mixer button:hover:not(:disabled) {
+  border-color: rgba(161, 161, 170, 0.72);
+}
+
+.style-creator-header button:active:not(:disabled),
+.style-creator-transport button:active:not(:disabled),
+.style-creator-toolbar button:active:not(:disabled),
+.style-creator-sectionbar button:active:not(:disabled),
+.style-creator-mixer button:active:not(:disabled) {
+  transform: translateY(1px) scale(.985);
+}
+
+.style-creator-header button:focus-visible,
+.style-creator-transport button:focus-visible,
+.style-creator-toolbar button:focus-visible,
+.style-creator-sectionbar button:focus-visible,
+.style-creator-mixer button:focus-visible {
+  outline: none;
+  border-color: var(--sc-accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--sc-accent) 16%, transparent);
+}
+
+@media (max-width: 767px) {
+  .style-creator-shell select {
+    min-height: 34px;
+    max-width: min(58vw, 240px);
+    padding-left: 9px;
+    padding-right: 28px;
+  }
+  .style-creator-header,
+  .style-creator-transport,
+  .style-creator-toolbar,
+  .style-creator-sectionbar {
+    overflow: visible;
+  }
+}
+
+@media (max-width: 520px) {
+  .style-creator-shell .absolute.w-56,
+  .style-creator-shell .absolute.w-64,
+  .style-creator-shell .absolute.w-72 {
+    max-width: calc(100vw - 24px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .style-creator-shell button,
+  .style-creator-shell select,
+  .style-creator-shell input { transition: none !important; }
+}

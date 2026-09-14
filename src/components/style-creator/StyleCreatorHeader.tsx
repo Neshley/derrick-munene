@@ -23,6 +23,7 @@ interface StyleCreatorHeaderProps {
   onClose: () => void;
   onOpenWizard: () => void;
   onOpenTemplatePicker: () => void;
+  onGenerateProStyle: () => void;
   onTriggerFileInput: () => void;
   onExportSty: () => void;
   onExportJson: () => void;
@@ -37,6 +38,7 @@ export const StyleCreatorHeader: React.FC<StyleCreatorHeaderProps> = ({
   onClose,
   onOpenWizard,
   onOpenTemplatePicker,
+  onGenerateProStyle,
   onTriggerFileInput,
   onExportSty,
   onExportJson,
@@ -69,7 +71,7 @@ export const StyleCreatorHeader: React.FC<StyleCreatorHeaderProps> = ({
   }, []);
 
   return (
-    <div className="bg-gradient-to-r from-zinc-950 via-zinc-900 to-zinc-950 border-b border-zinc-800 shrink-0 select-none">
+    <div className="style-creator-header bg-gradient-to-r from-zinc-950 via-zinc-900 to-zinc-950 border-b border-zinc-800 shrink-0 select-none">
       {/* Main Top Row */}
       <div className="px-3 sm:px-4 py-2 sm:py-2.5 flex items-center justify-between gap-2 flex-wrap">
         
@@ -203,6 +205,20 @@ export const StyleCreatorHeader: React.FC<StyleCreatorHeaderProps> = ({
                   <div>
                     <div className="font-bold">Load Factory Template...</div>
                     <div className="text-[10px] text-zinc-400">80s Pop, Worship, Gospel</div>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => {
+                    setIsProjectOpen(false);
+                    onGenerateProStyle();
+                  }}
+                  className="w-full text-left px-2.5 py-2 rounded-lg hover:bg-zinc-800 text-zinc-200 hover:text-amber-300 flex items-center gap-2.5 transition-colors cursor-pointer"
+                >
+                  <Sparkles className="w-4 h-4 text-amber-400" />
+                  <div>
+                    <div className="font-bold">Generate Pro Style</div>
+                    <div className="text-[10px] text-zinc-400">Build full variations, fills &amp; endings</div>
                   </div>
                 </button>
 

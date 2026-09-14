@@ -91,7 +91,7 @@ export const StyleCreatorSectionBar: React.FC<StyleCreatorSectionBarProps> = ({
   };
 
   return (
-    <div className="bg-zinc-900/95 border-b border-zinc-800 px-3 sm:px-4 py-2 select-none">
+    <div className="style-creator-sectionbar bg-zinc-900/95 border-b border-zinc-800 px-3 sm:px-4 py-2 select-none">
       
       {/* MOBILE / SMALL SCREEN VIEW (md:hidden) */}
       <div className="flex md:hidden items-center justify-between gap-2">

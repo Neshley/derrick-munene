@@ -17,6 +17,7 @@ import {
   createNewBlankStyle, 
   createEmptySection, 
   createEmptyTrack,
+  generateProStyle,
 } from '../audio/styleTemplates';
 import { 
   SECTION_KEYS, 
@@ -537,6 +538,22 @@ export const StyleCreatorModal: React.FC<StyleCreatorModalProps> = ({
   };
 
   // Create New Blank Style from Wizard
+  // Generate a complete, original, performance-oriented style from DM ARRANGIA
+  // musical building blocks. This keeps the editor workflow one-click while
+  // producing distinct Main/Fills/Intro/Ending material.
+  const handleGenerateProStyle = () => {
+    const generated = generateProStyle(
+      styleData.name || 'DM Worship Pro Groove',
+      styleData.category || 'Worship & Praise',
+      styleData.tempo || 112,
+      styleData.timeSignature || [4, 4],
+    );
+    setStyleData(generated);
+    setActiveSectionKey('main_a');
+    setActiveTrackKey('rhythm1');
+    showToast('Pro style generated: 4 mains, 4 fills, 3 intros, break & 3 endings');
+  };
+
   const handleCreateNewStyleFromWizard = () => {
     const [num, den] = newStyleTimeSig.split('/').map(Number);
     const newStyle = createNewBlankStyle(newStyleName || 'New Style', newStyleCategory);
@@ -610,7 +627,7 @@ export const StyleCreatorModal: React.FC<StyleCreatorModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-0 sm:p-2 md:p-3 overflow-hidden select-none">
-      <div className="w-full h-full sm:h-[96vh] max-w-7xl bg-zinc-950 border-0 sm:border border-zinc-800 rounded-none sm:rounded-2xl shadow-2xl flex flex-col overflow-hidden text-zinc-100 font-sans relative">
+      <div className="style-creator-shell w-full h-full sm:h-[96vh] max-w-7xl bg-zinc-950 border-0 sm:border border-zinc-800 rounded-none sm:rounded-2xl shadow-2xl flex flex-col overflow-hidden text-zinc-100 font-sans relative">
         
         {/* Hidden File Input */}
         <input 
@@ -630,6 +647,7 @@ export const StyleCreatorModal: React.FC<StyleCreatorModalProps> = ({
           onClose={onClose}
           onOpenWizard={() => setIsNewStyleWizardOpen(true)}
           onOpenTemplatePicker={() => setIsTemplatePickerOpen(true)}
+          onGenerateProStyle={handleGenerateProStyle}
           onTriggerFileInput={() => fileInputRef.current?.click()}
           onExportSty={() => StyleMidiExporter.downloadSty(styleData)}
           onExportJson={() => StyleMidiExporter.downloadJson(styleData)}
