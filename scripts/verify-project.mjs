@@ -15,7 +15,7 @@ const check = (name, condition, detail = '') => {
 };
 
 const pkg = JSON.parse(read('package.json'));
-check('package version is current', pkg.version === '2.9.0', `found ${pkg.version}`);
+check('package version is current', pkg.version === '2.9.1', `found ${pkg.version}`);
 check('test script exists', typeof pkg.scripts?.test === 'string');
 check('lint script exists', typeof pkg.scripts?.lint === 'string');
 check('dependency-free verification script is registered', pkg.scripts?.verify === 'node scripts/verify-project.mjs');
@@ -31,6 +31,7 @@ for (const file of [
   'tests/styParserRobustness.test.ts',
   'index.html',
   'vercel.json',
+  'src/utils/analytics.ts',
 ]) check(`required file: ${file}`, exists(file));
 
 const exporter = read('src/audio/styleMidiExporter.ts');
@@ -45,6 +46,14 @@ check('exporter uses valid SMF SysEx length', exporter.includes('0xf0, 0x05, 0x7
 check('parser has bounded track parsing', parser.includes('trackEnd') || parser.includes('trackEndOffset'));
 check('parser normalizes Yamaha break/fill markers', parser.includes("'fill in ba': 'break'") && parser.includes("'break': 'break'"));
 check('parser has CASM-aware mapping', parser.includes('CASM') && parser.includes('destination') && parser.includes('standardDestinationTracks'));
+check('Vercel Analytics dependency is installed', typeof pkg.dependencies?.['@vercel/analytics'] === 'string');
+check('Vercel Speed Insights dependency is installed', typeof pkg.dependencies?.['@vercel/speed-insights'] === 'string');
+const main = read('src/main.tsx');
+const analytics = read('src/utils/analytics.ts');
+check('Vercel Analytics is mounted', main.includes("@vercel/analytics/react") && main.includes('<Analytics />'));
+check('Vercel Speed Insights is mounted', main.includes("@vercel/speed-insights/react") && main.includes('<SpeedInsights />'));
+check('centralized analytics event helper exists', analytics.includes('export function trackEvent') && analytics.includes("from '@vercel/analytics'"));
+check('product analytics events are wired', analytics.includes('style_exported') && analytics.includes('style_creator_opened'));
 check('UI has workstation shell', app.includes('WorkstationHeader') && app.includes('WorkstationSidebar'));
 check('UI has Style Creator', app.includes('StyleCreatorModal'));
 check('UI has reduced-motion support', css.includes('prefers-reduced-motion'));

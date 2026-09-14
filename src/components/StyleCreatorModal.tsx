@@ -37,6 +37,7 @@ import { StyleCreatorToolbar } from './style-creator/StyleCreatorToolbar';
 import { StyleCreatorGrid } from './style-creator/StyleCreatorGrid';
 import { StyleCreatorTemplateModal } from './style-creator/StyleCreatorTemplateModal';
 import { X } from 'lucide-react';
+import { trackEvent } from '../utils/analytics';
 
 interface StyleCreatorModalProps {
   isOpen: boolean;
@@ -106,6 +107,7 @@ export const StyleCreatorModal: React.FC<StyleCreatorModalProps> = ({
   // Synchronize when initialStyle changes
   useEffect(() => {
     if (isOpen) {
+      trackEvent('style_creator_opened', { mode: initialStyle ? 'edit' : 'new' });
       if (initialStyle) {
         setStyleData(JSON.parse(JSON.stringify(initialStyle)));
       } else {
@@ -542,6 +544,7 @@ export const StyleCreatorModal: React.FC<StyleCreatorModalProps> = ({
   // musical building blocks. This keeps the editor workflow one-click while
   // producing distinct Main/Fills/Intro/Ending material.
   const handleGenerateProStyle = () => {
+    trackEvent('style_generated', { source: 'pro_template' });
     const generated = generateProStyle(
       styleData.name || 'DM Worship Pro Groove',
       styleData.category || 'Worship & Praise',
@@ -568,6 +571,7 @@ export const StyleCreatorModal: React.FC<StyleCreatorModalProps> = ({
   const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    trackEvent('style_imported', { extension: file.name.split('.').pop()?.toLowerCase() || 'unknown' });
 
     // Check if file actually exists and has binary content
     const validation = validateFileExists(file);
@@ -612,12 +616,14 @@ export const StyleCreatorModal: React.FC<StyleCreatorModalProps> = ({
 
   // Save Style
   const handleSave = () => {
+    trackEvent('style_saved', { section_count: Object.keys(styleData.sections || {}).length });
     onSaveStyle(styleData);
     showToast(`Saved "${styleData.name}" to Custom Styles Bank!`);
   };
 
   // Apply & Play on main Workstation
   const handleApplyAndPlay = () => {
+    trackEvent('performance_started', { source: 'style_creator' });
     stopAudition();
     onApplyAndPlayStyle(styleData);
     onClose();
@@ -649,8 +655,14 @@ export const StyleCreatorModal: React.FC<StyleCreatorModalProps> = ({
           onOpenTemplatePicker={() => setIsTemplatePickerOpen(true)}
           onGenerateProStyle={handleGenerateProStyle}
           onTriggerFileInput={() => fileInputRef.current?.click()}
-          onExportSty={() => StyleMidiExporter.downloadSty(styleData)}
-          onExportJson={() => StyleMidiExporter.downloadJson(styleData)}
+          onExportSty={() => {
+            trackEvent('style_exported', { format: 'sty' });
+            StyleMidiExporter.downloadSty(styleData);
+          }}
+          onExportJson={() => {
+            trackEvent('style_exported', { format: 'json' });
+            StyleMidiExporter.downloadJson(styleData);
+          }}
           onCopyJson={handleCopyJsonToClipboard}
         />
 

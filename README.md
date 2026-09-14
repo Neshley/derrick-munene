@@ -488,3 +488,10 @@ These changes are intentionally additive: the existing Universal Yamaha export p
 - Added `inspectUniversalYamahaStyle()` for machine-readable export diagnostics, including SMF format, PPQ, CASM/CSEG/Ctab/Cntt counts, and validation warnings/errors.
 - Added regression coverage for malformed running-status input and exporter/parser round trips.
 
+
+
+## Vercel Analytics & Speed Insights
+
+The web deployment includes Vercel Web Analytics and Speed Insights. Page views are collected automatically by Vercel, while product events such as Style Creator usage and Yamaha/JSON exports are emitted through the centralized `src/utils/analytics.ts` helper.
+
+After deploying to Vercel, enable **Analytics** and **Speed Insights** in the project dashboard. Vercel's current React packages are `@vercel/analytics` and `@vercel/speed-insights`.
