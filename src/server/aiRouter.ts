@@ -43,12 +43,10 @@ export function clearRateLimits() {
 }
 
 export function getClientIp(req: Request): string {
-  const forwarded = req.headers['x-forwarded-for'];
-  if (typeof forwarded === 'string' && forwarded.length > 0) {
-    const firstIp = forwarded.split(',')[0].trim();
-    if (firstIp) return firstIp;
-  }
-  return req.socket?.remoteAddress || req.ip || 'unknown-client';
+  // Express parses X-Forwarded-For into req.ip only when trust-proxy is enabled.
+  // The production server enables that only on Vercel, avoiding a client-spoofable
+  // header being treated as an identity during local/direct deployments.
+  return req.ip || req.socket?.remoteAddress || 'unknown-client';
 }
 
 function rateLimiter(req: Request, res: Response, next: NextFunction) {

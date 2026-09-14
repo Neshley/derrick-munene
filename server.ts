@@ -9,6 +9,32 @@ dotenv.config();
 const app = express();
 const PORT = 3000;
 
+// Trust Vercel's single forwarding proxy hop so Express can derive req.ip safely.
+app.set('trust proxy', process.env.VERCEL ? 1 : false);
+
+// Baseline HTTP security headers.
+app.use((_req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Permissions-Policy', 'camera=(), geolocation=(), microphone=(self), midi=(self)');
+  res.setHeader('Content-Security-Policy', [
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-inline'",
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: blob:",
+    "font-src 'self' data:",
+    "connect-src 'self' https: wss:",
+    "media-src 'self' blob: data: https:",
+    "worker-src 'self' blob:",
+    "frame-src 'self'",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+  ].join('; '));
+  next();
+});
+
 // Request body size limit for security
 app.use(express.json({ limit: '500kb' }));
 

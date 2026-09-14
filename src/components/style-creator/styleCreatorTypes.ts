@@ -39,7 +39,9 @@ export const AUDITION_CHORDS = [
   { label: 'Bb Major', root: 'Bb', rootIndex: 10, type: 'maj' as ChordType },
 ];
 
-export const PIANO_ROLL_NOTES = Array.from({ length: 49 }, (_, i) => 84 - i); // 84 down to 36
+// Full MIDI pitch range. The grid remains scrollable, so creation is not limited
+// to a particular physical keyboard size (49/61/76/88 keys).
+export const PIANO_ROLL_NOTES = Array.from({ length: 128 }, (_, i) => 127 - i); // 127 down to 0
 
 export const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 

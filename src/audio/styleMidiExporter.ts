@@ -4,7 +4,7 @@ import { ArrangerStyle, StyleSection, StyleSectionData, TrackType } from '../typ
  * Yamaha Universal Style exporter.
  *
  * The exporter deliberately targets the conservative, MIDI-only Yamaha style
- * subset: SMF Format 0 + SFF1/SInt conductor markers + CASM/CSEG/Ctab.
+ * subset: SMF Format 0 + SFF1/SInt conductor markers + section-aware CASM/CSEG/Ctab/Cntt.
  * This avoids model-specific audio/style extensions and maximises portability
  * across Yamaha arranger generations.
  */
@@ -176,21 +176,16 @@ function buildCntt(track: TrackType): number[] {
 }
 
 function buildCasm(): number[] {
-  // Keep sections partitioned into multiple CSEG blocks, matching the way
-  // Yamaha styles commonly group their section policies. Every group carries
-  // the same eight accompaniment channel policies so all sections are covered.
-  const groups: StyleSection[][] = [
-    ['main_a', 'main_b', 'main_c', 'fill_aa', 'fill_bb', 'fill_cc', 'intro_a', 'ending_a', 'break'],
-    ['main_d', 'fill_dd'],
-    ['intro_b', 'intro_c', 'ending_b', 'ending_c'],
-  ];
+  // Keep one CSEG per arranger section. This is intentionally more explicit
+  // than grouping several sections into a single Sdec string: each section
+  // receives its own source/destination/transposition policy, which makes the
+  // exported CASM easier for Yamaha style editors and older arrangers to map.
   const tracks: TrackType[] = ['rhythm2', 'rhythm1', 'bass', 'chord1', 'chord2', 'pad', 'phrase1', 'phrase2'];
   const segments: number[] = [];
 
-  for (const group of groups) {
-    const names = group.map(section => SECTION_MARKERS[section]).join(',');
+  for (const section of FULL_SECTIONS) {
     const payload: number[] = [];
-    payload.push(...chunk('Sdec', strBytes(names)));
+    payload.push(...chunk('Sdec', strBytes(SECTION_MARKERS[section])));
     for (const track of tracks) payload.push(...buildCtab(track));
     for (const track of tracks) payload.push(...buildCntt(track));
     segments.push(...chunk('CSEG', payload));
@@ -422,7 +417,7 @@ export function validateUniversalYamahaStyle(buffer: Uint8Array): { ok: boolean;
         }
         p += 8 + size;
       }
-      if (csegCount !== 3) warnings.push(`CASM contains ${csegCount} CSEG groups; Universal profile normally emits 3.`);
+      if (csegCount !== FULL_SECTIONS.length) warnings.push(`CASM contains ${csegCount} CSEG groups; Universal profile normally emits ${FULL_SECTIONS.length}.`);
     }
   }
 

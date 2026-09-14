@@ -3,6 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { APP_VERSION, APP_EDITION } from '../config/appInfo';
+
 export type GuideCategory = 
   | 'Getting Started' 
   | 'Arranger Basics' 
@@ -45,8 +47,8 @@ export interface GuideSection {
 
 export const WORSHIP_GUIDE_TITLE = "DM ARRANGIA";
 export const WORSHIP_GUIDE_SUBTITLE = "The Complete Arranger Workstation & Worship Companion Manual";
-export const WORSHIP_GUIDE_VERSION = "2.5.0 Professional Edition";
-export const WORSHIP_GUIDE_LAST_UPDATED = "March 2026";
+export const WORSHIP_GUIDE_VERSION = `${APP_VERSION} ${APP_EDITION}`;
+export const WORSHIP_GUIDE_LAST_UPDATED = "September 2026";
 
 export const WORSHIP_GUIDE_CATEGORIES: GuideCategoryMeta[] = [
   {
@@ -128,9 +130,9 @@ export const WORSHIP_GUIDE_SECTIONS: GuideSection[] = [
     title: "Chapter 1: Welcome & System Architecture Overview",
     category: "Getting Started",
     level: 3,
-    summary: "Complete introduction to DM ARRANGIA 2.5.0, core architectural stack, and realistic Yamaha file compatibility scope.",
+    summary: "Complete introduction to DM ARRANGIA 2.7.0, core architectural stack, and realistic Yamaha file compatibility scope.",
     content: [
-      "Welcome to DM ARRANGIA (Version 2.5.0 Professional Edition), conceived and architected by Derrick Munene (Lead Architect & Worship Keyboardist). DM ARRANGIA is an advanced, browser-native arranger workstation and live performance companion engineered specifically for solo musicians, church worship keyboardists, vocalists, and music producers.",
+      "Welcome to DM ARRANGIA (Version 2.7.0 Professional Edition), conceived and architected by Derrick Munene (Lead Architect & Worship Keyboardist). DM ARRANGIA is an advanced, browser-native arranger workstation and live performance companion engineered specifically for solo musicians, church worship keyboardists, vocalists, and music producers.",
       "The platform bridges professional hardware arranger capabilities (such as Yamaha Genos, Tyros, and PSR series keyboards) with modern web technologies, eliminating expensive external sound modules and complex driver installations.",
       "The underlying technological stack includes:",
       "• Low-Latency Web Audio API: Multi-oscillator subtractive, FM, and wavetable sound synthesis operating with sub-15ms buffer latency.\n• Web MIDI API Interface: Plug-and-play connection for hardware USB and 5-pin DIN MIDI keyboards with channel-isolated sustain handling.\n• Web Workers Audio Clock: Drift-free timing engine ensuring rhythm tracks and arpeggios remain synchronized regardless of browser tab rendering load.\n• IndexedDB & File System Access API: Persistent local storage for custom styles, songbook setlists, audio session recordings, and media tracks.\n• SFF1/SFF2 Style Parser: Binary decoder for Yamaha .STY styles, extracting section markers, multi-track patterns, tempo, and time signatures.\n• PWA Native Desktop Shell: Installable as a standalone offline desktop application with OS file associations and LaunchQueue integration.",
@@ -143,7 +145,7 @@ export const WORSHIP_GUIDE_SECTIONS: GuideSection[] = [
       headers: ["Specification", "Details"],
       rows: [
         ["Application Name", "DM ARRANGIA Professional Arranger Workstation"],
-        ["Version & Build", "v2.5.0 Professional Edition (March 2026)"],
+        ["Version & Build", "v2.7.0 Professional Edition (September 2026)"],
         ["Lead Architect", "Derrick Munene (Lead Architect & Worship Keyboardist)"],
         ["Primary Audio Engine", "Web Audio API Synthesis (Subtractive & FM) + AudioWorklet"],
         ["MIDI Interfacing", "W3C Web MIDI API (USB Class-Compliant & 5-Pin DIN)"],
@@ -944,7 +946,7 @@ export const WORSHIP_GUIDE_SECTIONS: GuideSection[] = [
 
 export const RAW_MARKDOWN_GUIDE = `# DM ARRANGIA
 ## The Complete Arranger Workstation & Worship Companion Manual
-**Version 2.5.0 Professional Edition — Last Updated: March 2026**
+**Version 2.7.0 Professional Edition — Last Updated: September 2026**
 **Lead Architect & Worship Keyboardist:** Derrick Munene
 
 ---
@@ -1007,7 +1009,7 @@ Whether you are leading Sunday morning praise, providing altar ministry atmosphe
 ---
 
 ## Chapter 1: Welcome & System Architecture Overview
-Welcome to DM ARRANGIA (Version 2.5.0 Professional Edition), conceived and architected by Derrick Munene (Lead Architect & Worship Keyboardist). DM ARRANGIA is an advanced, browser-native arranger workstation and live performance companion engineered specifically for solo musicians, church worship keyboardists, vocalists, and music producers.
+Welcome to DM ARRANGIA (Version 2.7.0 Professional Edition), conceived and architected by Derrick Munene (Lead Architect & Worship Keyboardist). DM ARRANGIA is an advanced, browser-native arranger workstation and live performance companion engineered specifically for solo musicians, church worship keyboardists, vocalists, and music producers.
 
 ### Core Architecture
 * Low-Latency Web Audio API: Multi-oscillator subtractive, FM, and wavetable sound synthesis operating with sub-15ms buffer latency.

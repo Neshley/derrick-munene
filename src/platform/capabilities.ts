@@ -5,6 +5,7 @@
 
 import { PlatformCapabilities, DesktopCapabilities } from './types';
 import { isDesktop, isPWA, getDesktopPlatform } from './platformDetection';
+import { APP_VERSION } from '../config/appInfo';
 
 export function getDesktopCapabilities(): DesktopCapabilities {
   const desktop = isDesktop();
@@ -13,7 +14,7 @@ export function getDesktopCapabilities(): DesktopCapabilities {
   return {
     isDesktop: desktop,
     platform: getDesktopPlatform(),
-    version: bridge?.version || '2.5.0',
+    version: bridge?.version || APP_VERSION,
     hasFilesystem: Boolean(desktop && (bridge?.filesystem || bridge?.fs || bridge?.scanDirectory)),
     hasWindowControls: Boolean(desktop && (bridge?.window?.minimize || bridge?.minimizeWindow)),
     hasMidiBridge: Boolean(desktop && bridge?.midi),

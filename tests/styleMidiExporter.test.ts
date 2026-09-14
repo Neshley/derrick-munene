@@ -55,12 +55,13 @@ describe('Universal Yamaha style exporter', () => {
     expect(buffer.slice(0, 4)).toEqual(new Uint8Array([0x4d, 0x54, 0x68, 0x64]));
   });
 
-  it('emits all three CASM groups with eight Ctab and Cntt records each', () => {
+  it('emits one section-aware CASM group per arranger section', () => {
     const buffer = StyleMidiExporter.exportToStyBuffer(makeFixture());
     const text = new TextDecoder('latin1').decode(buffer);
-    expect((text.match(/CSEG/g) || []).length).toBe(3);
-    expect((text.match(/Ctab/g) || []).length).toBe(24);
-    expect((text.match(/Cntt/g) || []).length).toBe(24);
+    expect((text.match(/CSEG/g) || []).length).toBe(15);
+    expect((text.match(/Ctab/g) || []).length).toBe(120);
+    expect((text.match(/Cntt/g) || []).length).toBe(120);
+    expect((text.match(/Sdec/g) || []).length).toBe(15);
   });
 
   it('keeps the universal profile free of model-specific audio chunks', () => {

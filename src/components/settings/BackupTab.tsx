@@ -8,6 +8,7 @@ import { Database, Download, Upload, Trash2, RefreshCw, AlertTriangle, Check, Di
 import { SystemSettings, resetSettingsGroup } from '../../utils/systemSettings';
 import { validateBackupPayload } from '../../utils/backupValidation';
 import { validateFileExists } from '../../utils/fileExistenceChecker';
+import { APP_VERSION } from '../../config/appInfo';
 
 interface BackupTabProps {
   settings: SystemSettings;
@@ -30,7 +31,7 @@ export const BackupTab: React.FC<BackupTabProps> = ({
     try {
       const backupData = {
         app: 'DM-ARRANGIA-PRO-WORSHIP-WORKSTATION',
-        version: '2.5.0',
+        version: APP_VERSION,
         exportedAt: new Date().toISOString(),
         customStyles: JSON.parse(localStorage.getItem('yamaha_custom_styles') || '[]'),
         customVoices: JSON.parse(localStorage.getItem('yamaha_custom_voices') || '[]'),

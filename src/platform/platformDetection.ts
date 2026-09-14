@@ -4,6 +4,7 @@
  */
 
 import { OperatingSystem, PlatformInfo, PlatformType } from './types';
+import { APP_VERSION } from '../config/appInfo';
 
 export function isDesktop(): boolean {
   if (typeof window === 'undefined') return false;
@@ -102,7 +103,7 @@ export function getPlatformInfo(): PlatformInfo {
     isWindows: os === 'windows',
     isApple: os === 'macos' || os === 'ios',
     isMobile: os === 'android' || os === 'ios',
-    appVersion: '2.5.0',
+    appVersion: APP_VERSION,
   };
 
   return cachedPlatformInfo;

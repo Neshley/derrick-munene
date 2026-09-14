@@ -5,6 +5,7 @@
 
 import React from 'react';
 import { Info, BookOpen, Coffee, Cpu, Heart, CheckCircle2, Music, Sparkles, Code } from 'lucide-react';
+import { APP_VERSION_LABEL } from '../../config/appInfo';
 
 interface AboutTabProps {
   onOpenUserGuide: () => void;
@@ -37,7 +38,7 @@ export const AboutTab: React.FC<AboutTabProps> = ({
             <div className="flex items-center gap-2">
               <span className="text-xl font-black tracking-wider text-white">DM ARRANGIA</span>
               <span className="px-2 py-0.5 bg-amber-500/20 text-amber-300 font-mono text-[10px] font-bold rounded border border-amber-500/30">
-                PRO v2.5.0
+                {APP_VERSION_LABEL} PRO
               </span>
             </div>
             <p className="text-xs text-zinc-400 mt-1">
