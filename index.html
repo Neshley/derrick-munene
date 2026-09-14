@@ -3,17 +3,49 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-    <title>DM ARRANGIA</title>
-    <meta name="description" content="DM ARRANGIA is a professional keyboard and worship studio for musicians, performers and creators." />
+    <title>DM ARRANGIA — AI-Powered Music & Performance Workstation</title>
+    <meta name="description" content="DM ARRANGIA is a professional AI-powered music workstation for live performance, music arrangement, MIDI control, audio production, worship, and intelligent musical workflows." />
+    <meta name="robots" content="index, follow, max-image-preview:large" />
+    <link rel="canonical" href="https://genos-pro.vercel.app/" />
     <meta property="og:title" content="DM ARRANGIA" />
-    <meta property="og:description" content="DM ARRANGIA is a professional keyboard and worship studio for musicians, performers and creators." />
+    <meta property="og:description" content="A professional AI-powered music workstation for live performance, arranging, MIDI, audio, studio, and worship workflows." />
+    <meta property="og:url" content="https://genos-pro.vercel.app/" />
+    <meta property="og:site_name" content="DM ARRANGIA" />
     <meta property="og:type" content="website" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="DM ARRANGIA" />
-    <meta name="twitter:description" content="DM ARRANGIA is a professional keyboard and worship studio for musicians, performers and creators." />
+    <meta name="twitter:description" content="A professional AI-powered music workstation for live performance, arranging, MIDI, audio, studio, and worship workflows." />
 
     <!-- PWA & Mobile Meta Tags -->
     <link rel="manifest" href="/manifest.json" />
+    <link rel="sitemap" type="application/xml" href="/sitemap.xml" />
+
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "SoftwareApplication",
+        "name": "DM ARRANGIA",
+        "url": "https://genos-pro.vercel.app/",
+        "applicationCategory": "MusicApplication",
+        "operatingSystem": "Web",
+        "description": "A professional AI-powered music workstation for live performance, music arrangement, MIDI control, audio production, worship, and intelligent musical workflows.",
+        "author": {
+          "@type": "Person",
+          "name": "Derrick Munene"
+        },
+        "featureList": [
+          "Arranger workstation",
+          "Live performance controls",
+          "MIDI support",
+          "Browser audio engine",
+          "AI Music Director",
+          "Studio tools",
+          "Media player",
+          "Worship tools",
+          "Progressive Web App support"
+        ]
+      }
+    </script>
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="apple-touch-icon" sizes="192x192" href="/pwa-192x192.png" />
@@ -30,7 +62,41 @@
     <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Share+Tech+Mono&display=swap" rel="stylesheet">
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <main aria-label="DM ARRANGIA overview">
+        <header>
+          <p>DM ARRANGIA</p>
+          <h1>AI-Powered Music &amp; Performance Workstation</h1>
+          <p>Create. Arrange. Perform.</p>
+        </header>
+        <section aria-labelledby="intro-heading">
+          <h2 id="intro-heading">Professional music tools in one modern workstation</h2>
+          <p>
+            DM ARRANGIA is a browser-based music workstation for musicians, arrangers,
+            producers, worship teams, and live performers. It combines arranging,
+            accompaniment, MIDI control, audio playback, recording, media management,
+            and intelligent music tools in one interface.
+          </p>
+        </section>
+        <section aria-labelledby="features-heading">
+          <h2 id="features-heading">Core features</h2>
+          <ul>
+            <li><strong>Arranger Workstation</strong> — Control automatic accompaniment, chords, rhythms, variations, fills, intros, and endings.</li>
+            <li><strong>Professional Performance Interface</strong> — Keep important live-performance controls close at hand.</li>
+            <li><strong>MIDI Support</strong> — Connect compatible MIDI keyboards and controllers for real-time input and control.</li>
+            <li><strong>Audio Engine</strong> — Work with browser-based audio playback and musical performance tools.</li>
+            <li><strong>AI Music Director</strong> — Get intelligent assistance for musical ideas, arrangements, and performance workflows.</li>
+            <li><strong>Studio Tools</strong> — Create, control, record, and manage musical sessions.</li>
+            <li><strong>Media Player</strong> — Manage and play supported audio and media within the workstation.</li>
+            <li><strong>Worship Tools</strong> — Support live worship and ministry performance workflows.</li>
+            <li><strong>Progressive Web App</strong> — Use the workstation as a modern installable web application on supported devices.</li>
+          </ul>
+        </section>
+        <noscript>
+          <p>JavaScript is required to use the interactive DM ARRANGIA workstation.</p>
+        </noscript>
+      </main>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

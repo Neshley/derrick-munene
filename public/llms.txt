@@ -1,0 +1,23 @@
+# DM ARRANGIA
+
+> AI-powered music and performance workstation for musicians, arrangers, producers, worship teams, and live performers.
+
+## Product
+
+DM ARRANGIA is a browser-based workstation that combines music arrangement, automatic accompaniment, MIDI control, audio playback, recording, media management, studio tools, worship workflows, and intelligent music assistance.
+
+## Core capabilities
+
+- Arranger workstation for chords, rhythms, variations, fills, intros, and endings
+- Live performance controls
+- MIDI keyboard and controller support
+- Browser-based audio tools
+- AI Music Director
+- Studio and session tools
+- Media player
+- Worship-oriented performance tools
+- Progressive Web App support
+
+## Website
+
+https://genos-pro.vercel.app/
