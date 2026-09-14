@@ -664,3 +664,92 @@ textarea:focus-visible {
     transition: none !important;
   }
 }
+
+/* =========================================================
+   DM ARRANGIA — POLISHED CONSOLE LAYER
+   ========================================================= */
+:root {
+  --console-surface: rgba(24, 24, 27, 0.88);
+  --console-surface-raised: rgba(39, 39, 42, 0.72);
+  --console-border: rgba(113, 113, 122, 0.22);
+  --console-border-strong: rgba(161, 161, 170, 0.34);
+  --console-text-muted: #a1a1aa;
+  --console-shadow: 0 14px 36px rgba(0, 0, 0, 0.24);
+}
+
+/* Consistent app-level surfaces without forcing a new visual language onto
+   individual feature components. */
+#workstation-topbar {
+  backdrop-filter: blur(18px) saturate(125%);
+  -webkit-backdrop-filter: blur(18px) saturate(125%);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.2);
+}
+
+#workstation-topbar button,
+#workstation-sidebar button {
+  transition: background-color .16s ease, border-color .16s ease,
+    color .16s ease, box-shadow .16s ease, transform .12s ease;
+}
+
+#workstation-topbar button:hover:not(:disabled),
+#workstation-sidebar button:hover:not(:disabled) {
+  box-shadow: 0 4px 14px rgba(0, 0, 0, .16);
+}
+
+#workstation-topbar button:focus-visible,
+#workstation-sidebar button:focus-visible,
+[role="button"]:focus-visible {
+  outline: 2px solid var(--workstation-accent, #f59e0b);
+  outline-offset: 2px;
+}
+
+#workstation-sidebar {
+  background-image: linear-gradient(180deg, rgba(9, 9, 11, .98), rgba(24, 24, 27, .98) 55%, rgba(9, 9, 11, .99));
+  box-shadow: 8px 0 32px rgba(0, 0, 0, .12);
+}
+
+/* Make dense workstation sections easier to scan by giving bordered panels
+   a restrained elevation instead of relying on dozens of competing shadows. */
+#root .rounded-xl.border-zinc-800\/80,
+#root .rounded-xl.border-zinc-800\/70,
+#root .rounded-2xl.border-zinc-800\/80 {
+  border-color: var(--console-border);
+}
+
+/* Better native control affordances across the workstation. */
+button:disabled,
+select:disabled,
+input:disabled,
+textarea:disabled {
+  cursor: not-allowed;
+}
+
+button:not(:disabled) {
+  cursor: pointer;
+}
+
+/* Prevent accidental text selection while operating hardware-like controls. */
+button,
+[role="button"] {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+@media (max-width: 767px) {
+  #workstation-topbar {
+    box-shadow: 0 5px 20px rgba(0, 0, 0, .24);
+  }
+
+  #workstation-sidebar {
+    width: min(88vw, 340px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #workstation-topbar,
+  #workstation-topbar button,
+  #workstation-sidebar,
+  #workstation-sidebar button {
+    transition: none !important;
+  }
+}

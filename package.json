@@ -21,7 +21,8 @@
     "desktop:dist:mac": "npm run desktop:build && electron-builder --mac",
     "desktop:dist:linux": "npm run desktop:build && electron-builder --linux",
     "lint": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "verify": "node scripts/verify-project.mjs"
   },
   "dependencies": {
     "@google/genai": "^2.4.0",
